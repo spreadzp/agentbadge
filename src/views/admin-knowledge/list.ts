@@ -13,6 +13,7 @@ import {
   knowledgeShell,
   statusFilterBar,
   statusPill,
+  tokenField,
 } from "./shared";
 
 export interface ListRow {
@@ -71,6 +72,7 @@ const createForm = () => html`<form
     action="/admin/knowledge/create"
     class="flex flex-col gap-2"
   >
+    ${tokenField()}
     <div class="flex flex-wrap gap-2">
       <input
         type="text"

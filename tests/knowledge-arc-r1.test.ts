@@ -341,14 +341,16 @@ describe("Arc R1 — M8/M9 input edges", () => {
   });
 });
 
-describe("Arc R1 — M10 SSR dedupe + resolve published-only", () => {
-  it("identical form post twice → one version, one transition", async () => {
+describe("Arc R2 — single-use form tokens + resolve published-only", () => {
+  it("token double-submit refused: one minted token, one transition", async () => {
     process.env.ADMIN_API_KEY = "test-admin-key";
     resetIdempotencyStore();
     const store = createMemoryKnowledgeStores();
     const app = new Hono();
     app.route("/", createAdminKnowledgeUi(store));
     const AUTH = `Basic ${Buffer.from("x:test-admin-key").toString("base64")}`;
+    const get = (path: string) =>
+      app.request(path, { headers: { authorization: AUTH } });
     const post = (path: string, body: Record<string, string>) =>
       app.request(path, {
         method: "POST",
@@ -362,10 +364,35 @@ describe("Arc R1 — M10 SSR dedupe + resolve published-only", () => {
       store, { kind: "GUIDE", title: "ssr", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
-    // Double-submit the same transition — the replay must not stack.
-    const form = { to: "PENDING", operator: "ui-op" };
-    await post(`/admin/knowledge/${c.item.id}/transition`, form);
-    await post(`/admin/knowledge/${c.item.id}/transition`, form);
+
+    // No token → refused outright (was silently executed pre-R2).
+    const noTok = await post(`/admin/knowledge/${c.item.id}/transition`, {
+      to: "PENDING", operator: "ui-op",
+    });
+    expect(noTok.status).toBe(303);
+    expect(noTok.headers.get("location")).toContain("err=");
+    expect((await store.getItem(c.item.id))?.status).toBe("DRAFT");
+
+    // Mint via render; the token POST applies exactly once.
+    const page = await (
+      await get(`/admin/knowledge/${c.item.id}`)
+    ).text();
+    const token = /name="formToken" value="([^"]+)"/.exec(page)?.[1];
+    expect(token).toBeTruthy();
+    const form = { to: "PENDING", operator: "ui-op", formToken: token! };
+    const first = await post(
+      `/admin/knowledge/${c.item.id}/transition`, form,
+    );
+    expect(first.status).toBe(303);
+    expect(first.headers.get("location")).not.toContain("err=");
+
+    // The spent token (F5/back-button/double-click) is refused —
+    // not deduped to a phantom success.
+    const replay = await post(
+      `/admin/knowledge/${c.item.id}/transition`, form,
+    );
+    expect(replay.headers.get("location")).toContain("err=");
+
     const item = await store.getItem(c.item.id);
     expect(item?.status).toBe("PENDING");
     const events = await store.listStatusEvents(c.item.id);
@@ -382,8 +409,8 @@ describe("Arc R1 — M10 SSR dedupe + resolve published-only", () => {
     if (!g.ok) throw new Error("gap failed");
     // Triage first (OPEN→TRIAGED), then resolve → draft item refused.
     const { triageGap } = await import("../src/server/lib/knowledge");
-    await triageGap(store, g.gap.id, OP);
-    const r = await resolveGap(store, g.gap.id, c.item.id, OP);
+    await triageGap(store, g.gap!.id, OP);
+    const r = await resolveGap(store, g.gap!.id, c.item.id, OP);
     expect(r).toMatchObject({ ok: false, error: "linked_item_not_published" });
   });
 });

@@ -15,10 +15,19 @@ import {
 export class MemoryKnowledgeGaps {
   constructor(protected readonly data: MemoryKnowledgeData) {}
 
-  async recordGap(input: KnowledgeGapUpsert) {
+  async recordGap(input: KnowledgeGapUpsert, opts?: { openCap?: number }) {
     const now = nowIso();
     for (const gap of this.data.gaps.values()) {
       if (gap.normalizedQuery !== input.normalizedQuery) continue;
+      // Arc R2 M-1: WONTFIX is an operator decision — final. The
+      // sighting is returned untouched, recorded:false, so the
+      // anonymous backlog can't silently revert a triage call.
+      if (gap.status === "WONTFIX") {
+        return { row: gap, created: false, recorded: false };
+      }
+      // RESOLVED gaps reopen on renewed demand; OPEN/TRIAGED just
+      // bump. Reopened flags the caller to emit an event.
+      const reopened = gap.status === "RESOLVED";
       gap.count += 1;
       gap.lastSeenAt = now;
       if (gap.capabilityRef == null && input.capabilityRef != null) {
@@ -30,9 +39,7 @@ export class MemoryKnowledgeGaps {
       if (gap.sourceRef == null && input.sourceRef != null) {
         gap.sourceRef = input.sourceRef;
       }
-      // Arc R1 M7: renewed demand on a closed gap reopens it — a
-      // re-sighting must not stay invisible to operators.
-      if (gap.status === "RESOLVED" || gap.status === "WONTFIX") {
+      if (reopened) {
         gap.status = "OPEN";
         gap.linkedItemId = null;
       }
@@ -42,7 +49,18 @@ export class MemoryKnowledgeGaps {
       ) {
         gap.sampleQueries.push(input.sampleQuery);
       }
-      return { row: gap, created: false };
+      return { row: gap, created: false, recorded: true, reopened };
+    }
+    // New row — same openCap semantics as the PG adapter: only new
+    // rows are cap-gated; dedupe bumps above never consult it.
+    if (opts?.openCap !== undefined) {
+      let open = 0;
+      for (const g of this.data.gaps.values()) {
+        if (g.status === "OPEN") open += 1;
+      }
+      if (open >= opts.openCap) {
+        return { row: null, created: false, recorded: false };
+      }
     }
     const gap: KnowledgeGapRecord = {
       id: input.id,
@@ -59,7 +77,7 @@ export class MemoryKnowledgeGaps {
       lastSeenAt: now,
     };
     this.data.gaps.set(gap.id, gap);
-    return { row: gap, created: true };
+    return { row: gap, created: true, recorded: true };
   }
 
   async getGap(id: string) {
@@ -70,6 +88,7 @@ export class MemoryKnowledgeGaps {
     status?: string;
     orderBy?: "count" | "lastSeen";
     limit?: number;
+    offset?: number;
   }) {
     let rows = [...this.data.gaps.values()];
     if (opts?.status !== undefined) {
@@ -82,7 +101,8 @@ export class MemoryKnowledgeGaps {
             a.id.localeCompare(b.id)
         : (a, b) => b.count - a.count || a.id.localeCompare(b.id),
     );
-    return rows.slice(0, opts?.limit ?? 500);
+    const offset = opts?.offset ?? 0;
+    return rows.slice(offset, offset + (opts?.limit ?? 500));
   }
 
   async countGaps(status: string) {

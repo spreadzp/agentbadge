@@ -45,6 +45,22 @@ const post = (app: Hono, path: string, body: Record<string, string>) =>
     body: new URLSearchParams(body).toString(),
   });
 
+/** Arc R2 H-1: mutation posts need a render-minted single-use token —
+ *  GET the page containing the form, lift the token, then POST. */
+const TOKEN_RE = /name="formToken" value="([^"]+)"/;
+async function formToken(app: Hono, pagePath: string): Promise<string> {
+  const html = await (await get(app, pagePath)).text();
+  const t = TOKEN_RE.exec(html)?.[1];
+  if (!t) throw new Error(`no formToken on ${pagePath}`);
+  return t;
+}
+const postForm = async (
+  app: Hono,
+  pagePath: string,
+  postPath: string,
+  body: Record<string, string>,
+) => post(app, postPath, { ...body, formToken: await formToken(app, pagePath) });
+
 beforeAll(() => {
   process.env.ADMIN_API_KEY = KEY;
 });
@@ -70,12 +86,14 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
 
   it("create → publish flow via UI; only legal buttons render", async () => {
     const { app } = mkApp();
-    const create = await post(app, "/admin/knowledge/create", {
-      title: "UI flow doc",
-      body: "ui flow body",
-      kind: "GUIDE",
-      slug: "ui-flow",
-    });
+    const create = await postForm(
+      app, "/admin/knowledge", "/admin/knowledge/create", {
+        title: "UI flow doc",
+        body: "ui flow body",
+        kind: "GUIDE",
+        slug: "ui-flow",
+      },
+    );
     expect(create.status).toBe(303);
     const loc = create.headers.get("location") ?? "";
     const id = loc.split("/admin/knowledge/")[1]?.split("?")[0] ?? "";
@@ -88,35 +106,45 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     expect(page).not.toContain("Publish");
     expect(page).not.toContain("Verify");
 
-    const sub = await post(app, `/admin/knowledge/${id}/transition`, {
-      to: "PENDING",
-      operator: "ui-op",
-    });
+    // Arc R2 H-2: evidence is editable in DRAFT only — the set the
+    // submitter declares freezes when the item enters PENDING, so a
+    // verifier always reviews exactly what was submitted.
+    const ev = await postForm(
+      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/evidence/add`, {
+        type: "INTERNAL_DOC",
+        uri: "internal://runbook/ui-flow",
+        operator: "ui-op",
+      },
+    );
+    expect(ev.status).toBe(303);
+
+    const sub = await postForm(
+      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+        to: "PENDING",
+        operator: "ui-op",
+      },
+    );
     expect(sub.status).toBe(303);
     page = await (await get(app, `/admin/knowledge/${id}`)).text();
     expect(page).toContain("Verify");
-
-    // Arc R1 H4: verify refuses without evidence — attach via the
-    // console form (editable while PENDING), then verify as a
-    // DIFFERENT operator (separation of duties).
-    const ev = await post(app, `/admin/knowledge/${id}/evidence/add`, {
-      type: "INTERNAL_DOC",
-      uri: "internal://runbook/ui-flow",
-      operator: "ui-op",
-    });
-    expect(ev.status).toBe(303);
-    const ver = await post(app, `/admin/knowledge/${id}/transition`, {
-      to: "VERIFIED",
-      operator: "ui-review",
-    });
+    // PENDING detail must NOT offer the evidence form any more.
+    expect(page).not.toContain("evidence/add");
+    const ver = await postForm(
+      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+        to: "VERIFIED",
+        operator: "ui-review",
+      },
+    );
     expect(ver.status).toBe(303);
     page = await (await get(app, `/admin/knowledge/${id}`)).text();
     expect(page).toContain("Publish");
 
-    const pub = await post(app, `/admin/knowledge/${id}/transition`, {
-      to: "PUBLISHED",
-      operator: "ui-op",
-    });
+    const pub = await postForm(
+      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+        to: "PUBLISHED",
+        operator: "ui-op",
+      },
+    );
     expect(pub.status).toBe(303);
     page = await (await get(app, `/admin/knowledge/${id}`)).text();
     expect(page).toContain(">PUBLISHED<");
@@ -138,10 +166,11 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
       store, { kind: "GUIDE", slug: "bad-trans", title: "t", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
-    const r = await post(
+    const r = await postForm(
       app,
+      `/admin/knowledge/${c.item.id}`,
       `/admin/knowledge/${c.item.id}/transition`,
-      { to: "PUBLISHED" }, // DRAFT→PUBLISHED illegal
+      { to: "PUBLISHED", operator: "ui-op" }, // DRAFT→PUBLISHED illegal
     );
     expect(r.status).toBe(303);
     expect(r.headers.get("location")).toContain("err=");
@@ -173,15 +202,23 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     expect(page).toContain("what is the fee schedule");
     expect(page).toContain("triage");
 
-    await post(app, `/admin/knowledge/gaps/${g.gap.id}/triage`, {});
+    await postForm(
+      app,
+      "/admin/knowledge/gaps",
+      `/admin/knowledge/gaps/${g.gap!.id}/triage`,
+      { operator: "ui-op" },
+    );
     page = await (await get(app, "/admin/knowledge/gaps?status=TRIAGED")).text();
     expect(page).toContain("resolve");
 
-    const r = await post(app, `/admin/knowledge/gaps/${g.gap.id}/resolve`, {
-      linkedItemId: c.item.id,
-    });
+    const r = await postForm(
+      app,
+      "/admin/knowledge/gaps?status=TRIAGED",
+      `/admin/knowledge/gaps/${g.gap!.id}/resolve`,
+      { linkedItemId: c.item.id, operator: "ui-op" },
+    );
     expect(r.status).toBe(303);
-    const gap = await store.getGap(g.gap.id);
+    const gap = await store.getGap(g.gap!.id);
     expect(gap?.status).toBe("RESOLVED");
     expect(gap?.linkedItemId).toBe(c.item.id);
   });

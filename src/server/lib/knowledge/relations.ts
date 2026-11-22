@@ -32,31 +32,10 @@ export interface KnowledgeRelations {
   incoming: KnowledgeRelationEdge[];
 }
 
-/** Arc R1 M1: does a SUPERSEDES path already run from → to?
- *  Bounded DFS (≤32 hops) over outgoing SUPERSEDES edges. */
-const SUPERSEDES_DFS_CAP = 32;
-async function supersedesPathExists(
-  store: KnowledgeStore,
-  fromId: string,
-  toId: string,
-): Promise<boolean> {
-  const seen = new Set<string>([fromId]);
-  const stack: { id: string; depth: number }[] = [{ id: fromId, depth: 0 }];
-  while (stack.length > 0) {
-    const cur = stack.pop();
-    if (!cur || cur.depth > SUPERSEDES_DFS_CAP) continue;
-    const rels = await store.relationsFor(cur.id);
-    for (const e of rels.outgoing) {
-      if (e.type !== "SUPERSEDES") continue;
-      if (e.toItemId === toId) return true;
-      if (!seen.has(e.toItemId)) {
-        seen.add(e.toItemId);
-        stack.push({ id: e.toItemId, depth: cur.depth + 1 });
-      }
-    }
-  }
-  return false;
-}
+/** Arc R1 M1 → R2 M-7: the SUPERSEDES cycle check moved INSIDE the
+ *  store — the lib-level DFS was decoyable past its depth cap and
+ *  raced concurrent inserts; the PG adapter now locks both endpoint
+ *  items and runs a bounded recursive CTE under the lock. */
 
 export async function addRelation(
   store: KnowledgeStore,
@@ -82,18 +61,6 @@ export async function addRelation(
   if (!from || !to) {
     return { ok: false, error: "missing_item", field: "toItemId" };
   }
-  if (input.type === "SUPERSEDES") {
-    // Arc R1 M1: walk the SUPERSEDES graph, not just 2-cycles —
-    // A→B→C→A was accepted before. Bounded DFS from the new edge's
-    // target back to its source; depth cap keeps pathological
-    // graphs cheap (a deeper chain is still caught up to the cap,
-    // and anything longer is refused anyway).
-    if (
-      await supersedesPathExists(store, input.toItemId, input.fromItemId)
-    ) {
-      return { ok: false, error: "supersedes_cycle", field: "type" };
-    }
-  }
   const res = await store.addRelation({
     id: `krel_${randomUUID()}`,
     fromItemId: input.fromItemId,
@@ -101,6 +68,12 @@ export async function addRelation(
     type: input.type,
     createdBy: input.actorRef,
   });
+  if (res.reason === "supersedes_cycle") {
+    return { ok: false, error: "supersedes_cycle", field: "type" };
+  }
+  if (res.reason === "items_missing") {
+    return { ok: false, error: "missing_item", field: "toItemId" };
+  }
   if (!res.row) {
     // Dedup hit — resolve the existing edge for an honest echo.
     const existing = (await store.relationsFor(input.fromItemId))
@@ -128,10 +101,12 @@ export async function addRelation(
 export async function removeRelation(
   store: KnowledgeStore,
   id: string,
+  actor?: string,
 ): Promise<KnowledgeResult<{ removed: boolean }>> {
   const res = await store.removeRelation(id);
-  // Arc R1 H4: edge deletes are audited too — a silent relation
-  // removal rewrote the graph with no trace.
+  // Arc R1 H4 + R2 M-11: edge deletes are audited too, with the
+  // acting operator on the payload — an unattributed removal is
+  // an audit hole.
   if (res.removed && res.row) {
     emitKnowledgeEvent(
       "knowledge.relation_removed",
@@ -139,6 +114,7 @@ export async function removeRelation(
         relationId: res.row.id,
         toItemId: res.row.toItemId,
         type: res.row.type,
+        actor: actor ?? null,
       },
       res.row.fromItemId,
     );

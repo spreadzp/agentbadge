@@ -6,9 +6,10 @@
  *         exit 1 when SEEDED drift exists (code removed/renamed a
  *         capability the registry still claims)
  *
- * Reads DATABASE_URL/.env via config; memory fallback seeds the
- * in-process store only (useless across runs but harmless for a
- * smoke pass).
+ * Reads DATABASE_URL/.env via config. Refuses a non-persistent
+ * (memory) backend — seeding an in-process store silently "succeeds"
+ * and dies with the process (Arc R2 M-15). Use --check --memory for a
+ * smoke pass.
  */
 
 import { getConfig } from "../src/config/env";
@@ -27,6 +28,18 @@ async function main() {
     url: section?.url ?? process.env.DATABASE_URL,
   });
   const store = pickKnowledgeStores(database);
+
+  // Arc R2 M-15: a successful seed on the memory backend is a lie —
+  // it exists only for this process. Require --memory explicitly so
+  // the smoke pass stays possible but can never be accidental.
+  const allowMemory = process.argv.includes("--memory");
+  if (store.backend !== "postgres" && !allowMemory) {
+    console.error(
+      `refusing to seed: backend is '${store.backend}' (in-process). ` +
+        `set DATABASE_URL for a real seed, or pass --memory for a smoke pass.`,
+    );
+    process.exit(1);
+  }
 
   if (check) {
     const drift = await capabilityDrift(store);

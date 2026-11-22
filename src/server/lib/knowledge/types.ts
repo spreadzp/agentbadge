@@ -184,22 +184,28 @@ export const KNOWLEDGE_SUMMARY_MAX = 2000;
  *  Exported: route params (?q, :id, :vid, ?uri) need the same guard —
  *  prod-verify caught the read-path twin of the write-body bug. */
 export const noControlChars = (s: string) =>
-  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
-/** Arc R1 M8: single-line fields (ids, refs, params, uri, q) get the
- *  STRICTER predicate — additionally refuses \t \n \r, DEL, and
- *  format chars (ZWSP/bidi) that smuggle past the loose one. */
+  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uE000\uE001]/.test(s);
+/** Arc R1 M8 + R2 M-6: single-line fields (ids, refs, params, uri, q)
+ *  get the STRICTER predicate — all C0/C1/DEL controls plus the
+ *  genuinely dangerous format chars (line/para separators, bidi
+ *  overrides + isolates, BOM, interlinear sentinels, PUA, musical
+ *  + tag + variation-selector supplements). Legit ZWJ/ZWNJ and
+ *  bidi marks stay allowed — emoji, Persian, Hebrew need them. */
 export const noCtrlStrict = (s: string) =>
-  !/[\u0000-\u001F\u007F\p{Cf}]/u.test(s);
+  !/[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF\uFFF9-\uFFFB\uE000-\uF8FF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(s);
 
-/** Arc R1 H2: operator refs are an allowlist SHAPE + an agent-ref
- *  denylist. The shape alone kills unicode/fullwidth/zero-width
- *  bypasses; the denylist kills agent-shaped refs that match it
- *  (agent-7, agt_x, bot, svc, did refs). Shared by requireOperatorRef
- *  (route edge, honest 400) and isOperatorActor (lib edge). */
+/** Arc R1 H2 + R2 M6: operator refs canonicalize via
+ *  normalizeOperatorRef (NFKC + lowercase) so "Alice" and
+ *  fullwidth "ａｌｉｃｅ" are one actor for SoD equality, then must
+ *  pass an allowlist SHAPE + an agent-ref denylist that now covers
+ *  bare words and digit/boundary suffixes (bot, bot1, svc-x, agt_k,
+ *  key:, did:...). Shared by requireOperatorRef and isOperatorActor. */
 export const OPERATOR_REF_RE = /^[a-z0-9._@-]{1,80}$/;
-const AGENT_REF_DENY = /^(did:|agt[-_:.]|agent|bot[-_:.]|svc[-_:.]|key:)/i;
+export const normalizeOperatorRef = (ref: string): string =>
+  ref.normalize("NFKC").trim().toLowerCase();
+const AGENT_REF_DENY = /^(did|agent|bot|svc|key|agt)([0-9]|[-_.@:]|$)/;
 export function isOperatorRef(ref: string): boolean {
-  const s = ref.normalize("NFKC").trim();
+  const s = normalizeOperatorRef(ref);
   return OPERATOR_REF_RE.test(s) && !AGENT_REF_DENY.test(s);
 }
 
@@ -215,7 +221,10 @@ const bodySchema = z
   .string()
   .min(1)
   .max(KNOWLEDGE_BODY_MAX)
-  .refine(noControlChars, { message: CTRL_MSG });
+  .refine(noControlChars, { message: CTRL_MSG })
+  // Arc R2 nit: body keeps its formatting (no .trim()), but an
+  // all-whitespace blob is not content.
+  .refine((v) => v.trim().length > 0, { message: "body must not be blank" });
 const summarySchema = z
   .string()
   .trim()
@@ -239,6 +248,9 @@ export const updateKnowledgeDraftInputSchema = z
     title: titleSchema.optional(),
     body: bodySchema.optional(),
     summary: summarySchema.nullish(),
+    /** Arc R2 M-8: lost-update precondition — the seq the editor
+     *  read; the store refuses when latest moved meanwhile. */
+    expectedSeq: z.number().int().min(1).optional(),
   })
   .refine((v) => v.title !== undefined || v.body !== undefined || v.summary !== undefined, {
     message: "at least one field required",

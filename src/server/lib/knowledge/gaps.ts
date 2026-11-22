@@ -60,32 +60,46 @@ export async function recordGap(
     intent?: string | null;
     sourceRef?: string | null;
   },
-): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord; created: boolean }>> {
+): Promise<
+  KnowledgeResult<{
+    gap: KnowledgeGapRecord | null;
+    created: boolean;
+    /** Arc R2 M-1: false when the sighting was honestly dropped
+     *  (backlog full / WONTFIX final) — callers must not claim a
+     *  recording that didn't happen. */
+    recorded: boolean;
+  }>
+> {
   if (!KNOWLEDGE_GAP_SOURCES.includes(input.source as never)) {
     return { ok: false, error: "bad_gap_source", field: "source" };
   }
   const query = input.query.trim();
+  // Arc R2 M-1: the raw query was unvalidated at the lib edge —
+  // control/format chars went straight into sampleQueries (verbatim
+  // operator console render) and normalized dedupe.
+  if (query.length === 0 || !noCtrlStrict(query)) {
+    return { ok: false, error: "bad_query", field: "query" };
+  }
   const normalized = normalizeQuery(query);
   if (normalized.length < 2 || normalized.length > 500) {
     return { ok: false, error: "bad_query", field: "query" };
   }
-  // Arc R1 H3: bound the OPEN backlog — a full queue refuses the
-  // write honestly rather than growing forever.
-  if ((await store.countGaps("OPEN")) >= KNOWLEDGE_GAP_OPEN_CAP) {
-    return { ok: false, error: "gap_backlog_full" };
-  }
-  const res = await store.recordGap({
-    id: `kgap_${randomUUID()}`,
-    normalizedQuery: normalized,
-    sampleQuery: cpSlice(query, 500),
-    source: input.source,
-    sourceRef: input.sourceRef ?? null,
-    capabilityRef: input.capabilityRef ?? null,
-    intent: input.intent ?? null,
-  });
-  if (res.created) {
-    // Nit fix: event name matches KNOWLEDGE_EVENT_KINDS — a
-    // subscriber keyed on the constant actually fires now.
+  // Arc R2 M-1: the OPEN cap moved inside the store's write tx —
+  // only NEW rows are cap-gated (a full backlog can no longer freeze
+  // dedupe bumps, and the check can't be raced).
+  const res = await store.recordGap(
+    {
+      id: `kgap_${randomUUID()}`,
+      normalizedQuery: normalized,
+      sampleQuery: cpSlice(query, 500),
+      source: input.source,
+      sourceRef: input.sourceRef ?? null,
+      capabilityRef: input.capabilityRef ?? null,
+      intent: input.intent ?? null,
+    },
+    { openCap: KNOWLEDGE_GAP_OPEN_CAP },
+  );
+  if (res.created && res.row) {
     emitKnowledgeEvent("knowledge.gap_detected", {
       gapId: res.row.id,
       normalizedQuery: res.row.normalizedQuery,
@@ -95,7 +109,22 @@ export async function recordGap(
       sourceRef: res.row.sourceRef,
     });
   }
-  return { ok: true, gap: res.row, created: res.created };
+  // Arc R2 M-1: a RESOLVED gap that reopens is an event too — the
+  // operator queue silently filling back up is exactly the signal
+  // the lifecycle was built to surface.
+  if (res.reopened === true && res.row) {
+    emitKnowledgeEvent("knowledge.gap_reopened", {
+      gapId: res.row.id,
+      normalizedQuery: res.row.normalizedQuery,
+      source: res.row.source,
+    });
+  }
+  return {
+    ok: true,
+    gap: res.row,
+    created: res.created,
+    recorded: res.recorded,
+  };
 }
 
 /** Arc R1 M8: the 228 hook's fields get validated — an ireq_*
@@ -112,7 +141,13 @@ export function recordInteractionGap(
     intent?: string | null;
     capabilityRef?: string | null;
   },
-): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord; created: boolean }>> {
+): Promise<
+  KnowledgeResult<{
+    gap: KnowledgeGapRecord | null;
+    created: boolean;
+    recorded: boolean;
+  }>
+> {
   if (
     !IREQ_REF_RE.test(input.requestId) ||
     !bounded(input.intent, 200) ||
@@ -134,7 +169,8 @@ export function recordInteractionGap(
 }
 
 /** 229-7 composer seam — the KnowledgeGapRecorder interface impl.
- *  Arc R1 H3: reports whether the write actually landed so the
+ *  Arc R1 H3 + R2 M-1: reports whether the write actually LANDED
+ *  (a WONTFIX-hit or cap-blocked row isn't a recording) so the
  *  refusal hint stays honest. */
 export function knowledgeGapRecorder(store: KnowledgeStore) {
   return {
@@ -147,7 +183,7 @@ export function knowledgeGapRecorder(store: KnowledgeStore) {
         query: input.query,
         source: input.source,
       });
-      return r.ok;
+      return r.ok && r.recorded === true;
     },
   };
 }

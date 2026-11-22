@@ -79,7 +79,10 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
     // posts — reject explicitly; Origin stays the fallback for
     // clients that don't send it.
     const fetchSite = c.req.header("sec-fetch-site");
-    if (fetchSite === "cross-site" || fetchSite === "cross_origin") {
+    // Arc R2 nit: "cross_origin" is not a real Sec-Fetch-Site value —
+    // dead list entry removed; the fetch metadata vocabulary is
+    // same-origin | same-site | cross-site | none.
+    if (fetchSite === "cross-site") {
       return errorResponse(
         c,
         403,
@@ -206,6 +209,7 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
           latestTitle: latest?.title ?? "",
           latestBody: latest?.body ?? "",
           latestSummary: latest?.summary ?? null,
+          latestSeq: latest?.seq ?? null,
           editable: item.status === "DRAFT",
         }),
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },

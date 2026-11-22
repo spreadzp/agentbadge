@@ -5,6 +5,7 @@ import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
 import {
   KNOWLEDGE_EVIDENCE_TYPES,
+  noCtrlStrict,
   type KnowledgeEvidenceRecord,
 } from "./types";
 
@@ -47,6 +48,27 @@ function isValidEvidenceUri(type: string, uri: string): boolean {
   }
 }
 
+/** Arc R2 M-4: public projection boundary for evidence URIs — type
+ *  alone isn't enough (an EXTERNAL_URL can point at loopback,
+ *  private ranges, userinfo, or non-http schemes). A uri is public
+ *  iff it's absolute http(s), carries no userinfo, and resolves to
+ *  a public hostname. SSRF-shape smuggles get the same redaction
+ *  as INTERNAL_DOC/SCAN_REPORT. */
+const PRIVATE_HOST_RE =
+  /^(localhost|.*\.local|127\.|0\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|\[::1\]|\[?fe80|\[?fc|\[?fd)/i;
+export function isPublicEvidenceUri(uri: string): boolean {
+  try {
+    const u = new URL(uri);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    if (u.username !== "" || u.password !== "") return false;
+    const host = u.hostname.replace(/^\[|\]$/g, "");
+    if (PRIVATE_HOST_RE.test(host) || host === "") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function addEvidence(
   store: KnowledgeStore,
   versionId: string,
@@ -64,7 +86,7 @@ export async function addEvidence(
   const label = input.label ?? null;
   if (
     label !== null &&
-    /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(label)
+    (label.length > 300 || !noCtrlStrict(label))
   ) {
     return { ok: false, error: "invalid_label", field: "label" };
   }
@@ -125,6 +147,7 @@ export function itemsCiting(
 export async function removeEvidence(
   store: KnowledgeStore,
   id: string,
+  actor?: string,
 ): Promise<KnowledgeResult<{ removed: boolean }>> {
   const res = await store.removeEvidence(id);
   // Arc R1 H4: published/non-draft evidence is immutable — the
@@ -133,7 +156,12 @@ export async function removeEvidence(
     return { ok: false, error: "not_editable_in_status" };
   }
   if (res.removed) {
-    emitKnowledgeEvent("knowledge.evidence_removed", { evidenceId: id });
+    // Arc R2 M-11: actor attribution — an unattributed removal is
+    // an audit hole.
+    emitKnowledgeEvent("knowledge.evidence_removed", {
+      evidenceId: id,
+      actor: actor ?? null,
+    });
   }
   return { ok: true, removed: res.removed };
 }

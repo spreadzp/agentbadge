@@ -24,6 +24,7 @@ import {
 import {
   isOperatorRef,
   noCtrlStrict,
+  normalizeOperatorRef,
 } from "../lib/knowledge/types";
 
 export function requireOperatorRef(c: Context): string | Response {
@@ -44,7 +45,7 @@ export function requireOperatorRef(c: Context): string | Response {
       "x-operator-id must be 1-80 chars of [a-z0-9._@-] and not agent-shaped",
     );
   }
-  return raw.normalize("NFKC").trim();
+  return normalizeOperatorRef(raw);
 }
 
 /** Prod-verify fix: NUL/C0 in :id/:vid/?uri params 500s the PG driver.

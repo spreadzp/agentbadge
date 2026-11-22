@@ -167,23 +167,30 @@ export async function updateKnowledgeDraft(
   ) {
     return { ok: true, item, version: prev };
   }
-  // Arc R1 H5+H4: the store locks the item row, re-asserts DRAFT,
-  // computes seq under the lock and copies the previous version's
-  // evidence refs — provenance survives re-versioning.
+  // Arc R1 H5+H4 / R2 M-8: the store locks the item row, re-asserts
+  // DRAFT, computes seq under the lock and copies evidence from the
+  // latest version AS LOCKED — expectedSeq is the caller's
+  // lost-update precondition (a stale editor can't silently merge
+  // over a version they never saw).
   const added = await store.addVersion({
     id: `kv_${randomUUID()}`,
     itemId,
     title: merged.title,
     body: merged.body,
     summary: merged.summary,
-    copyEvidenceFromVersionId: prev?.id,
+    copyEvidenceFromLatest: true,
+    expectedSeq: input.expectedSeq ?? prev?.seq,
     createdBy: actorRef,
   });
   if (!added.ok) {
     return {
       ok: false,
       error:
-        added.reason === "not_draft" ? "not_editable_in_status" : "not_found",
+        added.reason === "not_draft"
+          ? "not_editable_in_status"
+          : added.reason === "stale_seq"
+            ? "stale_seq"
+            : "not_found",
     };
   }
   const version = added.version;

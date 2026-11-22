@@ -22,7 +22,8 @@ import {
   formStr,
   opOf,
   opBad,
-  ssrWrite,
+  tokenConsumed,
+  FORM_TOKEN_ERR,
 } from "./admin-knowledge-ui-mutations-shared";
 
 export function registerKnowledgeUiTaxonomyMutations(
@@ -37,17 +38,23 @@ export function registerKnowledgeUiTaxonomyMutations(
         const b = await c.req.parseBody();
         const bad4 = rejectCtrl(c, id, formStr(b, "capabilityId"));
         if (bad4) return bad4;
+        // Arc R2 M-5: capability link/unlink skipped opBad entirely.
+        if (opBad(b)) {
+          return c.redirect(
+            backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
+            303,
+          );
+        }
+        if (!tokenConsumed(b)) {
+          return c.redirect(
+            backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+            303,
+          );
+        }
         const capabilityId = formStr(b, "capabilityId");
-        const r = await ssrWrite(
-          "capability",
-          { id, capabilityId, unlink },
-          async () => {
-            if (unlink) {
-              return unlinkItemCapability(store, id, capabilityId);
-            }
-            return linkItemCapability(store, id, capabilityId);
-          },
-        );
+        const r = unlink
+          ? await unlinkItemCapability(store, id, capabilityId)
+          : await linkItemCapability(store, id, capabilityId);
         return c.redirect(
           backWith(
             `/admin/knowledge/${id}`,
@@ -76,25 +83,20 @@ export function registerKnowledgeUiTaxonomyMutations(
             303,
           );
         }
-        const binding = remove
-          ? { id, relationId: formStr(b, "relationId"), remove }
-          : {
-              id,
+        if (!tokenConsumed(b)) {
+          return c.redirect(
+            backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+            303,
+          );
+        }
+        const r = remove
+          ? await removeRelation(store, formStr(b, "relationId"), opOf(b))
+          : await addRelation(store, {
+              fromItemId: id,
               toItemId: formStr(b, "toItemId"),
-              type: formStr(b, "type"),
-              remove,
-            };
-        const r = await ssrWrite("relation", binding, async () => {
-          if (remove) {
-            return removeRelation(store, formStr(b, "relationId"));
-          }
-          return addRelation(store, {
-            fromItemId: id,
-            toItemId: formStr(b, "toItemId"),
-            type: formStr(b, "type") as never,
-            actorRef: opOf(b),
-          });
-        });
+              type: formStr(b, "type") as never,
+              actorRef: opOf(b),
+            });
         return c.redirect(
           backWith(
             `/admin/knowledge/${id}`,
@@ -119,31 +121,24 @@ export function registerKnowledgeUiTaxonomyMutations(
             303,
           );
         }
+        if (!tokenConsumed(b)) {
+          return c.redirect(
+            backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+            303,
+          );
+        }
         const item = await store.getItem(id);
         const vid = item?.latestVersionId ?? "";
-        // Arc R1 H4: the domain guard now refuses evidence writes on
-        // PUBLISHED/WITHDRAWN versions → the flash carries the error.
-        const binding = remove
-          ? { id, evidenceId: formStr(b, "evidenceId"), remove }
-          : {
-              id,
-              vid,
-              type: formStr(b, "type"),
+        // Arc R1 H4 / R2 M-11: domain guard refuses evidence writes
+        // outside DRAFT; removals carry the operator for the event.
+        const r = remove
+          ? await removeEvidence(store, formStr(b, "evidenceId"), opOf(b))
+          : await addEvidence(store, vid, {
+              type: formStr(b, "type") as never,
               uri: formStr(b, "uri"),
-              label: formStr(b, "label"),
-              remove,
-            };
-        const r = await ssrWrite("evidence", binding, async () => {
-          if (remove) {
-            return removeEvidence(store, formStr(b, "evidenceId"));
-          }
-          return addEvidence(store, vid, {
-            type: formStr(b, "type") as never,
-            uri: formStr(b, "uri"),
-            label: formStr(b, "label") || null,
-            addedBy: opOf(b),
-          });
-        });
+              label: formStr(b, "label") || null,
+              addedBy: opOf(b),
+            });
         return c.redirect(
           backWith(
             `/admin/knowledge/${id}`,

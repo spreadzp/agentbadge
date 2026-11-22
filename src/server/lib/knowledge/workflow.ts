@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
-import { isOperatorRef } from "./types";
+import { isOperatorRef, normalizeOperatorRef } from "./types";
 import type {
   KnowledgeItemRecord,
   KnowledgeStatus,
@@ -81,6 +81,9 @@ export async function transitionKnowledgeItem(
   to: KnowledgeStatus | string,
   actorRef: string,
   reason?: string | null,
+  /** Arc R2 H-2: stale-page precondition — the version the operator
+   *  was looking at; the store re-checks it under the row lock. */
+  opts?: { expectedVersionId?: string },
 ): Promise<
   KnowledgeResult<{
     item: KnowledgeItemRecord;
@@ -90,13 +93,18 @@ export async function transitionKnowledgeItem(
   const item = await store.getItem(itemId);
   if (!item) return { ok: false, error: "not_found" };
 
+  // Arc R2 M-5: SoD compares canonical actor refs — the route
+  // normalizes, the lib does it once more at the seam boundary so
+  // "Alice" and "ａｌｉｃｅ" can't both clear the gate.
+  const actor = normalizeOperatorRef(actorRef);
+
   // §16.5 — only operator actors may move an item INTO VERIFIED or
   // PUBLISHED (submit/reject/withdraw are operator-only anyway via
   // the adminAuth boundary, but the verify/publish guard is the
   // security-critical one). Checked BEFORE legality: an agent actor
   // gets the same refusal regardless of current status — the error
   // doesn't leak where the item actually sits.
-  if ((to === "VERIFIED" || to === "PUBLISHED") && !isOperatorActor(actorRef)) {
+  if ((to === "VERIFIED" || to === "PUBLISHED") && !isOperatorActor(actor)) {
     return { ok: false, error: "ACTOR_NOT_OPERATOR" };
   }
 
@@ -110,8 +118,9 @@ export async function transitionKnowledgeItem(
     };
   }
 
-  // Arc R1 H4 — a version cannot be "verified" without provenance:
-  // ≥1 evidence ref must sit on the version under review.
+  // Arc R1 H4 fast-path — the authoritative evidence count runs
+  // under the store's row lock (R2 H-2); this read only exists to
+  // give the common case an honest error without a tx round-trip.
   if (to === "VERIFIED") {
     const ev = item.latestVersionId
       ? await store.listEvidence(item.latestVersionId)
@@ -121,16 +130,15 @@ export async function transitionKnowledgeItem(
     }
   }
 
-  // Arc R1 H2 — separation of duties on the approval machine:
-  // the verifier must differ from the submitter, and the publisher
-  // from the verifier. Reads the persisted audit trail, not claims.
+  // Arc R1 H2 fast-path — same story: the in-lock SoD check is
+  // authoritative; this read fails the common case cheap.
   if (to === "VERIFIED" || to === "PUBLISHED") {
     const events = await store.listStatusEvents(itemId);
     const prior =
       to === "VERIFIED"
         ? [...events].reverse().find((e) => e.to === "PENDING")
         : [...events].reverse().find((e) => e.to === "VERIFIED");
-    if (prior && prior.actor === actorRef) {
+    if (prior && normalizeOperatorRef(prior.actor) === actor) {
       return { ok: false, error: "SEPARATION_OF_DUTIES", field: "actor" };
     }
   }
@@ -138,14 +146,27 @@ export async function transitionKnowledgeItem(
   const res = await store.transitionItem(itemId, {
     from,
     to,
-    actor: actorRef,
+    actor,
     reason: reason ?? null,
     publish: to === "PUBLISHED",
     unpublish: to === "WITHDRAWN",
     eventId: `kse_${randomUUID()}`,
+    expectedVersionId: opts?.expectedVersionId,
+    requireEvidence: to === "VERIFIED",
+    separationOfDuties: to === "VERIFIED" || to === "PUBLISHED",
   });
   if (!res.transitioned) {
-    // Lost a race: status moved between our read and the CAS.
+    // Arc R2 H-2: the in-lock gates refuse honestly — each reason
+    // maps to its own error, not a blanket "race".
+    if (res.reason === "stale_version") {
+      return { ok: false, error: "stale_version", field: "expectedVersionId" };
+    }
+    if (res.reason === "evidence_required") {
+      return { ok: false, error: "evidence_required", field: "evidence" };
+    }
+    if (res.reason === "separation_of_duties") {
+      return { ok: false, error: "SEPARATION_OF_DUTIES", field: "actor" };
+    }
     return {
       ok: false,
       error: "INVALID_TRANSITION",
@@ -156,7 +177,7 @@ export async function transitionKnowledgeItem(
   const eventKind = EVENT_FOR[to] ?? `knowledge.${to.toLowerCase()}`;
   emitKnowledgeEvent(
     eventKind,
-    { slug: res.item.slug, from, to, actor: actorRef, reason: reason ?? null },
+    { slug: res.item.slug, from, to, actor, reason: reason ?? null },
     itemId,
   );
   return { ok: true, item: res.item, event: res.event };

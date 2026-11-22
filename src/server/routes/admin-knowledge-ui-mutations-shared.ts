@@ -6,25 +6,25 @@
  * admin-knowledge-ui-mutations-taxonomy.ts).
  */
 
-import { createHash } from "node:crypto";
-
-import { idempotentWrite } from "../lib/contract-guards";
-import { isOperatorRef } from "../lib/knowledge";
+import { consumeFormToken, isOperatorRef, normalizeOperatorRef } from "../lib/knowledge";
 
 export const formStr = (b: Record<string, unknown>, k: string): string =>
   typeof b[k] === "string" ? (b[k] as string).trim() : "";
 
-/** Raw (untrimmed) field — whitespace inside prose is the author's. */
+/** Raw (untrimmed) field — whitespace inside prose is the author's.
+ *  Arc R2 nit: CRLF→LF — a Windows-submitted body must not mint a
+ *  spurious "changed" version against LF-normalized content. */
 export const formRaw = (b: Record<string, unknown>, k: string): string =>
-  typeof b[k] === "string" ? (b[k] as string) : "";
+  typeof b[k] === "string" ? (b[k] as string).replace(/\r\n/g, "\n") : "";
 
-/** Arc R1 H2: empty → "admin-browser" (a valid ref); a provided
- *  value must pass the strict operator shape — `agent-7`, `did:*`,
- *  zero-width and fullwidth forms are refused with a flash. */
+/** Arc R1 H2 + R2 M-5: empty → "admin-browser" (a valid ref); a
+ *  provided value is canonicalized NFKC+lowercase (same as the JSON
+ *  edge) then must pass the strict operator shape — `agent-7`,
+ *  `did:*`, zero-width and fullwidth forms are refused with a flash. */
 export const BROWSER_OPERATOR = "admin-browser";
 
 export const opOf = (b: Record<string, unknown>): string =>
-  formStr(b, "operator") || BROWSER_OPERATOR;
+  normalizeOperatorRef(formStr(b, "operator")) || BROWSER_OPERATOR;
 
 export const opBad = (b: Record<string, unknown>): boolean =>
   !isOperatorRef(opOf(b));
@@ -37,25 +37,12 @@ export const readSeq = (b: Record<string, unknown>): number | null => {
   return n > 0 ? n : null;
 };
 
-/** Arc R1 M10: console posts had zero idempotency — F5/double-click
- *  replayed every mutation (double versions, double transitions).
- *  Synthetic key = route + normalized body digest; the shared 24 h
- *  window dedupes replays the way the JSON API does. Failures are
- *  never cached so a corrected re-submit always re-executes. */
-export const ssrWrite = async <T>(
-  scope: string,
-  binding: unknown,
-  run: () => Promise<T>,
-): Promise<T> => {
-  const h = createHash("sha256")
-    .update(JSON.stringify(binding))
-    .digest("hex")
-    .slice(0, 32);
-  const r = await idempotentWrite(
-    `ssr:${scope}`,
-    `ssr:${h}`,
-    async () => ({ status: 200, body: (await run()) as unknown }),
-    { cacheErrors: false },
-  );
-  return r.body as T;
-};
+/** Arc R2 H-1: ssrWrite's body-hash dedupe wrapped every result in
+ *  status:200 — failures got cached 24h and replayed cross-operator.
+ *  Replaced by render-minted single-use formToken: consume-once at
+ *  the POST edge; a spent/missing token gets an honest flash and the
+ *  domain write never runs. */
+export const FORM_TOKEN_ERR = "form_expired_or_duplicate";
+
+export const tokenConsumed = (b: Record<string, unknown>): boolean =>
+  consumeFormToken(formStr(b, "formToken"));

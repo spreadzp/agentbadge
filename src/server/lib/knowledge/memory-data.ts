@@ -41,46 +41,67 @@ export const nowIso = () => new Date().toISOString();
 export const linkKey = (itemId: string, capabilityId: string) =>
   `${itemId}::${capabilityId}`;
 
-const tokenize = (text: string) =>
-  text
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}_]+/u)
-    .filter((t) => t.length >= 2);
+import { tokenizeTerms } from "./terms";
+
+const hayTokens = (text: string) =>
+  new Set(
+    text
+      .normalize("NFC")
+      .toLowerCase()
+      .match(/[\p{L}\p{M}\p{N}]+/gu) ?? [],
+  );
 
 /**
- * Memory-side naive FTS parity (D-229-4): score = share of distinct
- * query terms present in title+body. Postgres mode uses the real
- * tsvector index — this scorer keeps the SAME output shape
- * (rank/snippet) so the seam contract holds with DATABASE_ENABLED=off.
- * 229-5 refines scorer/rank parity.
+ * Memory-side FTS parity (D-229-4 + Arc R2 M-3): score = share of
+ * distinct query terms present in title+body — OR semantics like
+ * the to_tsquery lane, word-boundary matching (substring includes
+ * matched inside unrelated words, inflating rank). Same tokenizer
+ * as the composer/adapter so coverage and engine see one term set.
  */
 export function memorySearchScore(
   query: string,
   title: string,
   body: string,
 ): number {
-  const terms = tokenize(query);
+  const terms = tokenizeTerms(query);
   if (terms.length === 0) return 0;
-  const hay = `${title} ${body}`.toLowerCase();
+  const hay = hayTokens(`${title} ${body}`);
   let hits = 0;
-  for (const t of terms) if (hay.includes(t)) hits += 1;
+  for (const t of terms) if (hay.has(t)) hits += 1;
   return hits / terms.length;
 }
 
+const escapeHtml = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+/** Arc R2 M-3: snippet parity with the PG lane — escaped text with
+ *  matched terms wrapped in <mark>, not raw operator text. */
 export function memorySnippet(
   query: string,
   title: string,
   body: string,
 ): string {
-  const terms = tokenize(query);
-  const lower = body.toLowerCase();
+  const terms = tokenizeTerms(query);
+  const lower = body.normalize("NFC").toLowerCase();
   let pos = -1;
   for (const t of terms) {
     const i = lower.indexOf(t);
     if (i >= 0 && (pos === -1 || i < pos)) pos = i;
   }
-  if (pos === -1) return title.slice(0, 120);
-  const start = Math.max(0, pos - 40);
-  const end = Math.min(body.length, pos + 120);
-  return `${start > 0 ? "…" : ""}${body.slice(start, end)}${end < body.length ? "…" : ""}`;
+  const raw =
+    pos === -1
+      ? title.slice(0, 120)
+      : `${pos - 40 > 0 ? "…" : ""}${body.slice(Math.max(0, pos - 40), Math.min(body.length, pos + 120))}${Math.min(body.length, pos + 120) < body.length ? "…" : ""}`;
+  let out = escapeHtml(raw);
+  for (const t of terms) {
+    out = out.replace(new RegExp(escapeRegex(t), "i"), (m) => `<mark>${m}</mark>`);
+  }
+  return out;
 }
+const escapeRegex = (s: string) =>
+  s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

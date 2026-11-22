@@ -31,6 +31,7 @@ export const KNOWLEDGE_EVENT_KINDS = [
   "knowledge.evidence_added",
   "knowledge.evidence_removed",
   "knowledge.gap_detected",
+  "knowledge.gap_reopened",
   "knowledge.gap_triaged",
   "knowledge.gap_resolved",
   "knowledge.gap_wontfix",

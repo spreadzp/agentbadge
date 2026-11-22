@@ -29,7 +29,8 @@ import {
   opOf,
   opBad,
   readSeq,
-  ssrWrite,
+  tokenConsumed,
+  FORM_TOKEN_ERR,
 } from "./admin-knowledge-ui-mutations-shared";
 
 export function registerKnowledgeUiMutations(
@@ -46,6 +47,12 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWith("/admin/knowledge", { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
     const input = {
       kind: formStr(b, "kind") as never,
       title: formStr(b, "title"),
@@ -53,9 +60,7 @@ export function registerKnowledgeUiMutations(
       summary: formStr(b, "summary") || undefined,
       slug: formStr(b, "slug") || undefined,
     };
-    const r = await ssrWrite("create", input, () =>
-      createKnowledgeItem(store, input, opOf(b)),
-    );
+    const r = await createKnowledgeItem(store, input, opOf(b));
     if (!r.ok) {
       return c.redirect(backWith("/admin/knowledge", { err: r.error }), 303);
     }
@@ -76,15 +81,24 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
+    // Arc R2 M-8: the edit form renders with the seq the operator
+    // saw — a concurrent writer's append refuses the save honestly
+    // instead of silently merging over it.
+    const expectedSeq = readSeq({ seq: formStr(b, "expectedSeq") });
     const input = {
       title: formStr(b, "title") || undefined,
       body: formRaw(b, "body") || undefined,
       // empty field = explicit clear (null), parity with the JSON API
       summary: formStr(b, "summary") || null,
+      expectedSeq: expectedSeq ?? undefined,
     };
-    const r = await ssrWrite("update", { id, ...input }, () =>
-      updateKnowledgeDraft(store, id, input, opOf(b)),
-    );
+    const r = await updateKnowledgeDraft(store, id, input, opOf(b));
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -105,13 +119,23 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
     const to = formStr(b, "to");
     if (!KNOWLEDGE_STATUSES.includes(to as never)) {
       return c.redirect(backWith(`/admin/knowledge/${id}`, { err: "bad target" }), 303);
     }
-    const r = await ssrWrite("transition", { id, to }, () =>
-      transitionKnowledgeItem(store, id, to, opOf(b)),
-    );
+    // Arc R2 H-2: the verify/publish form carries the version the
+    // operator reviewed — a re-versioned item refuses stale_page
+    // rather than pinning a version nobody saw.
+    const expectedVersionId = formStr(b, "expectedVersionId") || undefined;
+    const r = await transitionKnowledgeItem(store, id, to, opOf(b), null, {
+      expectedVersionId,
+    });
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -132,6 +156,12 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
     const seq = readSeq(b);
     if (seq === null) {
       return c.redirect(
@@ -139,9 +169,7 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
-    const r = await ssrWrite("restore", { id, seq }, () =>
-      restoreKnowledgeVersion(store, id, seq, opOf(b)),
-    );
+    const r = await restoreKnowledgeVersion(store, id, seq, opOf(b));
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -157,19 +185,26 @@ export function registerKnowledgeUiMutations(
       const b = await c.req.parseBody();
       const bad7 = rejectCtrl(c, id, formStr(b, "linkedItemId"));
       if (bad7) return bad7;
+      // Arc R2 M-5: gap routes skipped opBad — an agent-shaped ref
+      // could triage/resolve/wontfix through the browser surface.
+      if (opBad(b)) {
+        return c.redirect(
+          backWith("/admin/knowledge/gaps", { err: "bad_operator_ref" }),
+          303,
+        );
+      }
+      if (!tokenConsumed(b)) {
+        return c.redirect(
+          backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
+          303,
+        );
+      }
       const actor = opOf(b);
-      const binding = {
-        id,
-        action,
-        linkedItemId: formStr(b, "linkedItemId"),
-      };
-      const r = await ssrWrite("gap", binding, () =>
-        action === "resolve"
-          ? resolveGap(store, id, formStr(b, "linkedItemId"), actor)
-          : action === "triage"
-            ? triageGap(store, id, actor)
-            : wontfixGap(store, id, actor),
-      );
+      const r = await (action === "resolve"
+        ? resolveGap(store, id, formStr(b, "linkedItemId"), actor)
+        : action === "triage"
+          ? triageGap(store, id, actor)
+          : wontfixGap(store, id, actor));
       return c.redirect(
         backWith(
           "/admin/knowledge/gaps",

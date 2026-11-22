@@ -47,9 +47,9 @@ describe("knowledge gaps (SLICE-229-8)", () => {
     expect(r1.ok && r1.created).toBe(true);
     expect(r2.ok && !r2.created).toBe(true);
     if (r1.ok && r2.ok) {
-      expect(r2.gap.id).toBe(r1.gap.id);
-      expect(r2.gap.count).toBe(2);
-      expect(r2.gap.sampleQueries).toHaveLength(2);
+      expect(r2.gap!.id).toBe(r1.gap!.id);
+      expect(r2.gap!.count).toBe(2);
+      expect(r2.gap!.sampleQueries).toHaveLength(2);
     }
     // 12 more verbatim variants (varying whitespace) of the SAME
     // normalized query → count rises, sampleQueries caps at 10.
@@ -92,24 +92,24 @@ describe("knowledge gaps (SLICE-229-8)", () => {
     if (!g.ok) throw new Error("gap failed");
 
     // Illegal jumps.
-    expect((await resolveGap(store, g.gap.id, c.item.id)).ok).toBe(false);
-    expect((await wontfixGap(store, g.gap.id)).ok).toBe(false);
+    expect((await resolveGap(store, g.gap!.id, c.item.id)).ok).toBe(false);
+    expect((await wontfixGap(store, g.gap!.id)).ok).toBe(false);
     // Valid path.
-    const t = await triageGap(store, g.gap.id);
+    const t = await triageGap(store, g.gap!.id);
     expect(t.ok && t.gap.status).toBe("TRIAGED");
     // RESOLVED without item → reject; missing item → reject.
-    expect((await resolveGap(store, g.gap.id, "")).ok).toBe(false);
-    expect((await resolveGap(store, g.gap.id, "ki_none")).ok).toBe(false);
-    const res = await resolveGap(store, g.gap.id, c.item.id);
+    expect((await resolveGap(store, g.gap!.id, "")).ok).toBe(false);
+    expect((await resolveGap(store, g.gap!.id, "ki_none")).ok).toBe(false);
+    const res = await resolveGap(store, g.gap!.id, c.item.id);
     expect(res.ok && res.gap.status).toBe("RESOLVED");
     expect(res.ok && res.gap.linkedItemId).toBe(c.item.id);
     // Terminal — no more transitions.
-    expect((await triageGap(store, g.gap.id)).ok).toBe(false);
+    expect((await triageGap(store, g.gap!.id)).ok).toBe(false);
 
     const g2 = await recordGap(store, { query: "gap y", source: "MANUAL" });
     if (!g2.ok) throw new Error("gap2 failed");
-    await triageGap(store, g2.gap.id);
-    const w = await wontfixGap(store, g2.gap.id);
+    await triageGap(store, g2.gap!.id);
+    const w = await wontfixGap(store, g2.gap!.id);
     expect(w.ok && w.gap.status).toBe("WONTFIX");
   });
 
@@ -142,9 +142,9 @@ describe("knowledge gaps (SLICE-229-8)", () => {
     });
     expect(r.ok && r.created).toBe(true);
     if (r.ok) {
-      expect(r.gap.source).toBe("INTERACTION_SIGNAL");
-      expect(r.gap.sourceRef).toBe("ireq_abc123");
-      expect(r.gap.intent).toBe("question");
+      expect(r.gap!.source).toBe("INTERACTION_SIGNAL");
+      expect(r.gap!.sourceRef).toBe("ireq_abc123");
+      expect(r.gap!.intent).toBe("question");
     }
   });
 

@@ -7,6 +7,17 @@
 
 import { html } from "hono/html";
 
+import { mintFormToken } from "../../server/lib/knowledge/form-tokens";
+
+/** Arc R2 H-1: render-minted single-use token — every POST form
+ *  carries one; a replayed/double POST is refused at the edge. */
+export const tokenField = () =>
+  html`<input type="hidden" name="formToken" value="${mintFormToken()}" />`;
+
+/** Arc R2 M-5: flash text renders verbatim — cap it so a hostile
+ *  ?err= query can't turn the console chrome into a billboard. */
+const capFlash = (s: string) => (s.length > 300 ? `${s.slice(0, 300)}…` : s);
+
 const STATUS_PILL: Record<string, string> = {
   DRAFT: "bg-slate-800 text-slate-300",
   PENDING: "bg-amber-900/60 text-amber-300",
@@ -95,13 +106,13 @@ export const flashBanner = (c: { ok?: string; err?: string }) => {
   if (c.err) {
     return html`<div
       class="mb-3 rounded border border-red-800 bg-red-900/40 px-3 py-2 text-sm text-red-300"
-      >${c.err}</div
+      >${capFlash(c.err)}</div
     >`;
   }
   if (c.ok) {
     return html`<div
       class="mb-3 rounded border border-emerald-800 bg-emerald-900/40 px-3 py-2 text-sm text-emerald-300"
-      >${c.ok}</div
+      >${capFlash(c.ok)}</div
     >`;
   }
   return "";
@@ -117,6 +128,7 @@ export const miniForm = (
   fields: unknown,
   submitLabel: string,
 ) => html`<form method="post" action="${action}" class="mb-2 flex flex-wrap items-end gap-2">
+  ${tokenField()}
   ${fields}
   <button
     type="submit"

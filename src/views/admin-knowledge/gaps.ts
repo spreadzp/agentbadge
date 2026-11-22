@@ -16,6 +16,7 @@ import {
   gapPill,
   knowledgeNav,
   knowledgeShell,
+  tokenField,
 } from "./shared";
 
 export interface GapsInput {
@@ -32,6 +33,7 @@ const actions = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => {
       action="/admin/knowledge/gaps/${g.id}/triage"
       class="inline"
     >
+      ${tokenField()}
       <button
         type="submit"
         class="rounded bg-sky-800 px-2 py-0.5 text-[11px] text-sky-100 hover:bg-sky-700"
@@ -46,6 +48,7 @@ const actions = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => {
         action="/admin/knowledge/gaps/${g.id}/resolve"
         class="inline-flex items-center gap-1"
       >
+        ${tokenField()}
         <select
           name="linkedItemId"
           class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
@@ -65,6 +68,7 @@ const actions = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => {
         action="/admin/knowledge/gaps/${g.id}/wontfix"
         class="inline"
       >
+        ${tokenField()}
         <button
           type="submit"
           class="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"

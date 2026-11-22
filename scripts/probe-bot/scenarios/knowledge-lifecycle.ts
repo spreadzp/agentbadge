@@ -46,8 +46,9 @@ const scenario: Scenario = {
       "idempotency-key": `probe-${tok}-${idem}`,
     });
     // Arc R1: verify идёт ДРУГИМ оператором (separation of duties —
-    // publisher ≠ verifier), и перед ним нужен evidence-шаг (гейт на
-    // ≥1 evidence у версии под ревью).
+    // publisher ≠ verifier), и нужен evidence-шаг (гейт на ≥1
+    // evidence). Arc R2 H-2: evidence замораживается на PENDING —
+    // шаг до сабмита, пока DRAFT.
     const verifyH = (idem: string) => ({
       "content-type": "application/json",
       "x-admin-key": adminKey,
@@ -97,7 +98,8 @@ const scenario: Scenario = {
           { method: "POST", path: ep.path, headers: submitH, body, note: "create" },
           { method: "POST", path: ep.path, headers: submitH, body, note: "create replay" },
           { method: "GET", path: searchPath, note: "draft invisible" },
-          to("PENDING", 1), evidenceStep, verify(2), to("PUBLISHED", 3),
+          // Arc R2 H-2: evidence freezes at PENDING — attach while DRAFT.
+          evidenceStep, to("PENDING", 1), verify(2), to("PUBLISHED", 3),
           { method: "GET", path: searchPath, note: "published visible" },
           to("WITHDRAWN", 4),
           { method: "GET", path: searchPath, note: "withdrawn invisible" },
@@ -106,9 +108,9 @@ const scenario: Scenario = {
         ],
         assert: obs => {
           const problems: string[] = [];
-          // obs: 0 create, 1 replay, 2 draftS, 3 PENDING, 4 evidence,
+          // obs: 0 create, 1 replay, 2 draftS, 3 evidence, 4 PENDING,
           //      5 VERIFIED, 6 PUBLISHED, 7 pubS, 8 WITHDRAWN, 9 withS
-          const [create, replay, draftS, pend, , , , pubS, , withS] = obs;
+          const [create, replay, draftS, , pend, , , pubS, , withS] = obs;
           const itemId = getPath(create?.bodyJson, "item.id");
           if (!itemId) return problems;
           // Идемпотентный rerun: slug/key детерминированы — requeue'нутый

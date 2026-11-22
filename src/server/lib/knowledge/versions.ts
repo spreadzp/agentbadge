@@ -47,8 +47,10 @@ export async function restoreKnowledgeVersion(
   const source = await store.getVersionBySeq(itemId, seq);
   if (!source) return { ok: false, error: "version_not_found" };
 
-  // Arc R1 H5+H4: seq under the store's item lock + evidence copied
-  // from the LATEST version (the one under review), not the source.
+  // Arc R1 H5+H4 / R2 M-8: seq under the store's item lock +
+  // evidence copied from the latest version AS LOCKED (the one
+  // under review), never a caller-stale source id. expectedSeq
+  // refuses a restore racing another writer's append.
   const latest = item.latestVersionId
     ? await store.getVersion(item.latestVersionId)
     : null;
@@ -59,7 +61,8 @@ export async function restoreKnowledgeVersion(
     body: source.body,
     summary: source.summary,
     restoredFromVersionId: source.id,
-    copyEvidenceFromVersionId: latest?.id,
+    copyEvidenceFromLatest: true,
+    expectedSeq: latest?.seq,
     createdBy: actorRef,
   });
   if (!added.ok) {

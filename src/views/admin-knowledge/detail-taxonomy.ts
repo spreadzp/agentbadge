@@ -15,7 +15,7 @@ import type {
 import type { KnowledgeRelations } from "../../server/lib/knowledge/relations";
 import { KNOWLEDGE_RELATION_TYPES } from "../../server/lib/knowledge/types";
 import { emptyMsg, tableShell, td } from "../finops/shared";
-import { miniForm, textInput } from "./shared";
+import { miniForm, textInput, tokenField } from "./shared";
 
 export interface TaxonomyInput {
   item: KnowledgeItemRecord;
@@ -28,6 +28,9 @@ export interface TaxonomyInput {
   latestTitle: string;
   latestBody: string;
   latestSummary: string | null;
+  /** Arc R2 M-8: seq at render — the edit form posts it back as the
+   *  lost-update precondition. */
+  latestSeq: number | null;
   editable: boolean;
 }
 
@@ -55,6 +58,7 @@ const capabilitiesSection = (i: TaxonomyInput) => {
                   action="/admin/knowledge/${i.item.id}/capability/unlink"
                   class="inline"
                 >
+                  ${tokenField()}
                   <input
                     type="hidden"
                     name="capabilityId"
@@ -99,6 +103,7 @@ const relationsSection = (i: TaxonomyInput) => {
             method="post"
             action="/admin/knowledge/${i.item.id}/relation/remove"
           >
+            ${tokenField()}
             <input type="hidden" name="relationId" value="${e.relationId}" />
             <button
               type="submit"
@@ -165,40 +170,48 @@ const evidenceSection = (i: TaxonomyInput) =>
               (e) => html`<tr>
                 ${td(e.type)} ${td(e.uri, false)} ${td(e.label ?? "—", false)}
                 ${td(
-                  html`<form
-                    method="post"
-                    action="/admin/knowledge/${i.item.id}/evidence/remove"
-                  >
-                    <input
-                      type="hidden"
-                      name="evidenceId"
-                      value="${e.id}"
-                    />
-                    <button
-                      type="submit"
-                      class="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"
-                      >remove</button
-                    >
-                  </form>`,
+                  i.editable
+                    ? html`<form
+                        method="post"
+                        action="/admin/knowledge/${i.item.id}/evidence/remove"
+                      >
+                        ${tokenField()}
+                        <input
+                          type="hidden"
+                          name="evidenceId"
+                          value="${e.id}"
+                        />
+                        <button
+                          type="submit"
+                          class="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"
+                          >remove</button
+                        >
+                      </form>`
+                    : html`<span class="text-[11px] text-slate-600">frozen</span>`,
                   false,
                 )}
               </tr>`,
             )}`,
           )}
-      ${miniForm(
-        `/admin/knowledge/${i.item.id}/evidence/add`,
-        html`<select
-            name="type"
-            class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
-          >
-            ${["INTERNAL_DOC", "EXTERNAL_URL", "ONCHAIN_TX", "API_ENDPOINT", "SCAN_REPORT"].map(
-              (t) => html`<option value="${t}">${t}</option>`,
-            )}
-          </select>
-          ${textInput("uri", "uri — https://… or /path")}
-          ${textInput("label", "label (optional)")}`,
-        "Add evidence",
-      )}`,
+      ${i.editable
+        ? miniForm(
+            `/admin/knowledge/${i.item.id}/evidence/add`,
+            html`<select
+                name="type"
+                class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+              >
+                ${["INTERNAL_DOC", "EXTERNAL_URL", "ONCHAIN_TX", "API_ENDPOINT", "SCAN_REPORT"].map(
+                  (t) => html`<option value="${t}">${t}</option>`,
+                )}
+              </select>
+              ${textInput("uri", "uri — https://… or /path")}
+              ${textInput("label", "label (optional)")}`,
+            "Add evidence",
+          )
+        : emptyMsg(
+            "Evidence is frozen once the item leaves DRAFT — the " +
+              "verifier reviews exactly the submitted set.",
+          )}`,
   );
 
 const editSection = (i: TaxonomyInput) =>
@@ -210,6 +223,12 @@ const editSection = (i: TaxonomyInput) =>
           action="/admin/knowledge/${i.item.id}/update"
           class="flex flex-col gap-2"
         >
+          ${tokenField()}
+          <input
+            type="hidden"
+            name="expectedSeq"
+            value="${i.latestSeq ?? ""}"
+          />
           <input
             type="text"
             name="title"

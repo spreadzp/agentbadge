@@ -22,6 +22,7 @@ import {
   allowedKnowledgeTransitions,
   KNOWLEDGE_STATUSES,
   noControlChars,
+  noCtrlStrict,
   transitionKnowledgeItem,
 } from "../lib/knowledge";
 import {
@@ -37,6 +38,13 @@ const transitionBodySchema = z.object({
     .string()
     .max(2000)
     .refine(noControlChars, { message: "control characters not allowed" })
+    .optional(),
+  /** Arc R2 H-2: optional stale-page precondition — the version the
+   *  caller reviewed; re-checked under the store's row lock. */
+  expectedVersionId: z
+    .string()
+    .max(80)
+    .refine(noCtrlStrict, { message: "control characters not allowed" })
     .optional(),
 });
 
@@ -85,6 +93,7 @@ export function registerKnowledgeTransitionRoutes(
         async () => {
           const r = await transitionKnowledgeItem(
             store, itemId, to, actorRef, body.data.reason ?? null,
+            { expectedVersionId: body.data.expectedVersionId },
           );
           if (!r.ok) {
             const status =

@@ -211,22 +211,22 @@ describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
       source: "COMPOSER_REFUSAL",
     });
     expect(g1.created).toBe(true);
-    expect(g1.row.count).toBe(1);
-    expect(g1.row.status).toBe("OPEN");
+    expect(g1.row!.count).toBe(1);
+    expect(g1.row!.status).toBe("OPEN");
     for (let i = 0; i < KNOWLEDGE_GAP_SAMPLES_CAP + 2; i += 1) {
       await s.recordGap({
         id: id("kg"), normalizedQuery: "how pay", sampleQuery: `variant ${i}`,
         source: "INTERACTION_SIGNAL",
       });
     }
-    const g = await s.getGap(g1.row.id);
+    const g = await s.getGap(g1.row!.id);
     expect(g?.count).toBe(1 + KNOWLEDGE_GAP_SAMPLES_CAP + 2);
     expect(g?.sampleQueries.length).toBe(KNOWLEDGE_GAP_SAMPLES_CAP);
-    const bad = await s.transitionGap(g1.row.id, {
+    const bad = await s.transitionGap(g1.row!.id, {
       from: "RESOLVED", to: "OPEN",
     });
     expect(bad.transitioned).toBe(false);
-    const ok = await s.transitionGap(g1.row.id, {
+    const ok = await s.transitionGap(g1.row!.id, {
       from: "OPEN", to: "RESOLVED", linkedItemId: "ki_x",
     });
     expect(ok.transitioned).toBe(true);

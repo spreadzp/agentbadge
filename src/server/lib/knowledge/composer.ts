@@ -1,6 +1,7 @@
-import { listEvidence } from "./evidence";
+import { isPublicEvidenceUri, listEvidence } from "./evidence";
 import { relationsFor } from "./relations";
 import { searchKnowledgeItems } from "./search";
+import { stripHeadlineMarkup, tokenizeTerms } from "./terms";
 import type { KnowledgeStore } from "./store";
 import type { KnowledgeSearchHit } from "./types";
 
@@ -57,42 +58,46 @@ export interface KnowledgeGapRecorder {
 /** Arc R1 M4: internal pointers don't leave the building. */
 const PRIVATE_EVIDENCE_TYPES = new Set(["INTERNAL_DOC", "SCAN_REPORT"]);
 
-/** Arc R1 M6: unicode-aware terms — [^a-z0-9] tokenization deleted
- *  every non-ASCII word ("支払い café" → ["caf"]). Letters+numbers
- *  in any script, ≥2 chars, deduped; common English stopwords out
- *  (they inflate coverage of natural-language questions). */
-const STOPWORDS = new Set([
-  "an", "as", "at", "be", "by", "do", "for", "how", "if", "in", "is",
-  "it", "of", "on", "or", "so", "the", "to", "up", "we", "a", "i",
-  "am", "are", "can", "did", "has", "me", "my", "no", "not", "our",
-  "us", "was", "you", "your", "what", "when", "where", "who", "why",
-  "does", "and", "with", "that", "this", "from", "about", "into",
-]);
-
-function tokenize(q: string): string[] {
-  return [
-    ...new Set(
-      (q.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? []).filter(
-        (t) => !STOPWORDS.has(t),
-      ),
-    ),
-  ];
-}
+/** Arc R1 M6 → terms.ts: the tokenizer is shared with the search
+ *  backends (one term set, no PG/memory tokenizer drift). */
 
 /** Fraction of query terms covered — word-boundary matching, not
  *  substring: "an" used to "match" inside any word, inflating
  *  coverage. Title+summary carry editorial weight, snippet carries
- *  the terms the engine actually matched in the body. */
+ *  the terms the engine actually matched in the body.
+ *  Arc R2 M-2: the snippet is markup-stripped first — otherwise
+ *  "&amp;"/"<mark>" become coverage tokens. */
 function coverageOf(terms: string[], h: KnowledgeSearchHit): number {
   if (terms.length === 0) return 0;
   const hay = new Set(
-    `${h.title} ${h.summary ?? ""} ${h.snippet}`
+    `${h.title} ${h.summary ?? ""} ${stripHeadlineMarkup(h.snippet)}`
+      .normalize("NFC")
       .toLowerCase()
-      .match(/[\p{L}\p{N}]+/gu) ?? [],
+      .match(/[\p{L}\p{M}\p{N}]+/gu) ?? [],
   );
   let hits = 0;
   for (const t of terms) if (hay.has(t)) hits += 1;
   return hits / terms.length;
+}
+
+/** Arc R2 M-2: confidence AND the answer must come from the SAME
+ *  hit — previously confidence took max-coverage while the text
+ *  answered from rank-order items[0]. Returns the index of the
+ *  best-coverage hit (ties → earliest, deterministic). */
+export function bestHitIndex(
+  terms: string[],
+  hits: KnowledgeSearchHit[],
+): number {
+  let best = 0;
+  let bestCov = -1;
+  hits.forEach((h, i) => {
+    const c = coverageOf(terms, h);
+    if (c > bestCov) {
+      bestCov = c;
+      best = i;
+    }
+  });
+  return best;
 }
 
 function computeConfidence(
@@ -114,7 +119,9 @@ function composeText(
   related: { slug: string; title: string; type: string }[],
 ): string {
   const lines = ["Based on verified knowledge:", ""];
-  lines.push(top.summary ?? top.snippet);
+  // Arc R2 M-2: snippet is engine markup (<mark>+entities) — strip
+  // before it becomes public answerText.
+  lines.push(top.summary ?? stripHeadlineMarkup(top.snippet));
   if (rest.length > 0) {
     lines.push("", "See also:");
     for (const h of rest) lines.push(`- ${h.slug} — ${h.title}`);
@@ -135,7 +142,7 @@ export async function composeAnswer(
     status: "PUBLISHED",
     limit: SEARCH_LIMIT,
   });
-  const terms = tokenize(query);
+  const terms = tokenizeTerms(query);
   const confidence = computeConfidence(terms, res.items);
 
   if (res.items.length === 0 || confidence < CONFIDENCE_THRESHOLD) {
@@ -166,8 +173,11 @@ export async function composeAnswer(
     };
   }
 
-  const top = res.items[0] as KnowledgeSearchHit;
-  const rest = res.items.slice(1);
+  // Arc R2 M-2: confidence already scored the best-coverage hit —
+  // compose the answer from THAT hit, not from engine rank order.
+  const topIdx = bestHitIndex(terms, res.items);
+  const top = res.items[topIdx] as KnowledgeSearchHit;
+  const rest = res.items.filter((_, i) => i !== topIdx);
 
   // Related items from the top hit — published only, typed edges
   // only. Titles live on versions; resolve the published one.
@@ -206,8 +216,15 @@ export async function composeAnswer(
       snippet: h.snippet,
       evidence: (await listEvidence(store, h.versionId)).map((e) => ({
         type: e.type,
-        uri: PRIVATE_EVIDENCE_TYPES.has(e.type) ? null : e.uri,
-        label: e.label,
+        // Arc R2 M-4: type alone isn't the boundary — an EXTERNAL_URL
+        // pointing at internal:/localhost/private/userinfo leaks the
+        // same way. URI-shape check complements the type check.
+        uri:
+          !PRIVATE_EVIDENCE_TYPES.has(e.type) &&
+          isPublicEvidenceUri(e.uri)
+            ? e.uri
+            : null,
+        label: PRIVATE_EVIDENCE_TYPES.has(e.type) ? null : e.label,
       })),
     })),
   );

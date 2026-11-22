@@ -19,6 +19,7 @@ import {
   knowledgeNav,
   knowledgeShell,
   statusPill,
+  tokenField,
 } from "./shared";
 
 export interface DetailInput {
@@ -47,7 +48,10 @@ const section = (title: string, body: unknown) => html`<div
   ${body}
 </div>`;
 
-const transitionButtons = (itemId: string, allowed: string[]) => {
+const transitionButtons = (
+  item: KnowledgeItemRecord,
+  allowed: string[],
+) => {
   if (allowed.length === 0) {
     return html`<p class="text-xs text-slate-500">
       Terminal status — no transitions.
@@ -57,10 +61,16 @@ const transitionButtons = (itemId: string, allowed: string[]) => {
     ${allowed.map(
       (to) => html`<form
         method="post"
-        action="/admin/knowledge/${itemId}/transition"
+        action="/admin/knowledge/${item.id}/transition"
         class="flex items-center gap-1"
       >
+        ${tokenField()}
         <input type="hidden" name="to" value="${to}" />
+        <input
+          type="hidden"
+          name="expectedVersionId"
+          value="${item.latestVersionId}"
+        />
         <input
           type="text"
           name="operator"
@@ -106,6 +116,7 @@ const versionRow = (
     ${td(
       restorable
         ? html`<form method="post" action="/admin/knowledge/${item.id}/restore">
+            ${tokenField()}
             <input type="hidden" name="seq" value="${v.seq}" />
             <button
               type="submit"
@@ -140,7 +151,7 @@ export function knowledgeDetailPage(input: DetailInput): string {
           : "none"}
       </div>`,
     )}
-    ${section("Workflow", transitionButtons(i.id, input.allowedTransitions))}
+    ${section("Workflow", transitionButtons(i, input.allowedTransitions))}
     ${section(
       "Latest version preview",
       input.latest

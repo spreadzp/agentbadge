@@ -54,7 +54,8 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   transitionItem = (id: string, input: KnowledgeTransitionInput) =>
     this.core.transitionItem(id, input);
   listStatusEvents = (itemId: string) => this.core.listStatusEvents(itemId);
-  searchItems = (opts: KnowledgeSearchOpts) => this.core.searchItems(opts);
+  searchItems = (opts: KnowledgeSearchOpts) =>
+    this.taxonomy.searchItems(opts);
 
   // ─── capabilities ──
   upsertCapability = (input: KnowledgeCapabilityUpsert) =>

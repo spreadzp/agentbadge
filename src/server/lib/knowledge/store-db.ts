@@ -16,6 +16,7 @@ import type {
   KnowledgeTransitionResult,
   KnowledgeVersionInsert,
 } from "./store";
+import { orTsquery } from "./terms";
 import type { KnowledgeGapRecord } from "./types";
 
 /**
@@ -55,7 +56,8 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   addVersion(
     version: Omit<KnowledgeVersionInsert, "seq"> & {
-      copyEvidenceFromVersionId?: string;
+      copyEvidenceFromLatest?: boolean;
+      expectedSeq?: number;
     },
     opts?: { requireStatus?: string },
   ) {
@@ -100,8 +102,13 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   // ─── search seam ──
 
-  searchItems(opts: KnowledgeSearchOpts) {
-    return this.core.searchItems(opts);
+  async searchItems(opts: KnowledgeSearchOpts) {
+    // Arc R2 M-3: tokenize through the shared terms module and hand
+    // the repo an OR-tsquery — plainto ANDs all lexemes after
+    // stopword stripping, so plain questions refused to match.
+    const tsquery = orTsquery(opts.query);
+    if (tsquery === undefined) return [];
+    return this.core.searchItems({ ...opts, tsquery });
   }
 
   // ─── capabilities ──
@@ -186,9 +193,14 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   // ─── gaps ──
 
-  async recordGap(input: KnowledgeGapUpsert) {
-    const r = await this.taxonomy.recordGap(input);
-    return { row: mapGap(r.row), created: r.created };
+  async recordGap(input: KnowledgeGapUpsert, opts?: { openCap?: number }) {
+    const r = await this.taxonomy.recordGap(input, undefined, opts);
+    return {
+      row: r.row ? mapGap(r.row) : null,
+      created: r.created,
+      recorded: r.recorded,
+      reopened: r.reopened,
+    };
   }
 
   async getGap(id: string) {
@@ -204,6 +216,7 @@ export class DbKnowledgeStore implements KnowledgeStore {
     status?: string;
     orderBy?: "count" | "lastSeen";
     limit?: number;
+    offset?: number;
   }) {
     const rows = await this.taxonomy.listGaps(opts);
     return rows.map(mapGap);

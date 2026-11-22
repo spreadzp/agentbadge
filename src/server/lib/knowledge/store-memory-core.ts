@@ -1,6 +1,5 @@
 import type {
   KnowledgeItemInsert,
-  KnowledgeSearchOpts,
   KnowledgeStatusEventInsert,
   KnowledgeTransitionInput,
   KnowledgeTransitionResult,
@@ -8,16 +7,10 @@ import type {
 } from "./store";
 import type {
   KnowledgeItemRecord,
-  KnowledgeSearchHit,
   KnowledgeStatusEventRecord,
   KnowledgeVersionRecord,
 } from "./types";
-import {
-  memorySearchScore,
-  memorySnippet,
-  nowIso,
-  type MemoryKnowledgeData,
-} from "./memory-data";
+import { nowIso, type MemoryKnowledgeData } from "./memory-data";
 
 /**
  * EPIC-229 (SLICE-229-1): memory-side core aggregate — items,
@@ -106,7 +99,8 @@ export class MemoryKnowledgeCore {
    *  composite trivially atomic. */
   async addVersion(
     version: Omit<KnowledgeVersionInsert, "seq"> & {
-      copyEvidenceFromVersionId?: string;
+      copyEvidenceFromLatest?: boolean;
+      expectedSeq?: number;
     },
     opts?: { requireStatus?: string },
   ) {
@@ -120,6 +114,11 @@ export class MemoryKnowledgeCore {
     for (const v of this.data.versions.values()) {
       if (v.itemId === version.itemId && v.seq >= seq) seq = v.seq + 1;
     }
+    // Arc R2 M-8: lost-update precondition — the editor must have
+    // read the same latest seq the store sees now.
+    if (version.expectedSeq !== undefined && version.expectedSeq !== seq - 1) {
+      return { ok: false as const, reason: "stale_seq" as const };
+    }
     const v: KnowledgeVersionRecord = {
       id: version.id,
       itemId: version.itemId,
@@ -132,9 +131,9 @@ export class MemoryKnowledgeCore {
       createdAt: nowIso(),
     };
     this.data.versions.set(v.id, v);
-    if (version.copyEvidenceFromVersionId) {
+    if (version.copyEvidenceFromLatest) {
       for (const e of this.data.evidence.values()) {
-        if (e.versionId !== version.copyEvidenceFromVersionId) continue;
+        if (e.versionId !== item.latestVersionId) continue;
         const copy: typeof e = {
           ...e,
           id: `kev_${crypto.randomUUID()}`,
@@ -190,6 +189,55 @@ export class MemoryKnowledgeCore {
         reason: "status_mismatch",
       };
     }
+    // Arc R2 H-2: same gate order as the PG adapter — stale-version
+    // precondition, evidence count on the locked latest, then SoD
+    // against the matching status-event actor.
+    if (
+      input.expectedVersionId !== undefined &&
+      input.expectedVersionId !== item.latestVersionId
+    ) {
+      return {
+        item,
+        event: null,
+        transitioned: false,
+        reason: "stale_version",
+      };
+    }
+    if (input.requireEvidence === true) {
+      let n = 0;
+      for (const e of this.data.evidence.values()) {
+        if (e.versionId === item.latestVersionId) n += 1;
+      }
+      if (n < 1) {
+        return {
+          item,
+          event: null,
+          transitioned: false,
+          reason: "evidence_required",
+        };
+      }
+    }
+    if (input.separationOfDuties === true) {
+      const prevTo = input.to === "VERIFIED" ? "PENDING" : "VERIFIED";
+      let prevActor: string | null = null;
+      let prevKey = "";
+      for (const e of this.data.events.values()) {
+        if (e.itemId !== id || e.to !== prevTo) continue;
+        const k = `${e.createdAt}${e.id}`;
+        if (k > prevKey) {
+          prevKey = k;
+          prevActor = e.actor;
+        }
+      }
+      if (prevActor !== null && prevActor === input.actor) {
+        return {
+          item,
+          event: null,
+          transitioned: false,
+          reason: "separation_of_duties",
+        };
+      }
+    }
     item.status = input.to;
     if (input.publish === true) item.publishedVersionId = item.latestVersionId;
     if (input.unpublish === true) item.publishedVersionId = null;
@@ -208,54 +256,12 @@ export class MemoryKnowledgeCore {
   }
 
   async listStatusEvents(itemId: string) {
+    // Arc R2 M-10: the old `|| a.id` tiebreak sorted same-ms events
+    // by RANDOM uuid — chronology lost (VERIFIED before DRAFT).
+    // Map iteration is insertion-ordered and Array.sort is stable,
+    // so equal timestamps keep append order — matching PG's seq.
     return [...this.data.events.values()]
       .filter((e) => e.itemId === itemId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }
-
-  // ─── search seam (D-229-4) ──
-
-  async searchItems(opts: KnowledgeSearchOpts) {
-    const status = opts.status ?? "PUBLISHED";
-    const capItemIds =
-      opts.capabilityRef != null
-        ? this.itemsForCapability(opts.capabilityRef)
-        : null;
-    const out: KnowledgeSearchHit[] = [];
-    for (const item of this.data.items.values()) {
-      if (item.status !== status) continue;
-      if (opts.kind != null && item.kind !== opts.kind) continue;
-      if (capItemIds != null && !capItemIds.includes(item.id)) continue;
-      if (!item.publishedVersionId) continue;
-      const v = this.data.versions.get(item.publishedVersionId);
-      if (!v) continue;
-      const rank = memorySearchScore(opts.query, v.title, v.body);
-      if (rank <= 0) continue;
-      out.push({
-        itemId: item.id,
-        slug: item.slug,
-        kind: item.kind,
-        versionId: v.id,
-        title: v.title,
-        summary: v.summary,
-        snippet: memorySnippet(opts.query, v.title, v.body),
-        rank,
-      });
-    }
-    // Arc R1 M5: rank ties get a stable tiebreak (slug asc) — same
-    // ordering contract as the FTS path.
-    out.sort((a, b) => b.rank - a.rank || a.slug.localeCompare(b.slug));
-    return out.slice(0, opts.limit ?? 20);
-  }
-
-  /** Taxonomy-side seam the core needs for capabilityRef search. */
-  private itemsForCapability(name: string): string[] {
-    const cap = [...this.data.capabilities.values()].find(
-      (c) => c.name === name,
-    );
-    if (!cap) return [];
-    return [...this.data.links]
-      .filter((k) => k.endsWith(`::${cap.id}`))
-      .map((k) => k.split("::")[0]);
   }
 }

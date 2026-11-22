@@ -2,24 +2,28 @@ import type {
   KnowledgeCapabilityUpsert,
   KnowledgeEvidenceInsert,
   KnowledgeRelationInsert,
+  KnowledgeSearchOpts,
 } from "./store";
 import type {
   KnowledgeCapabilityRecord,
   KnowledgeEvidenceRecord,
   KnowledgeRelationRecord,
+  KnowledgeSearchHit,
 } from "./types";
 import {
   KNOWLEDGE_EVIDENCE_CAP,
   linkKey,
+  memorySearchScore,
+  memorySnippet,
   nowIso,
   type MemoryKnowledgeData,
 } from "./memory-data";
 
 /**
  * EPIC-229 (SLICE-229-1): memory-side taxonomy — capabilities, m:n
- * links, typed relations, version evidence, knowledge gaps. Mirrors
- * the DB-side KnowledgeTaxonomyRepository split. Honest-signal
- * shapes identical to the Postgres adapter.
+ * links, typed relations, version evidence, the FTS-parity search
+ * seam. Mirrors the DB-side KnowledgeTaxonomyRepository split.
+ * Honest-signal shapes identical to the Postgres adapter.
  */
 export class MemoryKnowledgeTaxonomy {
   constructor(protected readonly data: MemoryKnowledgeData) {}
@@ -31,9 +35,8 @@ export class MemoryKnowledgeTaxonomy {
       (c) => c.name === input.name,
     );
     if (existing) {
-      // Arc R1 M3: a MANUAL upsert must not silently downgrade a
-      // SEEDED entry — code-derived fields survive; a SEEDED refresh
-      // still updates them.
+      // Arc R1 M3: MANUAL must not downgrade SEEDED — a SEEDED
+      // refresh still updates code-derived fields.
       const seededProtected =
         existing.source === "SEEDED" && input.source !== "SEEDED";
       if (!seededProtected) {
@@ -112,10 +115,9 @@ export class MemoryKnowledgeTaxonomy {
     if (!cap) return [];
     return [...this.data.links]
       .filter((k) => k.endsWith(`::${cap.id}`))
-      .map((k) => k.split("::")[0]);
+      .map((k) => k.split("::")[0])
+      .sort();
   }
-
-  // ─── relations ──
 
   async addRelation(input: KnowledgeRelationInsert) {
     for (const r of this.data.relations.values()) {
@@ -125,6 +127,36 @@ export class MemoryKnowledgeTaxonomy {
         r.type === input.type
       ) {
         return { row: null, created: false };
+      }
+    }
+    // Arc R2 M-7: SUPERSEDES cycle check inside the store — BFS
+    // to→from reachability, same bounds as the PG CTE (128/2000).
+    if (input.type === "SUPERSEDES") {
+      if (
+        !this.data.items.has(input.fromItemId) ||
+        !this.data.items.has(input.toItemId)
+      ) {
+        return { row: null, created: false, reason: "items_missing" as const };
+      }
+      const adj = new Map<string, string[]>();
+      for (const r of this.data.relations.values()) {
+        if (r.type !== "SUPERSEDES") continue;
+        adj.set(r.fromItemId, [...(adj.get(r.fromItemId) ?? []), r.toItemId]);
+      }
+      const queue: [string, number][] = [[input.toItemId, 0]];
+      const seen = new Set<string>();
+      let overflow = false;
+      for (let qi = 0; qi < queue.length && !overflow; qi++) {
+        const [node, depth] = queue[qi]!;
+        if (node === input.fromItemId || seen.size >= 2000) {
+          overflow = true;
+        } else if (!seen.has(node) && depth < 128) {
+          seen.add(node);
+          for (const nxt of adj.get(node) ?? []) queue.push([nxt, depth + 1]);
+        }
+      }
+      if (overflow) {
+        return { row: null, created: false, reason: "supersedes_cycle" as const };
       }
     }
     const row: KnowledgeRelationRecord = {
@@ -162,20 +194,17 @@ export class MemoryKnowledgeTaxonomy {
     };
   }
 
-  // ─── evidence ──
-
   async addEvidence(input: KnowledgeEvidenceInsert) {
     const version = this.data.versions.get(input.versionId);
     if (!version) {
       return { ok: false as const, reason: "missing_version" as const };
     }
-    // Arc R1 H4: evidence is immutable once the item leaves the
-    // review lane — editable while DRAFT or PENDING (the version a
-    // verifier examines), always on the LATEST version only.
+    // Arc R1 H4 / R2 H-2: evidence freezes at PENDING — DRAFT +
+    // LATEST version only; verifier reviews the submitted set.
     const item = this.data.items.get(version.itemId);
     if (
       !item ||
-      (item.status !== "DRAFT" && item.status !== "PENDING") ||
+      item.status !== "DRAFT" ||
       item.latestVersionId !== input.versionId
     ) {
       return { ok: false as const, reason: "not_editable" as const };
@@ -202,7 +231,10 @@ export class MemoryKnowledgeTaxonomy {
   async listEvidence(versionId: string) {
     return [...this.data.evidence.values()]
       .filter((e) => e.versionId === versionId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort(
+        (a, b) =>
+          a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+      );
   }
 
   async getEvidence(id: string) {
@@ -216,7 +248,7 @@ export class MemoryKnowledgeTaxonomy {
     const item = version ? this.data.items.get(version.itemId) : null;
     if (
       !item ||
-      (item.status !== "DRAFT" && item.status !== "PENDING") ||
+      item.status !== "DRAFT" ||
       item.latestVersionId !== row.versionId
     ) {
       return { removed: false, reason: "not_editable" as const };
@@ -225,6 +257,41 @@ export class MemoryKnowledgeTaxonomy {
   }
 
   async itemsCiting(uri: string) {
-    return [...this.data.evidence.values()].filter((e) => e.uri === uri);
+    return [...this.data.evidence.values()]
+      .filter((e) => e.uri === uri)
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  // ─── search seam (D-229-4) ──
+  async searchItems(opts: KnowledgeSearchOpts) {
+    const status = opts.status ?? "PUBLISHED";
+    const capItemIds =
+      opts.capabilityRef != null
+        ? await this.itemsForCapability(opts.capabilityRef)
+        : null;
+    const out: KnowledgeSearchHit[] = [];
+    for (const item of this.data.items.values()) {
+      if (item.status !== status) continue;
+      if (opts.kind != null && item.kind !== opts.kind) continue;
+      if (capItemIds != null && !capItemIds.includes(item.id)) continue;
+      if (!item.publishedVersionId) continue;
+      const v = this.data.versions.get(item.publishedVersionId);
+      if (!v) continue;
+      const rank = memorySearchScore(opts.query, v.title, v.body);
+      if (rank <= 0) continue;
+      out.push({
+        itemId: item.id,
+        slug: item.slug,
+        kind: item.kind,
+        versionId: v.id,
+        title: v.title,
+        summary: v.summary,
+        snippet: memorySnippet(opts.query, v.title, v.body),
+        rank,
+      });
+    }
+    // Arc R1 M5: rank ties → slug asc, same contract as the FTS path.
+    out.sort((a, b) => b.rank - a.rank || a.slug.localeCompare(b.slug));
+    return out.slice(0, opts.limit ?? 20);
   }
 }
