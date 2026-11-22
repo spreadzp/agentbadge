@@ -60,6 +60,8 @@ class StatusDeterminatorClass {
             return { status: "GAP", reason: `source not found: ${detail}` };
           case "not_applicable":
             return { status: "NOT_APPLICABLE", reason: detail };
+          case "conflict":
+            return { status: "CONFLICT", reason: detail };
         }
       }
       // No semantic_outcome on evidence → fall through to normal logic

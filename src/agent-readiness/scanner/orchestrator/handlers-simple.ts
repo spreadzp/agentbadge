@@ -28,6 +28,7 @@ import { fetchOauthAuthorizationServer } from "../fetchers/oauth-authorization-s
 import { fetchLlmPolicy } from "../fetchers/llm-policy-fetcher";
 import { fetchHomepageHtml } from "../fetchers/homepage-html-fetcher";
 import { snapOrNull } from "./snapshots";
+import { createSnapshot } from "../snapshot";
 import type { ResourceHandler } from "./types";
 
 /**
@@ -44,7 +45,21 @@ export const simpleHandlers: Record<string, ResourceHandler> = {
   openapi: async ({ baseUrl }) => snapOrNull(await fetchOpenApi(baseUrl)),
   mcp: async ({ baseUrl }) => snapOrNull(await fetchMcpDescriptor(baseUrl)),
   llms: async ({ baseUrl }) => snapOrNull(await fetchLlmsTxt(baseUrl)),
-  x402: async ({ baseUrl }) => snapOrNull(await fetchX402Discovery(baseUrl)),
+  // SLICE-258-4: body carries manifest + live-402 double-probe results —
+  // the semantic checker needs both (live402 authoritative, manifest hint).
+  // url/status stay manifest-derived so existing x402 rules are unchanged.
+  x402: async ({ baseUrl }) => {
+    const r = await fetchX402Discovery(baseUrl);
+    return r.body !== null
+      ? createSnapshot({
+          url: r.url,
+          status: r.status,
+          body: JSON.stringify({ manifest: r.manifest, probes: r.probes }),
+          resolvedIp: r.resolvedIp,
+          fetchTimeMs: r.fetchTime,
+        })
+      : null;
+  },
   openapi_standard: async ({ baseUrl }) => snapOrNull(await fetchOpenApiStandard(baseUrl)),
   skill: async ({ baseUrl }) => snapOrNull(await fetchSkillFile(baseUrl)),
   agents_txt: async ({ baseUrl }) => snapOrNull(await fetchAgentsTxt(baseUrl)),

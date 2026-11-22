@@ -26,8 +26,8 @@ describe("E2E: SLICE-75-7 Rules expansion integration", () => {
     expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
   });
 
-  it("has 156 total rules (incl. Phase-B, EPIC-125, EPIC-146 additions)", () => {
-    expect(AGENT_READINESS_RULESET.rules.length).toBe(156);
+  it("has 157 total rules (incl. Phase-B, EPIC-125, EPIC-146 additions)", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBe(157);
   });
 
   it("all 25 new rules are in the ruleset", () => {

@@ -45,7 +45,7 @@
         "versioning",
         "agent_policy"
       ],
-      "description": "Rule category (v0.4 §A.2): discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility, active_probing, pricing, rate_limits, error_semantics, retry_semantics, sandbox, versioning, agent_policy"
+      "description": "Rule category (25 total): 18 legacy + 7 v0.4 semantic (pricing, rate_limits, error_semantics, retry_semantics, sandbox, versioning, agent_policy)"
     },
     "severity": {
       "type": "string",
@@ -55,7 +55,17 @@
         "medium",
         "low"
       ],
-      "description": "Rule severity: critical (agents cannot proceed — triggers total cap ≤ 30, v0.4 §A.3/§6.3), high (triggers category floor), medium (normal), low (informational)"
+      "description": "Rule severity: critical (agents cannot proceed, triggers total ≤ 30 floor), high (triggers category floor), medium (normal), low (informational). v0.4 adds critical — see spec §A.3"
+    },
+    "pillar": {
+      "description": "Optional pillar override — if absent, pillar is derived from category via the canonical map (spec v0.2 §A.8)",
+      "type": "string",
+      "enum": [
+        "discovery",
+        "understandability",
+        "executability",
+        "verifiability"
+      ]
     },
     "counted_in_score": {
       "type": "boolean",
@@ -96,7 +106,7 @@
             "header_check",
             "semantic_validation"
           ],
-          "description": "Check type: http_fetch (HTTP GET + parse), schema_validation (validate against JSON Schema), exact_match (string/structural equality), cross_evidence (compare two fetched sources on shared key), http_probe (HTTP request with status/header check), content_parse (parse response body for specific content), json_rpc (JSON-RPC call to MCP endpoint), header_check (verify specific HTTP headers), semantic_validation (pure function parsing structured sources for semantic criteria — no LLM, deterministic boundary, v0.4 §A.4)"
+          "description": "Check type (9 total): http_fetch, schema_validation, exact_match, cross_evidence, http_probe, content_parse, json_rpc, header_check, semantic_validation (v0.4: pure function parsing structured sources for semantic criteria, no LLM)"
         },
         "sources": {
           "description": "Array of source identifiers to fetch/compare (for http_fetch, cross_evidence)",
@@ -119,6 +129,10 @@
         "target": {
           "description": "Target path or URL for http_fetch / schema_validation",
           "type": "string"
+        },
+        "semantic": {
+          "description": "Semantic criterion id — required when type = semantic_validation (references SEMANTIC_CHECKERS registry)",
+          "type": "string"
         }
       },
       "required": [
@@ -126,16 +140,6 @@
       ],
       "additionalProperties": false,
       "description": "Check definition — how the rule is evaluated"
-    },
-    "pillar": {
-      "type": "string",
-      "enum": [
-        "discovery",
-        "understandability",
-        "executability",
-        "verifiability"
-      ],
-      "description": "Optional pillar override — if absent, pillar is derived from category via CATEGORY_TO_PILLAR map (spec v0.2 §A.8)"
     },
     "fix": {
       "type": "object",
@@ -164,6 +168,29 @@
       ],
       "additionalProperties": false,
       "description": "Fix definition — how a failing rule can be remediated"
+    },
+    "display_question": {
+      "description": "Agent-perspective question for GAP display (e.g. 'What does a call cost?')",
+      "type": "string"
+    },
+    "gap_type": {
+      "description": "Optional gap type override — if absent, DEFAULT_GAP_TYPE_BY_CATEGORY[category] applies (spec v0.5 §8.1)",
+      "type": "string",
+      "enum": [
+        "documentation",
+        "semantic",
+        "capability",
+        "evidence"
+      ]
+    },
+    "fix_hint": {
+      "description": "Optional fix hint override — if absent, FIX_HINT_BY_GAP_TYPE[type] applies (spec v0.5 §8.3). Conservative wins when mixed.",
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "assisted",
+        "manual"
+      ]
     }
   },
   "required": [

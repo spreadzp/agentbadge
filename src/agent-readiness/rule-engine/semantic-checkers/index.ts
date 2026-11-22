@@ -27,6 +27,7 @@ export { checkerSkillJsonLd } from "./skill-json-ld";
 export { checkerErrorCatalog } from "./error-catalog";
 export { checkerAgentFeeds } from "./agent-feeds";
 export { checkerNextCallPattern } from "./next-call-pattern";
+export { checkerX402PaytoProof } from "./x402-payto-proof";
 // EPIC-146: GEO citability checkers (ported from core package)
 export {
   checkerAnswerFirst,
@@ -58,6 +59,7 @@ import { checkerSkillJsonLd } from "./skill-json-ld";
 import { checkerErrorCatalog } from "./error-catalog";
 import { checkerAgentFeeds } from "./agent-feeds";
 import { checkerNextCallPattern } from "./next-call-pattern";
+import { checkerX402PaytoProof } from "./x402-payto-proof";
 import {
   checkerAnswerFirst,
   checkerEvidenceDensity,
@@ -88,6 +90,7 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   error_catalog: checkerErrorCatalog,
   agent_feeds: checkerAgentFeeds,
   next_call_pattern: checkerNextCallPattern,
+  x402_payto_proof: checkerX402PaytoProof,
   answer_first: checkerAnswerFirst,
   evidence_density: checkerEvidenceDensity,
   entity_clarity: checkerEntityClarity,

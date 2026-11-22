@@ -57,8 +57,8 @@ describe("SLICE-95-8: Ruleset Integration", () => {
     }
 
     it("total rule count includes EPIC-125 additions", () => {
-      // 130 pre-Phase-B + 15 Phase-B + 6 EPIC-125 + 5 EPIC-146 GEO = 156
-      expect(AGENT_READINESS_RULESET.rules.length).toBe(156);
+      // 130 pre-Phase-B + 15 Phase-B + 6 EPIC-125 + 5 EPIC-146 GEO + 1 EPIC-258 = 157
+      expect(AGENT_READINESS_RULESET.rules.length).toBe(157);
     });
   });
 

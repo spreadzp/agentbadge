@@ -98,7 +98,10 @@ export type SemanticOutcome =
   | "partial"
   | "absent"
   | "no_source"
-  | "not_applicable";
+  | "not_applicable"
+  // SLICE-258-4: proven contradiction inside one source's semantics
+  // (e.g. quoted payTo ≠ published payout proof) — maps to CONFLICT.
+  | "conflict";
 
 export type Evidence =
   | (HttpEvidence & { semantic_outcome?: SemanticOutcome })

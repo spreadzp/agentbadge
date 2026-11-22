@@ -132,5 +132,17 @@ export const paymentsRules: RuleDescription[] = [
     right_example: "GET /.well-known/spt.json returns 200 with { \"stripe_publishable_key\": \"pk_live_...\" }.",
     effort_hint: "quick",
     estimated_cost: "$0-10",
-  }
+  },
+  {
+    rule_id: "AB-188",
+    category: "payments",
+    icon: "🔏",
+    title: "Payout Address Proof",
+    short_description: "Your domain proves it owns the wallet that receives payments, so agents can check they're not paying an impersonator.",
+    user_value: "Without a published proof, an agent paying your site has no way to tell your real payout wallet from a swapped address.",
+    wrong_example: "No payout proof published — agents must trust the quoted wallet blindly.",
+    right_example: "A signed payout proof is published for the domain and matches the wallet agents are asked to pay.",
+    effort_hint: "complex",
+    estimated_cost: "$100+",
+  },
 ];
