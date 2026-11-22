@@ -9,7 +9,7 @@ export const arcC59KnowledgeEngineContent = `
 
 <p><em>For a junior: our platform already lets agents pay for API calls, sign receipts, and request human review. The next thing they ask is softer - "how does this work?" - about our capabilities, pricing, and settlement rules. Today the honest answer is "search our docs". What agents actually do is guess from whatever an index returned and present the guess as fact.</em></p>
 
-<p><em>This is part of the Arc campaign series. Previous published episode: <a href="/blog/arc-c57-peach-dex">we let an agent swap EURC for USDC into its own budget vault</a> (EPIC-254 - crash-safe DEX funding). This article is EPIC-229: verified knowledge for agents - and an honest "I don't know" when it isn't there.</em></p>
+<p><em>This is part of the Arc campaign series. Previous published episode: <a href="/blog/arc-c58-counterparty-trust">before our agent pays, it phones a friend</a> (EPIC-257 - counterparty trust for x402 payments). This article is EPIC-229: verified knowledge for agents - and an honest "I don't know" when it isn't there. The next episode, <a href="/blog/arc-c60-interaction-core">the agent interaction inbox</a>, is where agent questions enter - its classifications file the gap records this engine stores.</em></p>
 
 <p>We wanted something narrower and more trustworthy: a knowledge base an agent can query where <strong>every returned item has been written, reviewed, and published by a human</strong> - and where "we don't have a verified answer for that" is a first-class result, not an error.</p>
 
@@ -54,7 +54,7 @@ export const arcC59KnowledgeEngineContent = `
 <p>Three supporting structures round the engine out:</p>
 
 <ul>
-<li><strong>Knowledge gaps</strong> deduplicate on normalized text and move through their own lifecycle; a seam from EPIC-228's interaction inbox (<code>recordInteractionGap</code>, <code>sourceRef</code> = <code>ireq_*</code>) files a gap automatically when an operator classifies an agent's request as a knowledge gap - the missing answer gets recorded where it was noticed, without touching the 228 domain.</li>
+<li><strong>Knowledge gaps</strong> deduplicate on normalized text and move through their own lifecycle; a seam from <a href="/blog/arc-c60-interaction-core">EPIC-228's interaction inbox</a> (<code>recordInteractionGap</code>, <code>sourceRef</code> = <code>ireq_*</code>) files a gap automatically when an operator classifies an agent's request as a knowledge gap - the missing answer gets recorded where it was noticed, without touching the 228 domain.</li>
 <li><strong>Typed relations</strong> link items (<code>SUPERSEDES</code>, related docs) with dedup, no self-loops, and a cycle check on supersession - so "newer version" edges can never form a loop.</li>
 <li><strong>Version-scoped evidence</strong> attaches typed source URIs to a specific version (capped at 50), so "why should I believe this" has a pointer, not a promise.</li>
 </ul>
@@ -89,5 +89,5 @@ export const arcC59KnowledgeEngineContent = `
 
 <p><strong>For AI agents:</strong> the knowledge surface is public and read-only: <code>GET https://agentbadge.xyz/api/v1/agent/knowledge/search?q=&lt;query&gt;</code> returns published items with snippets; <code>POST .../ask</code> returns a deterministic answer with sources or a typed refusal. Rate-limited at 10 req/min anonymous. A <code>REFUSED</code> response is not an error - it means no verified item covers your query, and the gap is now recorded.</p>
 
-<p><em>Read the arc: <a href="/blog/arc-c49-agent-request-inbox">agent request inbox</a> &middot; <a href="/blog/arc-c50-x402-gateway">x402 payment gateway</a> &middot; <a href="/blog/arc-c52-agent-trust-layers">agent trust layers</a> &middot; <a href="/blog/arc-c55-a2a-settlement">A2A settlement</a> &middot; <a href="/blog/arc-c57-peach-dex">EURC&rarr;USDC funding</a></em></p>
+<p><em>Read the arc: <a href="/blog/arc-c49-agent-request-inbox">agent request inbox</a> &middot; <a href="/blog/arc-c50-x402-gateway">x402 payment gateway</a> &middot; <a href="/blog/arc-c52-agent-trust-layers">agent trust layers</a> &middot; <a href="/blog/arc-c55-a2a-settlement">A2A settlement</a> &middot; <a href="/blog/arc-c58-counterparty-trust">counterparty trust</a> &middot; <a href="/blog/arc-c60-interaction-core">agent interaction inbox</a></em></p>
 `;

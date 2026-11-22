@@ -84,8 +84,13 @@ export const article: BlogArticle = {
     },
     {
       type: "read",
-      label: "Previous article: Peach DEX funding",
-      url: "https://agentbadge.xyz/blog/arc-c57-peach-dex",
+      label: "Previous article: counterparty trust",
+      url: "https://agentbadge.xyz/blog/arc-c58-counterparty-trust",
+    },
+    {
+      type: "read",
+      label: "Next: agent interaction inbox",
+      url: "https://agentbadge.xyz/blog/arc-c60-interaction-core",
     },
   ],
   qa: [
