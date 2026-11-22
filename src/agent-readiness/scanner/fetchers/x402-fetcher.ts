@@ -23,6 +23,11 @@ import {
   mppQuotesDivergent,
   type MppQuote,
 } from "./mpp-payment-challenge";
+import {
+  offerReceiptFromPaymentPayload,
+  paymentPayloadDocs,
+  type OfferReceiptSummary,
+} from "./offer-receipt-extension";
 
 export interface X402ProbeAccept {
   scheme?: string;
@@ -44,6 +49,11 @@ export interface X402ProbeAttempt {
    * one challenge block, no extra traffic needed.
    */
   mppQuotes?: MppQuote[];
+  /**
+   * SLICE-258-9: offer-and-receipt extension summary decoded from the
+   * same payment payload — presence only, signatures not verified.
+   */
+  offerReceipt?: OfferReceiptSummary;
 }
 
 export interface X402DoubleProbe {
@@ -110,14 +120,6 @@ export function pickProbeCandidates(manifest: unknown): { path: string; method: 
 
 // ─── 402 → accepts[] decoding ───────────────────────────────────────────────
 
-function decodeB64Json(b64: string): unknown | null {
-  try {
-    return JSON.parse(Buffer.from(b64, "base64").toString("utf-8"));
-  } catch {
-    return null;
-  }
-}
-
 function acceptsOf(doc: unknown): X402ProbeAccept[] | null {
   if (typeof doc !== "object" || doc === null) return null;
   const a = (doc as Record<string, unknown>).accepts;
@@ -133,24 +135,9 @@ export function acceptsFromPaymentPayload(
   headers: Record<string, string>,
   bodyText: string | null,
 ): X402ProbeAccept[] | null {
-  const pr = headers["payment-required"];
-  if (pr) {
-    const found = acceptsOf(decodeB64Json(pr));
+  for (const doc of paymentPayloadDocs(headers, bodyText)) {
+    const found = acceptsOf(doc);
     if (found) return found;
-  }
-  const wwwAuth = headers["www-authenticate"];
-  const m = wwwAuth?.match(/request="([^"]+)"/);
-  if (m) {
-    const found = acceptsOf(decodeB64Json(m[1]));
-    if (found) return found;
-  }
-  if (bodyText) {
-    try {
-      const found = acceptsOf(JSON.parse(bodyText));
-      if (found) return found;
-    } catch {
-      /* body not JSON */
-    }
   }
   return null;
 }
@@ -181,6 +168,10 @@ async function probeOnce(baseUrl: string, path: string, method: "GET" | "POST"):
         response.status === 402
           ? parsePaymentChallengeQuotes(headers["www-authenticate"])
           : [],
+      offerReceipt:
+        response.status === 402
+          ? (offerReceiptFromPaymentPayload(headers, bodyText) ?? undefined)
+          : undefined,
     };
   } catch {
     return { status: 0, observedAt, accepts: null, mppQuotes: [] };

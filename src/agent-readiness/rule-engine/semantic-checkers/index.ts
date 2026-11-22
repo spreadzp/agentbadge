@@ -29,6 +29,7 @@ export { checkerAgentFeeds } from "./agent-feeds";
 export { checkerNextCallPattern } from "./next-call-pattern";
 export { checkerX402PaytoProof } from "./x402-payto-proof";
 export { checkerMppRecipientProof } from "./mpp-recipient-proof";
+export { checkerOfferReceiptDeclared } from "./offer-receipt-declared";
 // EPIC-146: GEO citability checkers (ported from core package)
 export {
   checkerAnswerFirst,
@@ -62,6 +63,7 @@ import { checkerAgentFeeds } from "./agent-feeds";
 import { checkerNextCallPattern } from "./next-call-pattern";
 import { checkerX402PaytoProof } from "./x402-payto-proof";
 import { checkerMppRecipientProof } from "./mpp-recipient-proof";
+import { checkerOfferReceiptDeclared } from "./offer-receipt-declared";
 import {
   checkerAnswerFirst,
   checkerEvidenceDensity,
@@ -94,6 +96,7 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   next_call_pattern: checkerNextCallPattern,
   x402_payto_proof: checkerX402PaytoProof,
   mpp_recipient_proof: checkerMppRecipientProof,
+  offer_receipt_declared: checkerOfferReceiptDeclared,
   answer_first: checkerAnswerFirst,
   evidence_density: checkerEvidenceDensity,
   entity_clarity: checkerEntityClarity,

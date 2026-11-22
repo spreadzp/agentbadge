@@ -157,4 +157,16 @@ export const paymentsRules: RuleDescription[] = [
     effort_hint: "complex",
     estimated_cost: "$100+",
   },
+  {
+    rule_id: "AB-190",
+    category: "payments",
+    icon: "🧾",
+    title: "Offer-and-Receipt Extension Declared",
+    short_description: "Your 402 responses declare the offer-and-receipt extension, so agents know signed offers and receipts are available. Verified means declared — signatures are not checked.",
+    user_value: "Without a declared offer-receipt extension, an agent has no way to get a signed offer or receipt it can later use as dispute or audit evidence.",
+    wrong_example: "Payment requirements come back with no offer-receipt extension declared — agents cannot expect signed offers or receipts.",
+    right_example: "402 responses carry extensions[\"offer-receipt\"].info.offers[] — agents can request signed offers and later receive signed receipts.",
+    effort_hint: "complex",
+    estimated_cost: "$100+",
+  },
 ];
