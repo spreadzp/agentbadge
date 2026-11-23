@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "envelope_id": "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E1",
+  "scan_id": "scan_01KDX2V5Q0W6Y8Z9A1B2C3D4E5",
+  "site_id": "site_42",
+  "collector": {
+    "type": "wp_plugin",
+    "id": "collector-fixture",
+    "version": "1.0.0"
+  },
+  "verifier": {
+    "id": "agentbadge-backend",
+    "check_type": "schema-and-channel"
+  },
+  "provenance": "PLUGIN_SELF_REPORTED",
+  "collected_at": "2026-11-23T10:00:00Z",
+  "received_at": "2026-11-23T10:00:04.000Z",
+  "subject": {
+    "type": "wp_option",
+    "name": "blog_public"
+  },
+  "payload": {
+    "type": "wp_option_read",
+    "name": "blog_public",
+    "value": "1"
+  },
+  "evidence_refs": [],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_id": "bk-fixture-1",
+    "value": "aQegdTNW1FPjAGd/QhQpJA9h/ZAliFPrJucDjzpcDxqV2vCuQb/kU0DVE5pNhwyXoVgnArG8hBPSR99jPh1kCg=="
+  }
+}

@@ -1,0 +1,340 @@
+{
+  "$id": "https://agentbadge.xyz/schemas/intel/collector-submission/v1",
+  "title": "Collector Submission (untrusted input DTO, v1)",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "collector_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "site_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collected_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+    },
+    "subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "site"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "url"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "wp_option"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "file_path"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "payload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "http_observation"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            "headers": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "content_hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "content_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resolved_ip": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "document_fact"
+            },
+            "doc_type": {
+              "type": "string",
+              "enum": [
+                "robots",
+                "sitemap",
+                "llms_txt",
+                "well_known",
+                "other"
+              ]
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "facts": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "required": [
+            "type",
+            "doc_type",
+            "url",
+            "facts"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "file_presence"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "present": {
+              "type": "boolean"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path",
+            "present"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "wp_option_read"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {},
+            "autoload": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "name",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "verification_result"
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "confirmed",
+                "refuted",
+                "inconclusive"
+              ]
+            },
+            "detail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target_envelope_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "outcome",
+            "detail"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "derived_assessment"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "inputs": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "required": [
+            "type",
+            "summary"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_ref_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "evidence_ref_id",
+          "media_type",
+          "sha256",
+          "size"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "collector_id",
+    "scan_id",
+    "site_ref",
+    "collected_at",
+    "subject",
+    "payload",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

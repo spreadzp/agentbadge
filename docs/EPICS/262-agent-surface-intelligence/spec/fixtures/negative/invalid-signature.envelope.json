@@ -1,0 +1,38 @@
+{
+  "expected_error": "bad_signature",
+  "document": {
+    "schema_version": "1.0",
+    "envelope_id": "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E0",
+    "scan_id": "scan_01KDX2V5Q0W6Y8Z9A1B2C3D4E5",
+    "site_id": "site_42",
+    "collector": {
+      "type": "external_scan",
+      "id": "collector-fixture",
+      "version": "1.0.0"
+    },
+    "verifier": {
+      "id": "agentbadge-backend",
+      "check_type": "schema-and-channel"
+    },
+    "provenance": "EXTERNAL_OBSERVED",
+    "collected_at": "2026-11-23T10:00:00Z",
+    "received_at": "2026-11-23T10:00:04.000Z",
+    "subject": {
+      "type": "url",
+      "url": "https://example.com/robots.txt"
+    },
+    "payload": {
+      "type": "http_observation",
+      "url": "https://example.com/robots.txt",
+      "status": 200,
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "content_type": "text/plain"
+    },
+    "evidence_refs": [],
+    "signature": {
+      "algorithm": "ed25519",
+      "key_id": "bk-fixture-1",
+      "value": "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ=="
+    }
+  }
+}

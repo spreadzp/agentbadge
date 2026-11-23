@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "envelope_id": "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E2",
+  "scan_id": "scan_01KDX2V5Q0W6Y8Z9A1B2C3D4E5",
+  "site_id": "site_42",
+  "collector": {
+    "type": "backend_verifier",
+    "id": "collector-fixture",
+    "version": "1.0.0"
+  },
+  "verifier": {
+    "id": "verifier-external-refetch",
+    "check_type": "external-refetch"
+  },
+  "provenance": "BACKEND_VERIFIED",
+  "collected_at": "2026-11-23T10:00:00Z",
+  "received_at": "2026-11-23T10:00:04.000Z",
+  "subject": {
+    "type": "url",
+    "url": "https://example.com/robots.txt"
+  },
+  "payload": {
+    "type": "verification_result",
+    "outcome": "confirmed",
+    "detail": "external re-fetch observed the same wp-json exposure",
+    "target_envelope_id": "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E1"
+  },
+  "evidence_refs": [],
+  "derived_from": [
+    "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E1"
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_id": "bk-fixture-1",
+    "value": "5b0F/n7DYlKJU9jByiFVkhE2h9hpv7JP97WxBt6ODFK5S6BfOfHiJ8IYEKXJ2pc3Bx+EcTBiDdD7Jqm7Nt2WDQ=="
+  }
+}

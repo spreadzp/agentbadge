@@ -1,0 +1,18 @@
+{
+  "expected_error": "invalid_union",
+  "document": {
+    "collector_id": "collector-fixture",
+    "scan_id": "scan_01KDX2V5Q0W6Y8Z9A1B2C3D4E5",
+    "site_ref": "site_42",
+    "collected_at": "2026-11-23T10:00:00Z",
+    "subject": {
+      "type": "url",
+      "url": "https://example.com/x"
+    },
+    "payload": {
+      "type": "exec_shell",
+      "cmd": "id"
+    },
+    "evidence_refs": []
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "expected_error": "invalid_envelope",
+  "document": {
+    "schema_version": "1.0",
+    "envelope_id": "env_01KDX2V5Q0W6Y8Z9A1B2C3D4E3",
+    "scan_id": "scan_01KDX2V5Q0W6Y8Z9A1B2C3D4E5",
+    "site_id": "site_42",
+    "collector": {
+      "type": "deriver",
+      "id": "collector-fixture",
+      "version": "1.0.0"
+    },
+    "verifier": {
+      "id": "agentbadge-backend",
+      "check_type": "schema-and-channel"
+    },
+    "provenance": "DERIVED",
+    "collected_at": "2026-11-23T10:00:00Z",
+    "received_at": "2026-11-23T10:00:04.000Z",
+    "subject": {
+      "type": "site"
+    },
+    "payload": {
+      "type": "derived_assessment",
+      "summary": "robots.txt allows all assessed agent crawlers"
+    },
+    "evidence_refs": [],
+    "signature": {
+      "algorithm": "ed25519",
+      "key_id": "bk-fixture-1",
+      "value": "4zPuItWX7V5EHsm4AAEZetuO5FgC9VyFKvbGr42nApsb6CsxXY2zLKDkwJ0aa4NVte9KF/wSvKyJr2x5RND3Dg=="
+    }
+  }
+}
