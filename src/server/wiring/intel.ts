@@ -11,6 +11,12 @@ import {
   createIntelRegistryService,
 } from "../lib/intel/registry";
 import { pickIntelEvidenceStore } from "../lib/intel/evidence/db-stores";
+import { pickIntelEntitlementStore } from "../lib/intel/entitlement";
+import { INTEL_WP_PROFILE_V1 } from "../lib/intel/rules";
+import {
+  createSafeScanFetch,
+  pickIntelScanJobStore,
+} from "../lib/intel/scan";
 import { createIntelApiRoutes, createIntelKeysRoutes } from "../routes/intel";
 
 export function wireIntel(app: Hono): void {
@@ -23,6 +29,8 @@ export function wireIntel(app: Hono): void {
     pickIntelRegistryStores(db),
   );
   const evidence = pickIntelEvidenceStore(db);
+  const entitlement = pickIntelEntitlementStore(db);
+  const scanJobs = pickIntelScanJobStore(db);
   app.route(
     "/api/intel",
     createIntelApiRoutes({
@@ -30,6 +38,10 @@ export function wireIntel(app: Hono): void {
       registry,
       evidence,
       evidenceRetentionDays: cfg.evidenceRetentionDays,
+      entitlement,
+      scanJobs,
+      ruleset: INTEL_WP_PROFILE_V1,
+      scanFetch: createSafeScanFetch(),
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));

@@ -26,6 +26,9 @@ export interface SafeFetchOptions {
   maxRedirects?: number;
   maxResponseSize?: number;
   allowedContentTypes?: string[];
+  /** override the default AgentBadge UA — used by the intel scan
+   *  UA-matrix probes (EPIC-262 SLICE-262-6) */
+  userAgent?: string;
 }
 
 export interface SafeFetchResult {
@@ -78,7 +81,12 @@ export async function safeFetch(
       ip = pinned.ip;
     }
 
-    const result = await fetchSingleHop(currentUrl, ip, config);
+    const result = await fetchSingleHop(
+      currentUrl,
+      ip,
+      config,
+      opts?.userAgent,
+    );
 
     if (result.status >= 300 && result.status < 400) {
       const location = result.headers["location"];
@@ -111,7 +119,12 @@ export async function safeFetch(
 
     // Retry once on 5xx
     if (result.status >= 500 && hop === 0 && redirectChain.length === 0) {
-      const retryResult = await fetchSingleHop(currentUrl, ip, config);
+      const retryResult = await fetchSingleHop(
+        currentUrl,
+        ip,
+        config,
+        opts?.userAgent,
+      );
       return {
         ...retryResult,
         redirectChain,
@@ -133,6 +146,7 @@ async function fetchSingleHop(
   url: string,
   ip: string,
   config: { timeout: { connect: number; total: number }; maxResponseSize: number },
+  userAgent?: string,
 ): Promise<Omit<SafeFetchResult, "redirectChain" | "fetchTime">> {
   const controller = new AbortController();
   const totalTimer = setTimeout(() => controller.abort(), config.timeout.total);
@@ -142,7 +156,7 @@ async function fetchSingleHop(
       method: "GET",
       redirect: "manual",
       signal: controller.signal,
-      headers: { "User-Agent": USER_AGENT },
+      headers: { "User-Agent": userAgent ?? USER_AGENT },
     });
 
     const headers: Record<string, string> = {};

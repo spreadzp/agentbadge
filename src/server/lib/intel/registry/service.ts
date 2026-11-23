@@ -3,6 +3,7 @@
 
 import { generateReportId } from "../../../../agent-readiness/integrity/ulid";
 import type { IntelRegistryStores } from "./store";
+import { resolveSiteContext as resolveSiteContextImpl } from "./site-context";
 import {
   generateSiteKeyPlaintext,
   hashSiteKey,
@@ -71,6 +72,17 @@ export interface IntelRegistryService {
     domain_control: IntelOwnershipProof | null;
   }>;
   needsReverification(now: Date): Promise<IntelOwnershipProof[]>;
+
+  /**
+   * Site → tenant + primary-hostname resolution for operation gating
+   * and scan targeting (SLICE-262-6). null when the site is unknown.
+   */
+  resolveSiteContext(siteId: string): Promise<{
+    site: IntelSite;
+    customerId: string;
+    tenantId: string | null;
+    primaryHostname: string | null;
+  } | null>;
 }
 
 export function createIntelRegistryService(
@@ -271,6 +283,10 @@ export function createIntelRegistryService(
 
     async needsReverification(at) {
       return stores.ownership.due(at.toISOString());
+    },
+
+    async resolveSiteContext(siteId) {
+      return resolveSiteContextImpl(stores, siteId);
     },
   };
 }

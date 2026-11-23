@@ -4,11 +4,14 @@
 // with dedupe + retention (SLICE-262-3, D-262-Q5/Q6/Q8).
 import { Hono } from "hono";
 import { INTEL_API_VERSION } from "../../lib/intel/keys";
+import { generateReportId } from "../../../agent-readiness/integrity/ulid";
 import {
   acceptSubmission,
   collectorSubmissionSchema,
 } from "../../lib/intel/evidence";
 import { computeDedupeHash } from "../../lib/intel/evidence/store";
+import { checkEntitlement } from "../../lib/intel/entitlement";
+import { runScanJob, SCAN_PLAN } from "../../lib/intel/scan";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
 const DAY_MS = 86_400_000;
@@ -173,6 +176,106 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
     }
 
     return c.json({ deduplicated: false, envelope }, 201);
+  });
+
+  // POST /scans — hosted deep-scan trigger (SLICE-262-6). site_key
+  // authenticates the installation; entitlement gates the PAID op on
+  // the resolved tenant — the backend decides, never UI/plugin.
+  // v1 runs the job inline; an async runner lands with observability.
+  app.post("/scans", async (c) => {
+    if (!deps.key) return c.json(INTEL_KEY_MISSING, 503);
+    if (
+      !deps.registry ||
+      !deps.evidence ||
+      !deps.scanJobs ||
+      !deps.entitlement ||
+      !deps.ruleset ||
+      !deps.scanFetch
+    ) {
+      return c.json(
+        { error: "scans_unavailable", message: "deep-scan deps are not configured" },
+        503,
+      );
+    }
+
+    const token = bearerToken(c);
+    const auth = token
+      ? await deps.registry.authenticateSiteKey(token)
+      : null;
+    if (!auth) {
+      return c.json(
+        { error: "site_key_invalid", message: "missing, unknown, or revoked site key" },
+        401,
+      );
+    }
+
+    const ctx = await deps.registry.resolveSiteContext(auth.site_id);
+    if (!ctx) {
+      return c.json({ error: "site_unknown", message: `unknown site ${auth.site_id}` }, 404);
+    }
+    if (!ctx.tenantId) {
+      return c.json(
+        { error: "site_no_tenant", message: "site is not attached to a tenant" },
+        409,
+      );
+    }
+    if (!ctx.primaryHostname) {
+      return c.json(
+        { error: "site_no_domain", message: "site has no active domain to scan" },
+        409,
+      );
+    }
+
+    // entitlement check on EVERY paid operation (D-262-Q7)
+    const now = new Date();
+    const ent = await deps.entitlement.getByTenant(ctx.tenantId);
+    const decision = checkEntitlement(
+      ent,
+      "deep_scan",
+      auth.site_id,
+      now.toISOString(),
+    );
+    if (!decision.allowed) {
+      return c.json(
+        { error: "entitlement_denied", reason: decision.reason },
+        403,
+      );
+    }
+
+    let job = await deps.scanJobs.insert({
+      id: `job_${generateReportId()}`,
+      siteId: auth.site_id,
+      tenantId: ctx.tenantId,
+      scanId: `scan_${generateReportId()}`,
+      status: "queued",
+      baseUrl: `https://${ctx.primaryHostname}`,
+      probeFailures: 0,
+      probeTotal: SCAN_PLAN.length,
+      error: null,
+      reportId: null,
+      report: null,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      finishedAt: null,
+    });
+
+    job = await runScanJob(job, {
+      fetch: deps.scanFetch,
+      evidence: deps.evidence,
+      jobs: deps.scanJobs,
+      key: deps.key,
+      ruleset: deps.ruleset,
+      evidenceRetentionDays: deps.evidenceRetentionDays,
+    });
+
+    return c.json(
+      {
+        job: { ...job, report: undefined },
+        report: job.report,
+        warning: decision.warning,
+      },
+      job.status === "failed" ? 502 : 201,
+    );
   });
 
   return app;

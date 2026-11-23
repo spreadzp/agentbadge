@@ -2,6 +2,9 @@
 import type { SigningKey } from "../../../agent-readiness/integrity/key-manager";
 import type { IntelRegistryService } from "../../lib/intel/registry";
 import type { IntelEvidenceStore } from "../../lib/intel/evidence/store";
+import type { IntelEntitlementStore } from "../../lib/intel/entitlement";
+import type { IntelRuleset } from "../../lib/intel/rules";
+import type { IntelScanJobStore, ScanFetch } from "../../lib/intel/scan";
 
 export interface IntelRouteDeps {
   /** null → enabled but misconfigured: handlers answer 503 intel_key_missing. */
@@ -15,6 +18,14 @@ export interface IntelRouteDeps {
   evidence?: IntelEvidenceStore;
   /** retention window in days — stamped as expiresAt on each row. */
   evidenceRetentionDays?: number;
+  /**
+   * SLICE-262-6 deep-scan deps — POST /scans answers 503
+   * scans_unavailable until all are wired.
+   */
+  entitlement?: IntelEntitlementStore;
+  scanJobs?: IntelScanJobStore;
+  ruleset?: IntelRuleset;
+  scanFetch?: ScanFetch;
 }
 
 export const INTEL_KEY_MISSING = {
