@@ -66,15 +66,16 @@ export function createMemoryDelegateStore(): DelegateStore {
 }
 
 /** Throws on invalid register input (client-safe messages).
- *  SLICE-234-32: `ownerPerTxUsd` clamps spendCapUsd to the owner's live
- *  envelope perTxUsd — a delegate can never be registered wider than
- *  the owner's current per-tx cap (non-widening invariant). */
+ *  SLICE-234-42: `ownerPerTxUsd` makes registration STRICT — a delegate
+ *  can never register wider than the owner's current per-tx cap
+ *  (non-widening invariant); widening spendCapUsd is rejected, not
+ *  silently clamped (MMF v0.5-clamp §9: register verdict = invalid). */
 export function validateDelegateInput(input: {
   ownerWallet: string;
   delegate: string;
   chain: string;
   spendCapUsd: number;
-  /** Owner's current envelope.perTxUsd — clamps the delegate cap. */
+  /** Owner's current envelope.perTxUsd — bounds the delegate cap. */
   ownerPerTxUsd?: number;
 }): DelegateRecord {
   if (!isAddress(input.ownerWallet)) throw new Error("invalid owner wallet");
@@ -87,15 +88,18 @@ export function validateDelegateInput(input: {
     input.spendCapUsd > 1_000_000
   )
     throw new Error("spendCapUsd must be in (0, 1e6]");
-  const spendCapUsd =
-    input.ownerPerTxUsd !== undefined
-      ? Math.min(input.spendCapUsd, input.ownerPerTxUsd)
-      : input.spendCapUsd;
+  if (
+    input.ownerPerTxUsd !== undefined &&
+    input.spendCapUsd > input.ownerPerTxUsd
+  )
+    throw new Error(
+      `spendCapUsd exceeds owner perTx cap (max ${input.ownerPerTxUsd})`,
+    );
   return {
     ownerWallet: getAddress(input.ownerWallet),
     delegate: getAddress(input.delegate),
     chain: input.chain,
-    spendCapUsd,
+    spendCapUsd: input.spendCapUsd,
     authorizedAt: Date.now(),
   };
 }

@@ -5,7 +5,7 @@
  * Step mapping:
  *  - {delegate,bounds}  → validateDelegateInput + store.put
  *      (spendCapUsd=bounds.max_amount, ownerPerTxUsd=live owner cap;
- *       MMF rejects widening children — we CLAMP, model delta)
+ *       widening children → validation throw = rejection, post-234-42)
  *  - {tx:{as}}          → spendAsDelegate(amountUsd=scalar,
  *      walletStore=owner registry, kit mock status="ready")
  *  - {revoke:"parent"}  → DelegateStore.revoke(owner, chain) — kills
@@ -66,9 +66,9 @@ interface StepOutcome {
 function delegateDimensions(v: DelegationVector): Record<string, DimensionNote> {
   const d: Record<string, DimensionNote> = {
     stored_cap: {
-      mapped_to: "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+      mapped_to: "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
       equivalence: "Exact",
-      note: "non-widening implemented post-234-32 (live owner lookup)",
+      note: "non-widening strict at register post-234-42 (live owner lookup)",
     },
   };
   const steps = v.steps;

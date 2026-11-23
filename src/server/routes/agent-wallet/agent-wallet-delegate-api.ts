@@ -76,8 +76,9 @@ export function createAgentWalletDelegateRoutes(
           delegate: deps.delegateAddress,
           chain: body.chain ?? "",
           spendCapUsd: Number(body.spendCapUsd),
-          // 234-32: clamp to the owner's LIVE envelope perTxUsd — a
-          // delegate can never register wider than the owner allows.
+          // 234-42: strict bound vs the owner's LIVE envelope perTxUsd —
+          // a delegate can never register wider than the owner allows
+          // (widening → 400; caller re-tries with cap ≤ perTxUsd).
           ownerPerTxUsd: ownerRec?.envelope?.perTxUsd,
         });
       } catch (e) {

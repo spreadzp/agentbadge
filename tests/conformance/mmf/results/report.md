@@ -12,7 +12,7 @@ implementation we wish we had.* Production was not changed to conform.
 | Metric | n | Status | Equivalence |
 |---|---|---|---|
 | spend-decision | 36 | PASS 20 · DIVERGENCE-BUG 5 · DIVERGENCE-MODEL 3 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | Exact 7 · Partial 8 · None 21 |
-| delegation | 18 | PASS 4 · DIVERGENCE-MODEL 13 · NOT_MAPPABLE 1 | None 18 |
+| delegation | 18 | PASS 5 · DIVERGENCE-MODEL 12 · NOT_MAPPABLE 1 | None 18 |
 | lifecycle | 29 | PASS 2 · DIVERGENCE-BUG 2 · DIVERGENCE-MODEL 17 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | None 29 |
 | crypto-evidence | 9 | PASS 9 | None 9 |
 | own-invariants | — | probes, not vectors | — |

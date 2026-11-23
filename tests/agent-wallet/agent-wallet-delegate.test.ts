@@ -123,19 +123,24 @@ describe("delegate store + validation", () => {
     );
   });
 
-  it("234-32: ownerPerTxUsd clamps spendCapUsd at register time", () => {
+  it("234-42: ownerPerTxUsd widening → strict reject (no silent clamp)", () => {
     const base = {
       ownerWallet: W, delegate: DELEGATE, chain: CHAIN, spendCapUsd: 500,
     };
-    // Owner envelope perTxUsd=10 → delegate cap clamped to 10.
+    // Owner envelope perTxUsd=10 → widening register is invalid.
+    expect(() =>
+      validateDelegateInput({ ...base, ownerPerTxUsd: 10 }),
+    ).toThrow("exceeds owner perTx");
+    // Boundary == owner perTx → allowed.
     expect(
-      validateDelegateInput({ ...base, ownerPerTxUsd: 10 }).spendCapUsd,
+      validateDelegateInput({ ...base, spendCapUsd: 10, ownerPerTxUsd: 10 })
+        .spendCapUsd,
     ).toBe(10);
     // Owner envelope wider → requested cap stands.
     expect(
       validateDelegateInput({ ...base, ownerPerTxUsd: 1000 }).spendCapUsd,
     ).toBe(500);
-    // No owner envelope → no clamp.
+    // No owner envelope → no bound.
     expect(validateDelegateInput(base).spendCapUsd).toBe(500);
   });
 });
@@ -303,22 +308,27 @@ describe("delegate routes", () => {
     expect(body.addDelegate.params.from.chain).toBe(CHAIN);
   });
 
-  it("234-32: POST clamps spendCapUsd to owner's live envelope perTxUsd", async () => {
+  it("234-42: POST widening spendCapUsd → 400, boundary → 201", async () => {
     const ws = await ownerStore({ perTxUsd: 10 });
     const app = routes(ws);
     const path = `/api/wallets/${W}/delegate`;
-    const body = JSON.stringify({ chain: CHAIN, spendCapUsd: 500 });
-    const res = await app.request(path, {
-      method: "POST",
-      headers: {
-        ...await signed("POST", path, owner, body),
-        "Content-Type": "application/json",
-      },
-      body,
-    });
-    expect(res.status).toBe(201);
-    const out = await res.json();
-    expect(out.record.spendCapUsd).toBe(10); // clamped, not 500
+    const post = async (spendCapUsd: number) => {
+      const body = JSON.stringify({ chain: CHAIN, spendCapUsd });
+      return app.request(path, {
+        method: "POST",
+        headers: {
+          ...await signed("POST", path, owner, body),
+          "Content-Type": "application/json",
+        },
+        body,
+      });
+    };
+    const wide = await post(500);
+    expect(wide.status).toBe(400);
+    expect((await wide.json()).error).toContain("exceeds owner perTx");
+    const boundary = await post(10);
+    expect(boundary.status).toBe(201);
+    expect((await boundary.json()).record.spendCapUsd).toBe(10);
   });
 
   it("no sig → 401; x-wallet ≠ :addr → 401; stranger-proof", async () => {

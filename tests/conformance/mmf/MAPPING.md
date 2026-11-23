@@ -34,8 +34,8 @@ tests/conformance/mmf/spend-track.test.ts`).
 
 | Status | Count | Vectors |
 |---|---|---|
-| PASS | 24 | V01, V02, V05, V06, V08, V10–V16, V18–V20, V22–V24, V26, V35 + D01, D02, D13, D17 |
-| DIVERGENCE-MODEL | 16 | V25, V28, V34; D03–D12, D14–D16 |
+| PASS | 25 | V01, V02, V05, V06, V08, V10–V16, V18–V20, V22–V24, V26, V35 + D01–D03, D13, D17 |
+| DIVERGENCE-MODEL | 15 | V25, V28, V34; D04–D12, D14–D16 |
 | NOT_MAPPABLE | 8 | V03, V07, V09, V27, V30–V32; D18 |
 | DIVERGENCE-BUG | 5 | V04, V17, V29, V33, V36 |
 | GATE_EXCEPTION | 1 | V21 |
@@ -55,10 +55,14 @@ tests/conformance/mmf/spend-track.test.ts`).
 - **V25/V28/V34 — denied but wrong first-failure check.** We answer
   `CAP_EXCEEDED` where MMF says `NON_POSITIVE`/`EXPIRED` — order of
   checks differs; the spend IS blocked either way.
-- **D03–D12 — widening children clamped, not rejected.** MMF expects
-  `invalid` for child bounds ⊄ parent; `validateDelegateInput` silently
-  clamps `spendCapUsd` to owner perTx. Both enforce non-widening —
-  verdict shape differs.
+- **D03 — resolved post-234-42.** `validateDelegateInput` now strict-
+  rejects a widening `spendCapUsd` (throw → `invalid` match); was
+  silent `min`-clamp under 234-32.
+- **D04–D12 — widening on unmapped bound dims.** `invalid` expected
+  for child currency/payees/velocity/budget/expiry widening and
+  revoked-parent delegation; the delegate model checks only
+  `max_amount` vs owner perTx — other parent bounds are not
+  represented (see `parent_extra_bounds`, `revocation` dims).
 - **D14–D16 — delegate path lacks expiry/velocity/budget dims.** Only
   perTx + owner-suspension exist on the delegate path.
 - **V31/V32 — `"1.0"`/`"1e0"` accepted.** Lexical amount class has no
@@ -82,9 +86,9 @@ tests/conformance/mmf/spend-track.test.ts`).
 1. Is `GATE_EXCEPTION` acceptable notation for "enforcement threw,
    request denied with 500 but no decision record"? MMF wants a deny +
    evidence; we want to report honestly that the record is absent.
-2. Clamp-vs-reject on widening delegates (D03+): is verdict `invalid`
-   load-bearing for conformance, or is enforcing the effective bound
-   (our clamp) acceptable behaviour-wise?
+2. ~~Clamp-vs-reject on widening delegates (D03+)~~ — resolved
+   2026-11-23: strict-reg принят (v0.5-clamp §9/KD04), 234-42
+   переключил на reject; D03 PASS.
 3. Velocity window: is 86 400 s normative, or "implementation-defined
    rolling window" where 3 600 s is conformant under Partial?
 4. `budget_window_days` outside {1,7,30} (none in corpus) — would

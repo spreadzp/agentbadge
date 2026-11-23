@@ -1342,9 +1342,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1391,9 +1391,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1418,7 +1418,7 @@
     "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
     "track": "delegation",
     "vector_id": "D03",
-    "result": "DIVERGENCE-MODEL",
+    "result": "PASS",
     "equivalence": "None",
     "production_path": "spendAsDelegate+DelegateStore",
     "expected": {
@@ -1431,9 +1431,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1444,14 +1444,12 @@
     "steps": [
       {
         "kind": "delegate",
-        "verdict": "mismatch",
+        "verdict": "match",
         "detail": {
-          "delegate": "c",
-          "spendCapUsd": 500
+          "error": "spendCapUsd exceeds owner perTx cap (max 500)"
         }
       }
-    ],
-    "notes": "wider amount cap"
+    ]
   },
   {
     "schema_version": 1,
@@ -1472,9 +1470,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1513,9 +1511,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1554,9 +1552,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1595,9 +1593,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1636,9 +1634,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1677,9 +1675,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1718,9 +1716,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1759,9 +1757,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1801,9 +1799,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "revocation": {
         "mapped_to": "DelegateStore.revoke / owner.suspended",
@@ -1860,9 +1858,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "revocation": {
         "mapped_to": "DelegateStore.revoke / owner.suspended",
@@ -1927,9 +1925,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -1986,9 +1984,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -2061,9 +2059,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "parent_extra_bounds": {
         "mapped_to": null,
@@ -2126,9 +2124,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "delegation_chains": {
         "mapped_to": null,
@@ -2220,9 +2218,9 @@
     },
     "dimensions": {
       "stored_cap": {
-        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
         "equivalence": "Exact",
-        "note": "non-widening implemented post-234-32 (live owner lookup)"
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
       },
       "delegate_lifecycle": {
         "mapped_to": null,
