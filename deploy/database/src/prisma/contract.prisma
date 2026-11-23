@@ -1713,3 +1713,87 @@ model ReviewEvent {
   @@unique([reviewId, seq])
   @@index([kind])
 }
+
+// ─── EPIC-262 (SLICE-262-2) Agent Surface Intelligence — site registry.
+// Tenant→Customer→Site→{Domains, Environment} per D-262-Q5. site_id is
+// the stable technical identity: domain moves never rewrite it
+// (D-262-Q9). Ownership is TWO independent scopes keyed @@unique(siteId,
+// kind). Site keys persist hash+prefix only — plaintext never stored.
+
+model IntelTenant {
+  id        String            @id // tnt_<ulid>
+  slug      String            @unique
+  name      String
+  status    String            @default("active") // active|suspended
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model IntelCustomer {
+  id        String            @id // cus_<ulid>
+  tenantId  String
+  name      String
+  status    String            @default("active") // active|suspended
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  @@index([tenantId])
+}
+
+model IntelSite {
+  id          String            @id // site_<ulid> — survives domain moves
+  customerId  String
+  environment String            @default("production") // production|staging|development
+  status      String            @default("active") // active|suspended|deleted
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([customerId])
+}
+
+model IntelDomain {
+  id        String            @id // dom_<ulid>
+  siteId    String
+  hostname  String            @unique // globally claimed
+  isPrimary Boolean           @default(false)
+  status    String            @default("active") // active|removed
+  createdAt TimestamptzString @default(now())
+
+  @@index([siteId])
+}
+
+// Only hash+prefix persisted — plaintext exists once in the mint
+// response. rotatedFromId keeps rotation lineage for audit.
+model IntelSiteKey {
+  id            String            @id // key_<ulid>
+  siteId        String
+  keyHash       String            @unique // sha256 hex
+  keyPrefix     String // "absk_"+8 — identification only, no secret
+  status        String            @default("active") // active|revoked
+  rotatedFromId String?
+  createdAt     TimestamptzString @default(now())
+  revokedAt     TimestamptzString?
+
+  @@index([siteId, status])
+}
+
+// D-262-Q9: two independent scopes — installation_control
+// (plugin_handshake) | domain_control (dns_txt). reverifyAfter drives
+// the re-verify scan (DNS ~90d orientir); meta-tag/file methods rejected
+// at the service layer, not here.
+model IntelOwnershipProof {
+  id            String            @id // own_<ulid>
+  siteId        String
+  kind          String // installation_control|domain_control
+  method        String // plugin_handshake|dns_txt
+  status        String            @default("pending") // pending|verified|expired|revoked
+  verifiedAt    TimestamptzString?
+  reverifyAfter TimestamptzString?
+  domainId      String? // set for domain_control proofs
+  payload       Json?
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@unique([siteId, kind])
+  @@index([status, reverifyAfter])
+}

@@ -1,0 +1,599 @@
+[
+  {
+    "id": "table.intelCustomer",
+    "label": "Create table \"intelCustomer\"",
+    "summary": "Creates table \"intelCustomer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelCustomer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelCustomer\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelCustomer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelCustomer\"",
+        "sql": "CREATE TABLE \"public\".\"intelCustomer\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelCustomer\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelCustomer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelDomain",
+    "label": "Create table \"intelDomain\"",
+    "summary": "Creates table \"intelDomain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelDomain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelDomain\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelDomain\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelDomain\"",
+        "sql": "CREATE TABLE \"public\".\"intelDomain\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"hostname\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"isPrimary\" bool DEFAULT false NOT NULL,\n  \"siteId\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelDomain\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelDomain\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelOwnershipProof",
+    "label": "Create table \"intelOwnershipProof\"",
+    "summary": "Creates table \"intelOwnershipProof\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelOwnershipProof"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelOwnershipProof\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelOwnershipProof\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelOwnershipProof\"",
+        "sql": "CREATE TABLE \"public\".\"intelOwnershipProof\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"domainId\" text,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"method\" text NOT NULL,\n  \"payload\" json,\n  \"reverifyAfter\" timestamptz,\n  \"siteId\" text NOT NULL,\n  \"status\" text DEFAULT 'pending' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verifiedAt\" timestamptz,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelOwnershipProof\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelOwnershipProof\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelSite",
+    "label": "Create table \"intelSite\"",
+    "summary": "Creates table \"intelSite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelSite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelSite\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSite\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelSite\"",
+        "sql": "CREATE TABLE \"public\".\"intelSite\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"customerId\" text NOT NULL,\n  \"environment\" text DEFAULT 'production' NOT NULL,\n  \"id\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelSite\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSite\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelSiteKey",
+    "label": "Create table \"intelSiteKey\"",
+    "summary": "Creates table \"intelSiteKey\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelSiteKey"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelSiteKey\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSiteKey\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelSiteKey\"",
+        "sql": "CREATE TABLE \"public\".\"intelSiteKey\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"keyHash\" text NOT NULL,\n  \"keyPrefix\" text NOT NULL,\n  \"revokedAt\" timestamptz,\n  \"rotatedFromId\" text,\n  \"siteId\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelSiteKey\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSiteKey\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelTenant",
+    "label": "Create table \"intelTenant\"",
+    "summary": "Creates table \"intelTenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelTenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelTenant\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelTenant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelTenant\"",
+        "sql": "CREATE TABLE \"public\".\"intelTenant\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"slug\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelTenant\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelTenant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelDomain.intelDomain_hostname_key",
+    "label": "Add unique constraint on \"intelDomain\" (hostname)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelDomain_hostname_key",
+        "table": "intelDomain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelDomain_hostname_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelDomain_hostname_key",
+          "public",
+          "\"public\".\"intelDomain\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelDomain_hostname_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelDomain\" ADD CONSTRAINT \"intelDomain_hostname_key\" UNIQUE (\"hostname\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelDomain_hostname_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelDomain_hostname_key",
+          "public",
+          "\"public\".\"intelDomain\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelOwnershipProof.intelOwnershipProof_siteId_kind_key",
+    "label": "Add unique constraint on \"intelOwnershipProof\" (siteId, kind)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelOwnershipProof_siteId_kind_key",
+        "table": "intelOwnershipProof"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelOwnershipProof_siteId_kind_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelOwnershipProof_siteId_kind_key",
+          "public",
+          "\"public\".\"intelOwnershipProof\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelOwnershipProof_siteId_kind_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelOwnershipProof\" ADD CONSTRAINT \"intelOwnershipProof_siteId_kind_key\" UNIQUE (\"siteId\", \"kind\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelOwnershipProof_siteId_kind_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelOwnershipProof_siteId_kind_key",
+          "public",
+          "\"public\".\"intelOwnershipProof\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelSiteKey.intelSiteKey_keyHash_key",
+    "label": "Add unique constraint on \"intelSiteKey\" (keyHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelSiteKey_keyHash_key",
+        "table": "intelSiteKey"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelSiteKey_keyHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelSiteKey_keyHash_key",
+          "public",
+          "\"public\".\"intelSiteKey\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelSiteKey_keyHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelSiteKey\" ADD CONSTRAINT \"intelSiteKey_keyHash_key\" UNIQUE (\"keyHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelSiteKey_keyHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelSiteKey_keyHash_key",
+          "public",
+          "\"public\".\"intelSiteKey\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelTenant.intelTenant_slug_key",
+    "label": "Add unique constraint on \"intelTenant\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelTenant_slug_key",
+        "table": "intelTenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelTenant_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelTenant_slug_key",
+          "public",
+          "\"public\".\"intelTenant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelTenant_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelTenant\" ADD CONSTRAINT \"intelTenant_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelTenant_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelTenant_slug_key",
+          "public",
+          "\"public\".\"intelTenant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelCustomer.intelCustomer_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelCustomer_tenantId_idx_c93ed4f1\" on \"intelCustomer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelCustomer_tenantId_idx_c93ed4f1",
+        "table": "intelCustomer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelCustomer_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelCustomer_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelCustomer_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelCustomer_tenantId_idx_c93ed4f1\" ON \"public\".\"intelCustomer\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelCustomer_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelCustomer_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelDomain.intelDomain_siteId_idx_cabdc5ab",
+    "label": "Create index \"intelDomain_siteId_idx_cabdc5ab\" on \"intelDomain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelDomain_siteId_idx_cabdc5ab",
+        "table": "intelDomain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelDomain_siteId_idx_cabdc5ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelDomain_siteId_idx_cabdc5ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelDomain_siteId_idx_cabdc5ab\"",
+        "sql": "CREATE INDEX \"intelDomain_siteId_idx_cabdc5ab\" ON \"public\".\"intelDomain\" (\"siteId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelDomain_siteId_idx_cabdc5ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelDomain_siteId_idx_cabdc5ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelOwnershipProof.intelOwnershipProof_status_reverifyAfter_idx_389aed0c",
+    "label": "Create index \"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\" on \"intelOwnershipProof\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelOwnershipProof_status_reverifyAfter_idx_389aed0c",
+        "table": "intelOwnershipProof"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\"",
+        "sql": "CREATE INDEX \"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\" ON \"public\".\"intelOwnershipProof\" (\"status\", \"reverifyAfter\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelOwnershipProof_status_reverifyAfter_idx_389aed0c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelSite.intelSite_customerId_idx_b2a8a46c",
+    "label": "Create index \"intelSite_customerId_idx_b2a8a46c\" on \"intelSite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelSite_customerId_idx_b2a8a46c",
+        "table": "intelSite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelSite_customerId_idx_b2a8a46c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSite_customerId_idx_b2a8a46c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelSite_customerId_idx_b2a8a46c\"",
+        "sql": "CREATE INDEX \"intelSite_customerId_idx_b2a8a46c\" ON \"public\".\"intelSite\" (\"customerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelSite_customerId_idx_b2a8a46c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSite_customerId_idx_b2a8a46c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelSiteKey.intelSiteKey_siteId_status_idx_51cae635",
+    "label": "Create index \"intelSiteKey_siteId_status_idx_51cae635\" on \"intelSiteKey\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelSiteKey_siteId_status_idx_51cae635",
+        "table": "intelSiteKey"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelSiteKey_siteId_status_idx_51cae635\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSiteKey_siteId_status_idx_51cae635\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelSiteKey_siteId_status_idx_51cae635\"",
+        "sql": "CREATE INDEX \"intelSiteKey_siteId_status_idx_51cae635\" ON \"public\".\"intelSiteKey\" (\"siteId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelSiteKey_siteId_status_idx_51cae635\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSiteKey_siteId_status_idx_51cae635\""
+        ]
+      }
+    ]
+  }
+]
