@@ -7,22 +7,22 @@ The AgentBadge CLI is a command-line tool that lets you scan your API for Agent 
 ## Installation
 
 ```bash
-npm install -g @agentbadge/cli
+npm install -g @agentbadge/scanner
 # or
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 ## Basic Usage
 
 ```bash
 # Scan an API
-agentbadge scan https://api.example.com
+agentbadge-scan scan https://api.example.com
 
-# Scan with verbose output
-agentbadge scan https://api.example.com --verbose
+# Scan with all output formats
+agentbadge-scan scan https://api.example.com --format all
 
 # Output JSON report
-agentbadge scan https://api.example.com --format json > report.json
+agentbadge-scan scan https://api.example.com --format json > report.json
 ```
 
 ## GitHub Action
@@ -30,9 +30,8 @@ agentbadge scan https://api.example.com --format json > report.json
 You can also run scans in CI/CD:
 
 ```yaml
-- uses: agentbadge/scan-action@v1
-  with:
-    api-url: https://api.example.com
+- name: Agent readiness scan
+  run: npx @agentbadge/scanner scan https://api.example.com --format json
 ```
 
 ## What the CLI Does

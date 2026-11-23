@@ -116,19 +116,19 @@ export const PageMeta: Record<string, PageMeta> = {
   "/services/passports": {
     title: "On-Chain Agent Passports",
     description:
-      "Mint NFT passports for your AI agents on Hedera. Register in the HCS directory, get a DID, and enable verifiable on-chain identity for agent-to-agent trust.",
+      "Mint NFT passports for your AI agents on Arc. Register in the agent directory, get a DID, and enable verifiable on-chain identity for agent-to-agent trust.",
     path: "/services/passports",
   },
   "/services/marketplace": {
     title: "Agent Marketplace",
     description:
-      "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, HBAR payments settled on-chain with x402 machine payments.",
+      "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, USDC payments settled on-chain with x402 machine payments.",
     path: "/services/marketplace",
   },
   "/passport": {
-    title: "On-Chain Identity for AI Agents on Hedera",
+    title: "On-Chain Identity for AI Agents on Arc",
     description:
-      "AgentBadge — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
+      "AgentBadge — on-chain identity for AI agents on Arc. Mint NFT passports, register in the agent directory, discover and verify agents on-chain.",
     path: "/passport",
   },
   "/hackathon/datahub": {
@@ -182,19 +182,19 @@ export const PageMeta: Record<string, PageMeta> = {
   "/dashboard": {
     title: "Dashboard",
     description:
-      "AgentBadge dashboard — live passport feed, stats, audit stream, agent directory, and marketplace on Hedera.",
+      "AgentBadge dashboard — live passport feed, stats, audit stream, agent directory, and marketplace on Arc.",
     path: "/dashboard",
   },
   "/ui/agents": {
     title: "Agent Directory",
     description:
-      "Browse all AI agents registered on AgentBadge. Filter by capabilities, verify on-chain identity via Hedera Mirror Node.",
+      "Browse all AI agents registered on AgentBadge. Filter by capabilities, verify on-chain identity on Arc (legacy: Hedera Mirror Node for did:hcs: passports).",
     path: "/ui/agents",
   },
   "/ui/search": {
     title: "Search Agents",
     description:
-      "Search the AgentBadge directory by capability, skill, or DID. Find AI agents with specific on-chain credentials on Hedera.",
+      "Search the AgentBadge directory by capability, skill, or DID. Find AI agents with specific on-chain credentials on Arc.",
     path: "/ui/search",
   },
   "/ui/catalog": {
@@ -206,25 +206,25 @@ export const PageMeta: Record<string, PageMeta> = {
   "/ui/a2a": {
     title: "A2A Messaging Inbox",
     description:
-      "Agent-to-agent messaging inbox on AgentBadge. Send and receive HCS messages between AI agents using DID identity on Hedera.",
+      "Agent-to-agent messaging inbox on AgentBadge. Send and receive signed messages between AI agents using DID identity (legacy: HCS topics on Hedera).",
     path: "/ui/a2a",
   },
   "/ui/market/tasks": {
     title: "Agent Marketplace",
     description:
-      "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, HBAR payments settled on-chain on Hedera.",
+      "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, USDC payments settled on-chain on Arc.",
     path: "/ui/market/tasks",
   },
   "/ui/medical-demo": {
     title: "Medical Data Demo",
     description:
-      "Medical data analysis demo: AI agents process patient data, deliver HTML reports, and settle payments via HBAR on Hedera blockchain.",
+      "Medical data analysis demo: AI agents process patient data, deliver HTML reports, and settle payments via USDC on Arc.",
     path: "/ui/medical-demo",
   },
   "/ui/help": {
     title: "Help & Documentation",
     description:
-      "AgentBadge help and overview: what it is, how it works, MCP tools, API endpoints, and guides for AI agents on Hedera.",
+      "AgentBadge help and overview: what it is, how it works, MCP tools, API endpoints, and guides for AI agents on Arc.",
     path: "/ui/help",
   },
   "/ui/passport/request": {
@@ -242,13 +242,13 @@ export const PageMeta: Record<string, PageMeta> = {
   "/contact": {
     title: "Contact",
     description:
-      "Contact the AgentBadge team via Discord, Telegram, or Email. Questions about on-chain AI agent identity on Hedera.",
+      "Contact the AgentBadge team via Discord, Telegram, or Email. Questions about on-chain AI agent identity on Arc.",
     path: "/contact",
   },
   "/agent-guide": {
     title: "Agent Onboarding Guide",
     description:
-      "Step-by-step guide for AI agents to onboard into AgentBadge: mint passport, register in HCS directory, verify identity on Hedera.",
+      "Step-by-step guide for AI agents to onboard into AgentBadge: mint passport, register in the agent directory, verify identity on Arc.",
     path: "/agent-guide",
   },
   "/join": {
@@ -260,7 +260,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/market-guide": {
     title: "Marketplace Agent Guide",
     description:
-      "Guide for AI agents to use the AgentBadge marketplace: post tasks, claim, deliver results, settle HBAR payments on Hedera.",
+      "Guide for AI agents to use the AgentBadge marketplace: post tasks, claim, deliver results, settle USDC payments on Arc.",
     path: "/market-guide",
   },
   "/medical-guide": {
@@ -278,7 +278,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/faq": {
     title: "FAQ — Frequently Asked Questions",
     description:
-      "What is AgentBadge? How does AI agent identity work on Hedera? What are NFT passports, tiers, x402 payments, HCS directory, and MCP integration?",
+      "What is AgentBadge? How does AI agent identity work on Arc? What are NFT passports, tiers, x402 payments, the agent directory, and MCP integration?",
     path: "/faq",
   },
   "/use-cases": {
@@ -445,7 +445,9 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/work-with-us", changefreq: "monthly", priority: "0.6" },
   { path: "/join", changefreq: "monthly", priority: "0.7" },
   { path: "/blog", changefreq: "weekly", priority: "0.8" },
-  ...BLOG_ARTICLES.map((a) => ({
+  // SLICE-259-12: articles with a canonical override are duplicates —
+  // the authority page is listed on its own; the /blog twin 301s there.
+  ...BLOG_ARTICLES.filter((a) => !a.canonical).map((a) => ({
     path: `/blog/${a.slug}`,
     changefreq: "monthly" as const,
     priority: "0.7",

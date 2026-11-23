@@ -26,7 +26,7 @@ const dummyHandler = vi.fn(async (args: Record<string, unknown>): Promise<ToolRe
 
 beforeEach(() => {
   vi.clearAllMocks();
-  registerTool("echo", "Echo the input back", { message: z.string() }, dummyHandler);
+  registerTool("echo", "Echo the input back", { message: z.string() }, dummyHandler, { exposure: "public", publicTier: "curated" });
 });
 
 describe("MCP Server — registry", () => {
@@ -68,7 +68,7 @@ describe("MCP Server — handleHttpToolCall", () => {
   it("returns MCP-shaped error when handler throws", async () => {
     registerTool("boom", "Always throws", { x: z.number() }, async () => {
       throw new Error("kaboom");
-    });
+    }, { exposure: "public" });
     const result = await handleHttpToolCall("boom", { x: 1 });
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("kaboom");
@@ -104,7 +104,7 @@ describe("MCP Server — HTTP route", () => {
       body: JSON.stringify({}),
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.isError).toBe(true);
     expect(body.content[0].text).toContain("ghost");

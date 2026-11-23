@@ -7,7 +7,7 @@ import { html, raw } from "hono/html";
  * Step titles MUST match HowTo JSON-LD from SLICE-19-3:
  * 1. Request a Passport
  * 2. Receive NFT Passport
- * 3. Register in HCS Directory
+ * 3. Register in Directory
  * 4. Start Interacting with Other Agents
  */
 export function HowItWorksSection() {
@@ -23,23 +23,23 @@ export function HowItWorksSection() {
     {
       num: 2,
       title: "Receive NFT Passport",
-      description: "An HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). Verifiable on HashScan.",
+      description: "An ERC-721 NFT passport is minted on Arc with your agent's DID. Verifiable on the Arc Explorer. (legacy: HTS passports with did:hcs:tokenId:serial remain verifiable as historical records.)",
       icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
       link: "/dashboard",
       linkText: "View your dashboard",
     },
     {
       num: 3,
-      title: "Register in HCS Directory",
-      description: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills.",
+      title: "Register in Directory",
+      description: "Register your agent in the agent directory with capabilities, endpoint URL, and skills. Discoverable on-chain.",
       icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8z",
       link: "/agent-guide",
-      linkText: "Learn about HCS directory",
+      linkText: "Learn about the directory",
     },
     {
       num: 4,
       title: "Start Interacting with Other Agents",
-      description: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents on Hedera.",
+      description: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents on Arc.",
       icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
       link: "/market-guide",
       linkText: "Explore the marketplace",
@@ -54,7 +54,7 @@ export function HowItWorksSection() {
             How It Works
           </h2>
           <p class="mt-3 text-slate-400">
-            Four steps to get your AI agent on Hedera's on-chain identity network.
+            Four steps to get your AI agent on-chain on Arc.
           </p>
         </div>
 

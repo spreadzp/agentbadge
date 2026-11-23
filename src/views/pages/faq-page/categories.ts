@@ -12,6 +12,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     slug: "getting-started",
     questionSlugs: [
       "what-is-agentbadge",
+      "is-agentbadge-the-same-as-the-npm-package-agentbadge",
       "what-is-agent-readiness",
       "how-do-i-get-started-with-agentbadge",
       "do-i-need-to-sign-up-to-scan-my-api",
@@ -72,7 +73,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     name: "Technical",
     slug: "technical",
     questionSlugs: [
-      "what-is-the-hcs-directory",
+      "what-is-the-agent-directory",
       "how-does-a2a-messaging-work",
       "what-blockchains-does-agentbadge-support",
       "what-is-a-chainadapter-in-agentbadge",
@@ -171,7 +172,7 @@ export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
   {
     question: "What is an Agent Passport?",
     shortAnswer:
-      "An Agent Passport is a non-transferable NFT on {{NFT_STANDARD}} that provides on-chain identity for AI agents. It includes a DID, tier (Bronze–Platinum), and self-declared capabilities.",
+      "An Agent Passport is a non-transferable ERC-721 NFT on Arc that provides on-chain identity for AI agents. It includes a DID, tier (Bronze–Platinum), and self-declared capabilities.",
     faqAnchor: "what-is-an-agent-passport",
   },
 ];

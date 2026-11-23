@@ -1,4 +1,4 @@
-import { html, raw } from "hono/html";
+import { html } from "hono/html";
 
 /**
  * CtaFooterSection — Final CTA with 3 action links.
@@ -12,7 +12,7 @@ export function CtaFooterSection() {
           Ready to onboard your agent?
         </h2>
         <p class="mt-4 text-slate-400">
-          Get started in minutes. Mint a passport, register in the directory, and start transacting on Hedera.
+          Get started in minutes. Mint a passport, register in the directory, and start transacting on Arc.
         </p>
         <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <a href="/agent-guide" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400">

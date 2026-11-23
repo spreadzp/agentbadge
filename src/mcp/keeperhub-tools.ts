@@ -12,6 +12,7 @@ export function registerKeeperhubTools(): number {
       tool.description,
       tool.inputSchema,
       handler as Parameters<typeof registerTool>[3],
+      { exposure: "admin" },
     );
   }
   return allKeeperhubTools.length;

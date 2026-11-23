@@ -243,6 +243,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch OAuth authorization server metadata (/.well-known/oauth-authorization-server) — RFC 8414. Contains issuer, authorization_endpoint, token_endpoint, scopes_supported, etc.",
     {},
     getOauthAuthorizationServerHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -250,6 +251,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch OAuth protected resource metadata (/.well-known/oauth-protected-resource) — RFC 9728. Contains resource, authorization_servers, scopes_supported, etc.",
     {},
     getOauthProtectedResourceHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -259,6 +261,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       resource: z.string().optional().describe("The resource URI to look up (e.g. acct:alice@agentbadge.xyz)"),
     },
     getWebfingerHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -266,6 +269,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the HTTP Message Signatures directory (/.well-known/http-message-signatures-directory) — lists agents supporting HTTP Message Signatures (RFC 9421).",
     {},
     getHttpMessageSignaturesDirectoryHandler,
+    { exposure: "public" },
   );
 
   // DID resolution
@@ -276,6 +280,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       did: z.string().describe("The DID to resolve (e.g. did:hcs:0.0.12345:1)"),
     },
     resolveDidHandler,
+    { exposure: "public" },
   );
 
   // Admin
@@ -284,6 +289,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Rebuild the HCS directory cache from on-chain messages. Admin operation — triggers a full rescan of the directory topic.",
     {},
     rebuildCacheHandler,
+    { exposure: "admin" },
   );
 
   // Content pages
@@ -292,6 +298,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the activity feed (/feed) — recent agent registrations, task postings, and completions.",
     {},
     getFeedHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -299,6 +306,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the changelog (/changelog) — list of recent product changes and updates.",
     {},
     getChangelogHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -306,6 +314,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the FAQ page (/faq) — 12 Q&A pairs about AgentBadge, with FAQPage JSON-LD structured data.",
     {},
     getFaqHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -313,6 +322,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the About page (/about) — information about AgentBadge project and team.",
     {},
     getAboutHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -320,6 +330,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Pricing page (/pricing) — passport tier pricing and features comparison.",
     {},
     getPricingHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -327,6 +338,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Privacy policy (/privacy) — data handling and privacy commitments.",
     {},
     getPrivacyHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -334,6 +346,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Terms of service (/terms) — legal terms for using AgentBadge.",
     {},
     getTermsHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -341,6 +354,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Services page (/services) — available agent services and capabilities.",
     {},
     getServicesHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -348,6 +362,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Team page (/agent-guide/team) — team members and roles.",
     {},
     getTeamHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -355,6 +370,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Use cases page (/use-cases) — 5 real-world scenarios for AgentBadge.",
     {},
     getUseCasesHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -362,6 +378,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Work with us page (/work-with-us) — partnership and collaboration information.",
     {},
     getWorkWithUsHandler,
+    { exposure: "public" },
   );
 
   // Guides
@@ -370,6 +387,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Market guide (/market-guide) — interactive guide for using the marketplace.",
     {},
     getMarketGuideHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -377,6 +395,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Marketplace guide (/marketplace-guide) — guide for posting and claiming tasks.",
     {},
     getMarketplaceGuideHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -384,6 +403,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the Medical guide (/medical-guide) — demo guide for medical AI agent use case.",
     {},
     getMedicalGuideHandler,
+    { exposure: "public" },
   );
 
   // Work requests
@@ -395,6 +415,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       offset: z.number().optional().describe("Pagination offset (default: 0)"),
     },
     listWorkRequestsHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -404,6 +425,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       id: z.string().describe("Work request ID"),
     },
     getWorkRequestHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -416,6 +438,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       budget: z.string().optional().describe("Budget for the work request"),
     },
     createWorkRequestHandler,
+    { exposure: "authenticated" },
   );
 
   // Agent by DID
@@ -426,6 +449,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
       did: z.string().describe("Agent DID (e.g. did:hcs:0.0.12345:1)"),
     },
     getAgentByDidHandler,
+    { exposure: "public" },
   );
 
   // Agency services & contact (SLICE-56-9)
@@ -434,6 +458,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch the canonical agency profile (/agency.json) — machine-readable JSON with schema_version, registry_version, services, capabilities, people, and endpoints. Use this to programmatically reason about services and capabilities.",
     {},
     getServicesInfoHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -441,6 +466,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch contact information and routing (/agent-guide/team/contact) — provides contact details and inquiry routing for the agency.",
     {},
     contactUsHandler,
+    { exposure: "public" },
   );
 
   // DID Auth (SLICE-82-3)
@@ -449,5 +475,6 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch DID signature authentication details from /llms.txt. All mutation endpoints (POST /market/*, POST /a2a/*) require a DID control proof: sign the canonical challenge string with your Hedera account key and send X-AgentBadge-Signature, X-AgentBadge-Timestamp, X-AgentBadge-Nonce, X-AgentBadge-Did headers. Read endpoints are free — no DID signature required.",
     {},
     getDidAuthInfoHandler,
+    { exposure: "public" },
   );
 }

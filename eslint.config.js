@@ -48,7 +48,6 @@ export default [
       "src/server/lib/market-handlers-signed.ts",
       "src/server/lib/page-meta.ts",
       "src/server/middleware/agent-auth.ts",
-      "src/server/middleware/did-auth.ts",
       "src/server/openapi.ts",
       "src/server/registry/markdown.ts",
       "src/server/routes/a2a.ts",

@@ -42,10 +42,10 @@ export function EnUsLandingPage() {
               <span class="w-2 h-2 rounded-full bg-red-400"></span>
               <span class="w-2 h-2 rounded-full bg-amber-400"></span>
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span class="ml-2 text-xs text-slate-500 font-mono">agentbadge scan — us.example.com</span>
+              <span class="ml-2 text-xs text-slate-500 font-mono">agentbadge-scan scan — us.example.com</span>
             </div>
             <div class="p-5 font-mono text-sm space-y-2">
-              <div class="text-slate-400">$ agentbadge scan https://us.example.com</div>
+              <div class="text-slate-400">$ agentbadge-scan scan https://us.example.com</div>
               <div class="text-emerald-400">✓ discovery ......... pass</div>
               <div class="text-emerald-400">✓ docs ............... pass</div>
               <div class="text-amber-400">△ auth ............... warn (no x402)</div>

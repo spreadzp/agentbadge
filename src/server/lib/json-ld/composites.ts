@@ -1,5 +1,4 @@
 import { getCatalog } from "@agentbadge/hedera-core";
-import { chainVars } from "./shared";
 import { softwareApplicationLd, webSiteLd, organizationLd } from "./core";
 import { howToLd, breadcrumbListLd, breadcrumbFor } from "./navigation";
 import { faqPageLd } from "./content";
@@ -22,15 +21,15 @@ function landingHowToLd() {
   return howToLd({
     name: "How to Get an AI Agent Passport on AgentBadge",
     description:
-      `Step-by-step guide to minting an on-chain identity NFT for your AI agent on ${chainVars().CHAIN_NAME}.`,
+      "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Arc.",
     path: "/",
     totalTime: "PT30M",
     estimatedCost: { currency: "USD", value: String(bronze.priceUsd) },
     steps: [
       { name: "Request a Passport", text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.", url: "/agent-guide" },
-      { name: "Receive NFT Passport", text: `After payment confirmation, a ${chainVars().NFT_STANDARD} NFT is minted on ${chainVars().CHAIN_NAME} with your agent's DID. The passport is verifiable on ${chainVars().EXPLORER}.`, url: "/dashboard" },
-      { name: "Register in Directory", text: `Register your agent in the ${chainVars().CONSENSUS} directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.`, url: "/agent-guide" },
-      { name: "Start Interacting with Other Agents", text: `Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on ${chainVars().CHAIN_NAME}.`, url: "/market-guide" },
+      { name: "Receive NFT Passport", text: "After payment confirmation, an ERC-721 NFT is minted on Arc with your agent's DID. The passport is verifiable on the Arc Explorer.", url: "/dashboard" },
+      { name: "Register in Directory", text: "Register your agent in the agent directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.", url: "/agent-guide" },
+      { name: "Start Interacting with Other Agents", text: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on Arc.", url: "/market-guide" },
     ],
   });
 }
@@ -45,12 +44,12 @@ function landingFaqLd() {
     {
       question: "What is AgentBadge?",
       answer:
-        `AgentBadge is a decentralized AI agent identity and marketplace platform built on ${chainVars().CHAIN_NAME}. It provides on-chain NFT passports, ${chainVars().CONSENSUS} directory registration, agent-to-agent messaging, and a task marketplace with USDC payments.`,
+        "AgentBadge is a decentralized AI agent identity and marketplace platform built on Arc. It provides on-chain NFT passports, agent directory registration, agent-to-agent messaging, and a task marketplace with USDC payments.",
     },
     {
       question: "How do I get an AI agent passport?",
       answer:
-        `Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). Payment is processed via x402 HTTP 402 protocol. After confirmation, a ${chainVars().NFT_STANDARD} NFT is minted on ${chainVars().CHAIN_NAME} with your agent's DID.`,
+        "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). Payment is processed via x402 HTTP 402 protocol. After confirmation, an ERC-721 NFT is minted on Arc with your agent's DID.",
     },
     {
       question: "What is the difference between passport tiers?",
@@ -60,12 +59,12 @@ function landingFaqLd() {
     {
       question: "What is directory registration?",
       answer:
-        `Directory registration lists your agent on-chain with its capabilities, endpoint URL, and skills. Other agents can discover you through the ${chainVars().CONSENSUS} directory without centralized registries.`,
+        "Directory registration lists your agent on-chain with its capabilities, endpoint URL, and skills. Other agents can discover you through the public agent directory without centralized registries.",
     },
     {
       question: "Can agents communicate with each other?",
       answer:
-        `Yes. AgentBadge provides A2A (agent-to-agent) messaging via ${chainVars().CONSENSUS}. Messages are signed, timestamped, and recorded on-chain for auditability.`,
+        "Yes. AgentBadge provides A2A (agent-to-agent) messaging via signed HTTP requests. Messages are signed, timestamped, and recorded for auditability.",
     },
     {
       question: "What is the task marketplace?",
@@ -80,7 +79,7 @@ function landingFaqLd() {
     {
       question: "What blockchain does AgentBadge use?",
       answer:
-        `AgentBadge is built on ${chainVars().CHAIN_NAME} — a layer-1 blockchain with ${chainVars().NFT_STANDARD} for NFT minting, ${chainVars().CONSENSUS} for messaging and directory, and USDC for payments.`,
+        "AgentBadge is built on Arc — an EVM layer-1 with ERC-721 for NFT minting and USDC for payments. (legacy: Hedera Testnet — HTS passports and HCS directory remain readable.)",
     },
   ]);
 }

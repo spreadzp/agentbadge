@@ -28,6 +28,7 @@ import { registerParityTools } from "../../src/mcp/parity-tools";
 import { createNamespaceRoutes } from "../../src/server/routes/mcp/mcp-namespace";
 
 beforeAll(() => {
+  process.env.ADMIN_API_KEY = "test-admin-key";
   const passportNs = createNamespace("passport");
   registerPassportTools(passportNs);
   registerSigningTools(passportNs);
@@ -70,7 +71,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp/passport", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       });
       expect(res.status).toBe(200);
@@ -82,7 +83,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp/passport", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 2,
@@ -100,7 +101,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp/market", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       });
       expect(res.status).toBe(200);
@@ -114,7 +115,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp/discovery", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       });
       expect(res.status).toBe(200);
@@ -128,7 +129,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp/audit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       });
       expect(res.status).toBe(200);
@@ -142,7 +143,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const app = makeApp();
       const res = await app.request("/mcp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       });
       expect(res.status).toBe(200);
@@ -154,7 +155,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
   describe("REST endpoints", () => {
     it("GET /mcp/passport/tools returns 16 tools", async () => {
       const app = makeApp();
-      const res = await app.request("/mcp/passport/tools");
+      const res = await app.request("/mcp/passport/tools", { headers: { "X-Admin-Key": "test-admin-key" } });
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.tools.length).toBe(16);
@@ -162,7 +163,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
 
     it("GET /mcp/audit/tools returns 29 tools", async () => {
       const app = makeApp();
-      const res = await app.request("/mcp/audit/tools");
+      const res = await app.request("/mcp/audit/tools", { headers: { "X-Admin-Key": "test-admin-key" } });
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.tools.length).toBe(30);

@@ -60,12 +60,12 @@ ${CANONICAL_LINES.join("\n")}
 \`\`\`
 
 **Required headers** (send with every mutation request):
-- \`X-AgentBadge-Did\` — your DID (e.g. \`did:hcs:0.0.TOKENID:1\`)
+- \`X-AgentBadge-Did\` — your DID (e.g. \`did:hcs:0.0.TOKENID:1\` — legacy format; did:hcs: passports remain supported)
 - \`X-AgentBadge-Signature\` — hex-encoded signature of the canonical challenge string
 - \`X-AgentBadge-Timestamp\` — unix seconds (must be within ±300 seconds of server time)
 - \`X-AgentBadge-Nonce\` — nonce from challenge response (single-use)
 
-**Key types:** ED25519 (Hedera native) or ECDSA secp256k1 (EVM-compatible).
+**Key types:** ED25519 (legacy: Hedera native) or ECDSA secp256k1 (EVM-compatible).
 
 **Timestamp window:** 300 seconds (5 minutes). Requests outside this window are rejected.
 
@@ -78,12 +78,12 @@ Read endpoints (GET) remain free — no authentication required.`;
 export function didAuthSectionFull(baseUrl: string): string {
   return `## DID Signature Authentication
 
-All marketplace and A2A mutation endpoints require a **DID control proof** — a cryptographic signature proving you control the DID's Hedera account key.
+All marketplace and A2A mutation endpoints require a **DID control proof** — a cryptographic signature proving you control the DID's account key (legacy: Hedera account key bound to a did:hcs: passport).
 
 ### How It Works
 
 1. **Fetch a challenge** from \`GET /auth/challenge\` with your DID, HTTP method, and target path.
-2. **Sign the canonical challenge string** with your Hedera account key (ED25519 or ECDSA).
+2. **Sign the canonical challenge string** with your account key (ED25519 or ECDSA; legacy: Hedera account key).
 3. **Send the signature** in the \`X-AgentBadge-Signature\` header along with the other auth headers.
 
 ### Challenge Endpoint
@@ -99,7 +99,7 @@ curl "${baseUrl}/auth/challenge?did=did:hcs:0.0.TOKENID:1&method=POST&path=/mark
   "nonce": "a1b2c3d4e5f6a7b8",
   "timestamp": 1234567890,
   "algorithm": "EIP-191",
-  "instructions": "Sign the challenge string with your Hedera account key."
+  "instructions": "Sign the challenge string with your account key (legacy: Hedera key)."
 }
 \`\`\`
 
@@ -109,7 +109,7 @@ curl "${baseUrl}/auth/challenge?did=did:hcs:0.0.TOKENID:1&method=POST&path=/mark
 ${CANONICAL_LINES.join("\n")}
 \`\`\`
 
-The client signs the exact canonical byte string (the 7 lines joined by \`\\n\`) with its Hedera account key.
+The client signs the exact canonical byte string (the 7 lines joined by \`\\n\`) with its account key (legacy: Hedera account key).
 
 ### Required Headers
 
@@ -120,7 +120,7 @@ The client signs the exact canonical byte string (the 7 lines joined by \`\\n\`)
 | \`X-AgentBadge-Timestamp\` | Unix seconds (must be within ±300 seconds of server time) |
 | \`X-AgentBadge-Nonce\` | Nonce from challenge response (single-use, cannot be reused) |
 
-### Signing Example (Bash + Hedera SDK)
+### Signing Example (Bash + Hedera SDK — legacy: did:hcs:)
 
 \`\`\`bash
 # 1. Fetch challenge

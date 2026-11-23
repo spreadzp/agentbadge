@@ -1,11 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { ReadinessPricingSection } from "../../src/views/landing/sections/readiness-pricing";
 import { ReadinessThesisSection } from "../../src/views/landing/sections/readiness-thesis";
 import { buildAgentCard, buildSitemap } from "../../src/server/routes/well-known";
 import { PageMeta, PUBLIC_PAGES } from "../../src/server/lib/page-meta";
 import { BLOG_ARTICLES } from "../../src/server/lib/blog-data";
-import { BUILD_DATE } from "../../src/server/lib/build-info";
 import { getClusterPage } from "../../src/server/lib/cluster-data";
 import { agentKnowledgeRoutes } from "../../src/server/routes/knowledge/agent-knowledge";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
@@ -99,18 +98,30 @@ describe("SLICE-218-4: sitemap lastmod + off-topic pruning (F9, F10)", () => {
     "/hackathon/agent-allowance",
   ];
 
-  it("blog article lastmod uses real dates, not BUILD_DATE", () => {
-    const sitemap = buildSitemap();
+  it("blog article lastmod uses real dates, not BUILD_DATE", async () => {
+    // SLICE-259-11: stub BUILD_DATE to a date no real article could
+    // have — the unsstubbed constant defaults to today and collides
+    // with a legitimately-today-modified article (was flaky).
+    vi.stubEnv("BUILD_DATE", "2000-01-01");
+    vi.resetModules();
+    const { buildSitemap: buildWithStub } = await import(
+      "../../src/server/routes/well-known/sitemaps"
+    );
+    vi.unstubAllEnvs();
+    const sitemap = buildWithStub();
     const blogBlocks = sitemap.match(
       /<loc>[^<]+\/blog\/[^<]+<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g,
     );
-    expect(blogBlocks?.length).toBe(BLOG_ARTICLES.length);
+    // SLICE-259-12: canonical-overridden articles are excluded from the
+    // sitemap entirely (their authority page is listed separately).
+    const selfCanonical = BLOG_ARTICLES.filter((a) => !a.canonical);
+    expect(blogBlocks?.length).toBe(selfCanonical.length);
     const lastmods = new Set(
       (blogBlocks ?? []).map((b) => b.match(/lastmod>([^<]+)/)![1]),
     );
     // F9: distinct real dates, not a single build stamp
     expect(lastmods.size).toBeGreaterThan(1);
-    expect(lastmods.has(BUILD_DATE)).toBe(false);
+    expect(lastmods.has("2000-01-01")).toBe(false);
   });
 
   it("off-topic paths absent from PUBLIC_PAGES, sitemap, footer and nav", () => {

@@ -15,7 +15,7 @@ Read the [Context guide](/agent-guide/context) to understand:
 Run a scan to see your current Agent Readiness score:
 
 - **Web UI** — Go to the AgentBadge dashboard and enter your API URL
-- **CLI** — Use the `agentbadge scan` command (install via npm/npx)
+- **CLI** — Use the `agentbadge-scan scan` command (install via npm/npx)
 - **GitHub Action** — Add the AgentBadge Action to your CI/CD pipeline
 
 The scanner is passive — it sends HTTP requests to your public endpoints, just like an AI agent would. No code changes required.
@@ -83,10 +83,9 @@ Or submit a structured [Work Request](/api/work-requests) directly.
 Set up automated scanning in your CI/CD pipeline:
 
 ```yaml
-# GitHub Action example
-- uses: agentbadge/scan-action@v1
-  with:
-    api-url: https://api.example.com
+# GitHub Actions example — a workflow step, no custom action needed
+- name: Agent readiness scan
+  run: npx @agentbadge/scanner scan https://api.example.com --format json
 ```
 
 This ensures every deployment is checked for Agent Readiness.

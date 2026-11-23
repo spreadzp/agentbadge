@@ -222,7 +222,20 @@ describe("upgrade_tier tool", () => {
     registerPassportTools();
   });
 
-  it("delegates to upgradeTier with correct params", async () => {
+  // SLICE-259-4: identity comes from the verified caller context —
+  // admin resolves the owner via getPassportInfo; owner path uses a
+  // verified DID matching the passport (e2e in upgrade-tier-identity).
+  it("admin ctx delegates to upgradeTier with owner resolved on-chain", async () => {
+    vi.mocked(getPassportInfo).mockResolvedValue({
+      active: true,
+      tokenId: "0.0.100",
+      serialNumber: 1,
+      tier: "silver",
+      capabilities: [],
+      did: "did:hcs:0.0.100:1",
+      owner: "0.0.500",
+      issuedAt: 1700000000,
+    });
     vi.mocked(upgradeTier).mockResolvedValue({
       active: true,
       tokenId: "0.0.100",
@@ -234,6 +247,20 @@ describe("upgrade_tier tool", () => {
       issuedAt: 1700000000,
     });
 
+    const result = await handleHttpToolCall(
+      "upgrade_tier",
+      { tokenId: "0.0.100", serial: 1, newTier: "gold" },
+      { callerTier: "admin" },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(getPassportInfo).toHaveBeenCalledWith("0.0.100", 1);
+    expect(upgradeTier).toHaveBeenCalledWith("0.0.100", 1, "gold", "0.0.500");
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.tier).toBe("gold");
+  });
+
+  it("rejects accountId in args — identity is context-derived", async () => {
     const result = await handleHttpToolCall("upgrade_tier", {
       tokenId: "0.0.100",
       serial: 1,
@@ -241,19 +268,27 @@ describe("upgrade_tier tool", () => {
       accountId: "0.0.500",
     });
 
-    expect(result.isError).toBeFalsy();
-    expect(upgradeTier).toHaveBeenCalledWith("0.0.100", 1, "gold", "0.0.500");
-    const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.tier).toBe("gold");
+    expect(result.isError).toBe(true);
+    expect(upgradeTier).not.toHaveBeenCalled();
+  });
+
+  it("denies non-owner verified DID before the on-chain call", async () => {
+    const result = await handleHttpToolCall(
+      "upgrade_tier",
+      { tokenId: "0.0.100", serial: 1, newTier: "gold" },
+      { callerTier: "authenticated", verifiedDid: "did:hcs:0.0.999:7" },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(upgradeTier).not.toHaveBeenCalled();
   });
 
   it("returns MCP error for invalid tier", async () => {
-    const result = await handleHttpToolCall("upgrade_tier", {
-      tokenId: "0.0.100",
-      serial: 1,
-      newTier: "diamond",
-      accountId: "0.0.500",
-    });
+    const result = await handleHttpToolCall(
+      "upgrade_tier",
+      { tokenId: "0.0.100", serial: 1, newTier: "diamond" },
+      { callerTier: "admin" },
+    );
 
     expect(result.isError).toBe(true);
     expect(upgradeTier).not.toHaveBeenCalled();

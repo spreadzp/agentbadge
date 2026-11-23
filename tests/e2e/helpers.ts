@@ -36,6 +36,7 @@ import { createBoardGuideRoutes } from "../../src/server/routes/agent-guide/agen
 import { bstockGuideRoutes } from "../../src/server/routes/guides/bstock-guide";
 import { createShowcaseRoutes } from "../../src/server/routes/pages/agent-readiness-showcase";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
+import { authorityRoutes } from "../../src/server/routes/identity/authority";
 import { paymentRoutes } from "../../src/server/routes/payments/payment";
 import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
 import {
@@ -147,6 +148,8 @@ export function makeTestApp(): Hono {
   app.route("/", demandGuideRoutes);
   app.route("/", agencyJsonRoutes);
   app.route("/", wellKnownRoutes);
+  // canonical-override target of /blog/what-is-agent-readiness (259-12)
+  app.route("/", authorityRoutes);
   app.route("/", paymentRoutes);
   app.route("/api", keeperhubApiRoutes);
 

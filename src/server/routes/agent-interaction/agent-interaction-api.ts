@@ -51,6 +51,7 @@ import {
 import {
   createTieredInteractionLimiter,
   limiterKey,
+  TIER_LIMITS,
   type TieredLimiter,
 } from "./rate-limits";
 
@@ -134,6 +135,16 @@ export function createAgentInteractionRoutes(
 
       const actor = resolveActor(c);
       if (!limiter.allow(actor.resolution, limiterKey(c, actor))) {
+        // SLICE-259-19: agent-readable 429 — Retry-After + RateLimit-*
+        // alongside the retryable body.
+        const retryAfter = limiter.retryAfterSec();
+        c.header("Retry-After", String(retryAfter));
+        c.header("X-RateLimit-Limit", String(TIER_LIMITS[actor.resolution]));
+        c.header("X-RateLimit-Remaining", "0");
+        c.header(
+          "X-RateLimit-Reset",
+          String(Math.ceil((now() + retryAfter * 1000) / 1000)),
+        );
         return errorResponse(
           c,
           429,

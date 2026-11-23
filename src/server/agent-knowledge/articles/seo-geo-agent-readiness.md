@@ -92,7 +92,7 @@ Each check is binary: pass or fail. Each pass has evidence. Each fail has a fix 
 ## Capabilities
 
 - [Passive Scanner](/agent-guide/capabilities/scanner) — {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, non-intrusive HTTP scanning
-- [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/cli scan`
+- [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/scanner scan`
 - [Agent Knowledge Layer](/agent-guide/) — Machine-readable product context
 - [GEO Optimization](/agent-guide/capabilities/geo-optimization) — Content optimization for generative AI discovery
 
@@ -100,13 +100,13 @@ Each check is binary: pass or fail. Each pass has evidence. Each fail has a fix 
 
 ```bash
 # Scan an API for agent readiness
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
 # Scan with JSON output for programmatic use
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 
-# Scan with verbose evidence output
-npx @agentbadge/cli scan https://api.example.com --verbose
+# Scan with JSON report output
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 ## API Endpoints
@@ -128,7 +128,7 @@ npx @agentbadge/cli scan https://api.example.com --verbose
 2. [Read Article 2](/agent-guide/articles/seo-vs-agent-readiness) — Why SEO isn't enough
 3. [Read Article 3](/agent-guide/articles/web-becoming-agentic-api-discovery) — The agentic web discovery stack
 4. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-5. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+5. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 6. Review evidence — every finding links to the HTTP response that produced it
 7. Fix gaps — add `llms.txt`, publish `ai-sitemap.xml`, expose `agent-card.json`
 8. Monitor — re-scan after changes to track improvements
@@ -218,7 +218,7 @@ Your content may be discoverable by generative AI. The question is whether an au
 2. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — What is Agent Readiness?
 3. [Read Article 2](/agent-guide/articles/seo-vs-agent-readiness) — SEO vs Agent Readiness
 4. [Read Article 3](/agent-guide/articles/web-becoming-agentic-api-discovery) — The agentic web
-5. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+5. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 
 ---
 

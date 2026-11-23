@@ -27,7 +27,7 @@ export function LiveStatsSection(data: {
       <div class="mx-auto max-w-5xl">
         <div class="fade-in-up mb-8 text-center">
           <h2 class="text-2xl font-bold text-white md:text-3xl">Live Network Stats</h2>
-          <p class="mt-2 text-sm text-slate-400">Real-time data from Hedera Network · Auto-refreshes every 10s</p>
+          <p class="mt-2 text-sm text-slate-400">Real-time on-chain data · Auto-refreshes every 10s</p>
         </div>
 
         <!-- HTMX polling container -->

@@ -133,20 +133,20 @@ This is like valid HTML that isn't accessible. Technically correct, but unusable
 ## Capabilities
 
 - [Passive Scanner](/agent-guide/capabilities/scanner) — {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, non-intrusive HTTP scanning
-- [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/cli scan`
+- [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/scanner scan`
 - [Agent Knowledge Layer](/agent-guide/) — Machine-readable product context
 
 ## CLI Commands
 
 ```bash
 # Scan an API for agent readiness — covers all 7 failure modes
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
 # JSON output for programmatic use
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 
 # Verbose evidence output
-npx @agentbadge/cli scan https://api.example.com --verbose
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 ## API Endpoints
@@ -167,7 +167,7 @@ npx @agentbadge/cli scan https://api.example.com --verbose
 1. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — Foundation: what Agent Readiness is
 2. [Read Article 4](/agent-guide/articles/seo-geo-agent-readiness) — Evolution: SEO → GEO → Agent Readiness
 3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-4. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+4. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 5. Review evidence — every finding links to the HTTP response that produced it
 6. Fix gaps — add `llms.txt`, complete OpenAPI descriptions, add error schemas, support idempotency
 7. Monitor — re-scan after changes to track improvements

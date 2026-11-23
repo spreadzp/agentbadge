@@ -48,8 +48,14 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       app.route("/", discoveryManifestRoutes);
       const res = await app.request("/llms.txt");
       const text = await res.text();
+      // EPIC-259-3: public catalogs list public-tier tools only —
+      // exposure === "public" is the single predicate.
       for (const t of listTools()) {
-        expect(text).toContain(`\`${t.name}\``);
+        if (t.exposure === "public") {
+          expect(text).toContain(`\`${t.name}\``);
+        } else {
+          expect(text).not.toContain(`\`${t.name}\``);
+        }
       }
     });
 
@@ -121,8 +127,13 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       const res = await app.request("/llms.txt");
       const text = await res.text();
       // Registry-driven list format: "- `tool_name` — description".
-      expect(text).toContain("`request_passport`");
-      expect(text).toContain("`register_agent`");
+      // Public-tier tools only (EPIC-259-3): authenticated/admin tools
+      // are absent from the public catalog.
+      expect(text).toContain("`verify_passport`");
+      expect(text).toContain("`find_agents`");
+      expect(text).not.toContain("`register_agent`");
+      expect(text).not.toContain("`request_passport`");
+      expect(text).not.toContain("`revoke_passport`");
     });
   });
 });

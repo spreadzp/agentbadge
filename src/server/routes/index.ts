@@ -15,6 +15,7 @@ import { logger } from "@agentbadge/passport/logger";
 import { passportRoutes } from "./identity/passport";
 import { verifyRoutes } from "./verify/verify";
 import { didRoutes } from "./identity/did";
+import { authChallengeRoutes } from "./identity/auth-challenge";
 import { agentRoutes } from "./agents/agents";
 import { adminRoutes } from "./ops/admin";
 import { createFinopsRoutes } from "./finops/finops";
@@ -38,6 +39,7 @@ import { agentCardRoutes } from "./a2a/agent-card";
 import { feedRoutes } from "./discovery/feed";
 import { feedDirectoryRoutes } from "./discovery/feed-directory";
 import { mcpRoutes } from "./mcp/mcp";
+import { mcpOpsRoutes } from "./mcp/mcp-ops";
 import { riskRoutes } from "./scan/risk-api";
 import { econLedgerRoutes } from "./econ-ledger/econ-ledger-api";
 import { econLedgerRevenueRoutes } from "./econ-ledger/econ-ledger-revenue-api";
@@ -117,6 +119,7 @@ import { wireKnowledge } from "../wiring/knowledge";
 import { createAgentRequestOpsRoutes } from "./agent-requests/agent-requests-ops-api";
 import { createInboxOpsDigestRoutes } from "./agent-requests/agent-requests-ops-digest";
 import { createAgentSurveyRoutes } from "./agent-surveys/agent-surveys-api";
+import { wireIntel } from "../wiring/intel";
 import { createAgentSurveyOpsRoutes } from "./agent-surveys/agent-surveys-ops-api";
 import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
 import { getDatabase } from "../lib/database";
@@ -127,18 +130,13 @@ import { createBoardGuideRoutes } from "./agent-guide/agent-guide-hire";
 import { createBoardPageRoutes } from "./board/board-page";
 import { venuePageRoutes } from "./venue/venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
-
-import { metricsApp } from "./observability/metrics";
-import { telemetryApp } from "./observability/telemetry";
-import { paymentRoutes } from "./payments/payment";
-import { createMonitoringRoutes } from "./observability/monitoring";
-import { createMonitoringStore } from "../../agent-readiness/monitoring/monitoring-store";
-
+export { registerOpsRoutes } from "./registry-ops";
 // Core API/agent routes — mounted after wireStaticOps, before MCP namespaces.
 export function registerCoreRoutes(app: Hono): void {
   app.route("/", passportRoutes);
   app.route("/", verifyRoutes);
   app.route("/", didRoutes);
+  app.route("/", authChallengeRoutes);
   app.route("/", agentRoutes);
   app.route("/", adminRoutes);
   app.route("/", createFinopsRoutes()); // EPIC-226 SLICE-226-3: /admin/finance/*
@@ -188,6 +186,9 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", feedRoutes);
   app.route("/", feedDirectoryRoutes);
   app.route("/", mcpRoutes);
+  // EPIC-259 (SLICE-259-5): operator MCP surface — admin-exposure tools
+  // behind ADMIN_API_KEY (adminAuth inside mcp-ops).
+  app.route("/mcp/ops", mcpOpsRoutes);
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);
   app.route("/", econLedgerRevenueRoutes); // 242-9: /api/ledger/revenue (ops)
@@ -331,6 +332,10 @@ export function registerApiRoutes(app: Hono): void {
   app.route("/", createBoardPageRoutes()); // 199-12: /board kanban UI
   app.route("/", fxDeltaVerifyRoutes); // 191-9: /api/fx-delta/verify/:id
   app.route("/api", bountyApiRoutes); // 197-6: /api/bounties/:id/claim
+  // EPIC-262 (SLICE-262-0a): /api/intel/* + /.well-known/agentbadge-keys.json
+  // — INTEL_ENABLED off → no-op (zero surface). No payment deps; the
+  // well-known doc mounts here (after gates) since its path is ungated.
+  wireIntel(app);
 }
 
 // Mounted AFTER wireScanPacksX402 + wireMarketplace — totalScanRoutes is gated
@@ -404,26 +409,3 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
   }
 }
 
-// Ops/monitoring API routes — mounted AFTER wireCirclePayments.
-export function registerOpsRoutes(app: Hono): void {
-  app.route("/", metricsApp);
-  app.route("/", telemetryApp);
-  app.route("/", paymentRoutes);
-
-  // Monitoring routes (EPIC-99)
-  const monitoringDataDir = process.env.MONITORING_DATA_DIR ?? ".data/monitoring";
-  const monitoringStore = createMonitoringStore(monitoringDataDir);
-  const monitoringApp = createMonitoringRoutes({
-    store: monitoringStore,
-    now: () => new Date(),
-    scanFn: async (url: string) => {
-      const { scanDomain } = await import("../../agent-readiness/scanner/orchestrator");
-      const { RuleEngine } = await import("../../agent-readiness/rule-engine/rule-engine");
-      const { formatScanReport } = await import("../../agent-readiness/report-formatter");
-      const sourceState = await scanDomain(url);
-      const result = RuleEngine.run(sourceState);
-      return formatScanReport(url, result);
-    },
-  });
-  app.route("/", monitoringApp);
-}

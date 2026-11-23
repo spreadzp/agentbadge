@@ -56,7 +56,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("/blog/:slug contains TechArticle JSON-LD", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const blogPosting = blocks.find((b) => b["@type"] === "TechArticle");
@@ -64,7 +64,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("TechArticle has headline, author, datePublished, dateModified", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
@@ -75,7 +75,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("TechArticle author is Person type", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
@@ -85,7 +85,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("TechArticle has image field", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
@@ -93,7 +93,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("TechArticle has mainEntityOfPage", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
@@ -101,7 +101,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("TechArticle has publisher with Organization type", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
@@ -111,7 +111,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("page contains BreadcrumbList JSON-LD with Home → Blog → Article", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     const bc = blocks.find((b) => b["@type"] === "BreadcrumbList") as Record<string, unknown>;
@@ -124,7 +124,7 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
   });
 
   it("all JSON-LD blocks parse cleanly (no template-escaping breakage)", async () => {
-    const res = await blogRoutes.request("/blog/what-is-agent-readiness");
+    const res = await blogRoutes.request("/blog/api-has-seo-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
     expect(blocks.length).toBeGreaterThan(0);

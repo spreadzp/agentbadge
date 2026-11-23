@@ -7,6 +7,13 @@ import type { BlogArticle, PaginationMeta, BlogChannel } from "./blog/types";
 export { BLOG_ARTICLES };
 export type { BlogExternalLink, BlogArticle, PaginationMeta, BlogChannel } from "./blog/types";
 
+// SLICE-259-12: the single canonical URL for an article. When an
+// authority page owns the intent (article.canonical set) the /blog twin
+// 301s there and every internal link/sitemap entry points at it.
+export function articleHtmlUrl(a: { slug: string; canonical?: string }): string {
+  return a.canonical ?? `/blog/${a.slug}`;
+}
+
 // --- Markdown generation (SLICE-60-2) ---
 
 const BASE_URL_FOR_MD =
@@ -118,7 +125,7 @@ function stripTags(html: string): string {
 }
 
 function generateArticleMarkdown(article: BlogArticle): string {
-  const header = `# ${article.title}\n\n> Published: ${article.date} | Author: ${article.author} | Canonical: ${BASE_URL_FOR_MD}/blog/${article.slug}\n`;
+  const header = `# ${article.title}\n\n> Published: ${article.date} | Author: ${article.author} | Canonical: ${BASE_URL_FOR_MD}${articleHtmlUrl(article)}\n`;
 
   const body = htmlToMarkdown(article.content);
 
@@ -251,7 +258,7 @@ export function filterByChannel(
 
 export function generateBlogIndexMarkdown(): string {
   const lines = BLOG_ARTICLES.map(
-    (a) => `- [${a.title}](${BASE_URL_FOR_MD}/blog/${a.slug}) — ${a.description}\n  - HTML: ${BASE_URL_FOR_MD}/blog/${a.slug}\n  - Markdown: ${BASE_URL_FOR_MD}/blog/${a.slug}.md\n  - Published: ${a.date}`,
+    (a) => `- [${a.title}](${BASE_URL_FOR_MD}${articleHtmlUrl(a)}) — ${a.description}\n  - HTML: ${BASE_URL_FOR_MD}${articleHtmlUrl(a)}\n  - Markdown: ${BASE_URL_FOR_MD}/blog/${a.slug}.md\n  - Published: ${a.date}`,
   ).join("\n\n");
 
   return `# AgentBadge Blog — Article Index\n\n> Canonical: ${BASE_URL_FOR_MD}/blog\n\n${lines}\n`;

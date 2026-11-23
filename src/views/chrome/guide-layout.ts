@@ -3,6 +3,7 @@ import { SITE_NAME, BASE_URL, pageTitle, markdownAlternatePath } from "../../ser
 import { renderJsonLd } from "../../server/lib/json-ld";
 import { getPlausibleScript } from "../../server/lib/plausible";
 import { getGA4Script } from "../../server/lib/ga4-script";
+import { getMetaPixelScript } from "../../server/lib/meta-pixel";
 import { getGscVerificationMeta } from "../../server/lib/gsc-verification";
 
 /**
@@ -90,6 +91,7 @@ export function GuideLayout(
         ${raw(allJsonLdHtml)}
         ${raw(getGA4Script())}
         ${raw(getPlausibleScript())}
+        ${raw(getMetaPixelScript())}
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
       </head>
       <body class="min-h-full">

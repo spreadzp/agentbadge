@@ -3,6 +3,7 @@ import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle, markdo
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";
 import { getPlausibleScript } from "../../server/lib/plausible";
 import { getGA4Script } from "../../server/lib/ga4-script";
+import { getMetaPixelScript } from "../../server/lib/meta-pixel";
 import { getGscVerificationMeta } from "../../server/lib/gsc-verification";
 import { LandingHeader } from "./header";
 import { Footer } from "../chrome/footer";
@@ -94,6 +95,7 @@ export function LandingLayout(
         ${raw(jsonLdHtml)}
         ${raw(getGA4Script())}
         ${raw(getPlausibleScript())}
+        ${raw(getMetaPixelScript())}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
         <style>

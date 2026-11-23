@@ -30,13 +30,13 @@ export function ReadinessWorkflowSection() {
             <div class="text-xs font-mono text-emerald-400 mb-4">CLI</div>
             <h3 class="text-lg font-semibold mb-2">Run locally</h3>
             <p class="text-slate-400 text-sm mb-4">Scan an API without installing an agent or changing your backend.</p>
-            <code class="block font-mono text-[13px] leading-relaxed bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-300">npx @agentbadge/cli scan URL</code>
+            <code class="block font-mono text-[13px] leading-relaxed bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-300">npx @agentbadge/scanner scan URL</code>
           </div>
           <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-6">
             <div class="text-xs font-mono text-emerald-400 mb-4">GITHUB ACTION</div>
             <h3 class="text-lg font-semibold mb-2">Catch regressions in CI</h3>
             <p class="text-slate-400 text-sm mb-4">Use score thresholds and machine-readable reports before deployment.</p>
-            <code class="block font-mono text-[13px] leading-relaxed bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-300">uses: agentbadge/scan-action@v1</code>
+            <code class="block font-mono text-[13px] leading-relaxed bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-300">run: npx @agentbadge/scanner scan URL</code>
           </div>
           <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-6">
             <div class="text-xs font-mono text-emerald-400 mb-4">BADGE</div>

@@ -33,7 +33,11 @@ export function registerQaSearchRoute(
     async (c) => {
       const q = c.req.query("q")?.trim();
       if (!q) {
-        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "q required");
+        // SLICE-259-19: bare-400 was the top agent error — attach the
+        // exact call shape so a machine client can self-correct.
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "q required", {
+          hint: "example: GET /api/requests/qa?q=how+do+I+verify+a+verdict",
+        });
       }
       const pairs = await requests.searchQa(normalizeQuestion(q), 25);
       return c.json({ results: pairs.map(toPublicQaResult) });

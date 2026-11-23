@@ -1,4 +1,5 @@
-import { html, raw } from "hono/html";
+import { html } from "hono/html";
+import { PUBLIC_STATS } from "../../server/lib/public-stats";
 
 /**
  * HeroSection — landing page hero with animated gradient background.
@@ -22,8 +23,8 @@ export function HeroSection() {
         <div class="mx-auto max-w-4xl text-center">
           <!-- Trust badges -->
           <div class="fade-in-up mb-6 flex flex-wrap justify-center gap-2">
-            <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"><abbr title="Hedera Token Service">HTS</abbr> NFT Passports</span>
-            <span class="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300"><abbr title="Hedera Consensus Service">HCS</abbr> Directory</span>
+            <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"><abbr title="ERC-721 on Arc">ERC-721</abbr> NFT Passports</span>
+            <span class="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">Agent Directory</span>
             <span class="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300"><abbr title="Decentralized Identifier">DID</abbr> Identity</span>
             <span class="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">x402 Payments</span>
           </div>
@@ -35,7 +36,7 @@ export function HeroSection() {
 
           <!-- UVP subheading -->
           <p class="fade-in-up mt-6 text-lg text-slate-300 md:text-xl">
-            Mint NFT passports on Hedera, register in the <abbr title="Hedera Consensus Service">HCS</abbr> directory, and enable
+            Mint NFT passports on Arc, register in the agent directory, and enable
             trustless agent-to-agent interactions with verifiable on-chain identity.
           </p>
 
@@ -61,11 +62,11 @@ export function HeroSection() {
           <!-- Stats row -->
           <div class="fade-in-up mt-16 grid grid-cols-3 gap-4 sm:gap-8">
             <div class="text-center">
-              <div class="text-2xl font-bold text-emerald-400 sm:text-3xl">20+</div>
-              <div class="mt-1 text-xs text-slate-400 sm:text-sm">Passports Minted</div>
+              <div class="text-2xl font-bold text-emerald-400 sm:text-3xl">${PUBLIC_STATS.rules}</div>
+              <div class="mt-1 text-xs text-slate-400 sm:text-sm">Readiness Checks</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-sky-400 sm:text-3xl">38</div>
+              <div class="text-2xl font-bold text-sky-400 sm:text-3xl">${PUBLIC_STATS.mcpTools}</div>
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">MCP Tools</div>
             </div>
             <div class="text-center">

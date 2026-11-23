@@ -73,6 +73,10 @@ authorityRoutes.get(
       description,
       path: canonicalPath,
       ogType: "article",
+      // SLICE-259-12/23: canonical page must still advertise the
+      // Knowledge Object — /blog/:slug 301s here, and agents following
+      // the redirect need the rel=alternate → .json discovery chain.
+      jsonUrl: "/blog/what-is-agent-readiness.json",
     };
 
     const schemas = [

@@ -12,7 +12,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL, SITE_NAME } from "../../lib/page-meta";
-import { BLOG_ARTICLES } from "../../lib/blog-data";
+import { BLOG_ARTICLES, articleHtmlUrl } from "../../lib/blog-data";
 import {
   CAPABILITY_CHANGELOG,
   capabilityToFeedItem,
@@ -31,7 +31,7 @@ function escapeXml(s: string): string {
 }
 
 function articleToRssItem(article: (typeof BLOG_ARTICLES)[number]): string {
-  const link = `${BASE_URL}/blog/${article.slug}`;
+  const link = `${BASE_URL}${articleHtmlUrl(article)}`;
   const pubDate = new Date(article.date).toUTCString();
   return `    <item>
       <title>${escapeXml(article.title)}</title>
@@ -116,8 +116,8 @@ feedRoutes.get(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       )
       .map((article) => ({
-        id: `${BASE_URL}/blog/${article.slug}`,
-        url: `${BASE_URL}/blog/${article.slug}`,
+        id: `${BASE_URL}${articleHtmlUrl(article)}`,
+        url: `${BASE_URL}${articleHtmlUrl(article)}`,
         title: article.title,
         content_text: article.description,
         date_published: new Date(article.date).toISOString(),

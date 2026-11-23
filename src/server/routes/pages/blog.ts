@@ -5,6 +5,7 @@ import { BlogListPage } from "../../../views/blog/blog-list";
 import { BlogArticlePage } from "../../../views/blog/blog-article";
 import {
   BLOG_ARTICLES,
+  articleHtmlUrl,
   generateBlogIndexMarkdown,
   paginateArticles,
   getRelatedArticles,
@@ -14,6 +15,7 @@ import {
   filterByChannel,
 } from "../../lib/blog-data";
 import { toKnowledgeObject } from "../../lib/blog/knowledge-object";
+import { articlePageSchemas } from "../../lib/blog-article-schemas";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { pageCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../../lib/json-ld";
 import { BASE_URL } from "../../lib/page-meta";
@@ -133,8 +135,8 @@ blogRoutes.get(
     const items = BLOG_ARTICLES.map(
       (a) => `    <item>
       <title><![CDATA[${a.title}]]></title>
-      <link>${BASE_URL}/blog/${a.slug}</link>
-      <guid isPermaLink="true">${BASE_URL}/blog/${a.slug}</guid>
+      <link>${BASE_URL}${articleHtmlUrl(a)}</link>
+      <guid isPermaLink="true">${BASE_URL}${articleHtmlUrl(a)}</guid>
       <description><![CDATA[${a.description}]]></description>
       <pubDate>${new Date(a.date).toUTCString()}</pubDate>
       <author>${a.author}</author>
@@ -186,6 +188,8 @@ blogRoutes.get(
     if (!article || !article.markdown) {
       return c.text("Article not found", 404);
     }
+    // SLICE-259-12: mirror declares its canonical HTML twin for crawlers.
+    c.header("Link", `<${BASE_URL}${articleHtmlUrl(article)}>; rel="canonical"`);
     c.header("Content-Type", "text/markdown; charset=UTF-8");
     return c.body(article.markdown);
   },
@@ -216,6 +220,8 @@ blogRoutes.get(
       slug,
       ua_class: classifyUserAgent(c.req.header("user-agent")),
     });
+    // SLICE-259-12: same canonical header as the .md twin.
+    c.header("Link", `<${BASE_URL}${articleHtmlUrl(article)}>; rel="canonical"`);
     return c.json(toKnowledgeObject(article));
   },
 );
@@ -237,6 +243,12 @@ blogRoutes.get(
     if (!article) {
       return c.text("Article not found", 404);
     }
+    // SLICE-259-12: an authority page owns this intent — the /blog twin
+    // is a duplicate, not a canonical-signal page. 301 keeps inbound
+    // links and tells crawlers the one true URL.
+    if (article.canonical) {
+      return c.redirect(`${BASE_URL}${article.canonical}`, 301);
+    }
 
     const meta = {
       title: article.title,
@@ -251,47 +263,7 @@ blogRoutes.get(
       ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
       jsonUrl: `/blog/${article.slug}.json`,
     };
-    const schemas = [
-      ...pageCoreSchemas(),
-      {
-        "@context": "https://schema.org",
-        "@type": "TechArticle",
-        headline: article.title,
-        description: article.shortAnswer ?? article.description,
-        url: `${BASE_URL}/blog/${article.slug}`,
-        datePublished: article.date,
-        dateModified: article.dateModified ?? article.date,
-        author: {
-          "@type": "Person",
-          name: article.author,
-        },
-        image: article.ogImage ? `${BASE_URL}${article.ogImage}` : `${BASE_URL}/favicon.svg`,
-        publisher: {
-          "@type": "Organization",
-          name: "AgentBadge",
-          url: BASE_URL,
-          logo: {
-            "@type": "ImageObject",
-            url: `${BASE_URL}/favicon.svg`,
-          },
-        },
-        mainEntityOfPage: {
-          "@type": "WebPage",
-          "@id": `${BASE_URL}/blog/${article.slug}`,
-        },
-      },
-      // SLICE-201-11: FAQPage from the same qa[] as the visible Q&A block (SSOT).
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: toKnowledgeObject(article).qa.map((q) => ({
-          "@type": "Question",
-          name: q.question,
-          acceptedAnswer: { "@type": "Answer", text: q.answer },
-        })),
-      },
-      breadcrumbFor(`/blog/${article.slug}`, article.title),
-    ];
+    const schemas = articlePageSchemas(article);
     const relatedArticles = getRelatedArticles(article, BLOG_ARTICLES);
     const content = BlogArticlePage(article, relatedArticles).toString();
     const pageHtml = LandingLayout(content, undefined, meta, schemas);

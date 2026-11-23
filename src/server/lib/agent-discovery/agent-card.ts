@@ -8,6 +8,7 @@
  */
 
 import { agentCardAuthBlock } from "../did-auth-docs";
+import { BRAND_DISAMBIGUATION } from "../brand";
 import type { DiscoverySources } from "./sources";
 
 const json = (v: unknown): string => JSON.stringify(v, null, 2) + "\n";
@@ -186,6 +187,7 @@ export function buildAgentCard(src: DiscoverySources): string {
             webmcp_tool_count: src.webmcp.tools.length,
           }
         : {}),
+      disambiguation: BRAND_DISAMBIGUATION, // SLICE-259-25: vs unscoped npm `agentbadge`
       endpoints: {
         api: `${b}/api/specs`,
         docs: "https://agentbadge.gitbook.io/agentbadge-docs",
@@ -197,13 +199,14 @@ export function buildAgentCard(src: DiscoverySources): string {
           "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
         llms_txt: `${b}/llms.txt`,
         llms_full_txt: `${b}/llms-full.txt`,
+        agent_workflows: `${b}/.well-known/agent-workflows.json`, // SLICE-259-18 (v1)
         // SLICE-206-9: machine-readable price list (USDC, x402 flags)
         pricing_json: `${b}/pricing.json`,
         pricing_md: `${b}/pricing.md`,
         // SLICE-206-8: 3-call onboarding walkthrough
         getting_started: `${b}/agent-guide/getting-started`,
         guides: `${b}/agent-guide/context`,
-        did_resolver: `${b}/did`,
+        did_resolver: `${b}/did/{did}`,
         api_catalog: `${b}/.well-known/api-catalog`,
         oauth_protected_resource: `${b}/.well-known/oauth-protected-resource`,
         erc8004: `${b}/.well-known/erc8004-agent.json`,
@@ -226,6 +229,9 @@ export function buildAgentCard(src: DiscoverySources): string {
         team_match: `${b}/agent-guide/team/match`,
         work_requests: `${b}/api/work-requests`,
         demand_request: `${b}/api/demand/request`,
+        // SLICE-259-19: copy-pasteable ?q= example — bare-400 without q
+        // was the top agent error on this surface.
+        qa_search_example: `${b}/api/requests/qa?q=how+do+I+verify+a+verdict`,
         agents_txt: `${b}/agents.txt`,
         keeperhub_scan: `${b}/api/keeperhub/scan`,
         board: `${b}/api/board/cards`,

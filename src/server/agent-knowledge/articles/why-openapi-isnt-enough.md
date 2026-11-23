@@ -102,10 +102,10 @@ That is the measurement problem. Article 8 introduces the measurement framework:
 
 ```bash
 # Run the AgentBadge scanner
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
 # JSON report
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 ```
 
 {{RULE_COUNT}} checks in seconds. Free, no signup. Every finding includes evidence — the HTTP response that produced it.
@@ -130,7 +130,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json
 1. [Read Article 6](/agent-guide/articles/what-ai-agent-needs-to-understand-api) — 8 context layers an agent needs
 2. [Read Article 5](/agent-guide/articles/why-ai-agents-fail-apis) — 7 failure modes when layers are missing
 3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-4. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+4. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 5. Review evidence — every finding links to the HTTP response that produced it
 6. Fix gaps — add discovery files, semantic metadata, error schemas, evidence fields
 7. Re-scan — verify improvements with measurable evidence

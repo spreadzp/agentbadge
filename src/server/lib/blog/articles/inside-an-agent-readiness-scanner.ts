@@ -213,7 +213,7 @@ Result: 76 → 72</code></pre>
 
 <h2>13. What this enables</h2>
 
-<pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
+<pre><code>npx @agentbadge/scanner scan https://api.example.com</code></pre>
 
 <p>CI enforcement, README badges, programmatic queries, vendor comparison.</p>
 

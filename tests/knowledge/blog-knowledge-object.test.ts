@@ -88,7 +88,10 @@ describe("GET /blog/:slug.json — Content Knowledge Object v1", () => {
       if (!body.markdownUrl?.includes(article.slug)) {
         failures.push(`${article.slug}: markdownUrl mismatch`);
       }
-      if (body.canonical !== `https://agentbadge.xyz/blog/${article.slug}`) {
+      // SLICE-259-12: canonical-override articles keep their
+      // authority-page canonical (e.g. /what-is-agent-readiness).
+      const expectedCanonical = `https://agentbadge.xyz${article.canonical ?? `/blog/${article.slug}`}`;
+      if (body.canonical !== expectedCanonical) {
         failures.push(`${article.slug}: canonical mismatch`);
       }
     }

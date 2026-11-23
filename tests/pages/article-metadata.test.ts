@@ -235,8 +235,10 @@ describe("SLICE-73-2: AEO short-answer summaries", () => {
   });
 
   describe("Blog route serves AEO summary", () => {
-    it("/blog/what-is-agent-readiness returns [data-aeo-summary] in HTML", async () => {
-      const res = await app.request("/blog/what-is-agent-readiness");
+    // SLICE-259-12: /blog/what-is-agent-readiness 301s to the authority
+    // page now — assert the summary on a non-canonical-overridden article.
+    it("blog article returns [data-aeo-summary] in HTML", async () => {
+      const res = await app.request("/blog/api-has-seo-agent-readiness");
       const html = await res.text();
       expect(html).toContain('data-aeo-summary');
     });

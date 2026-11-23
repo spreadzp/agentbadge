@@ -10,6 +10,14 @@ vi.mock("@agentbadge/mcp", async (importOriginal) => ({
   listTools: vi.fn().mockReturnValue([{ name: "test_tool" }]),
 }));
 
+// EPIC-259: deny-by-default exposure gate sits in front of the REST
+// alias — the subject under test is the limiter, so `test_tool` mocks
+// as public instead of adding a real registry entry.
+vi.mock("../src/server/lib/mcp-exposure", async (importOriginal) => ({
+  ...await importOriginal(),
+  toolExposure: vi.fn().mockReturnValue("public"),
+}));
+
 import { handleHttpToolCall } from "@agentbadge/mcp";
 import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
 import { mcpRoutes } from "../src/server/routes/mcp/mcp";

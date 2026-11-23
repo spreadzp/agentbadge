@@ -3,6 +3,7 @@ import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle, markdo
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";
 import { getPlausibleScript } from "../../server/lib/plausible";
 import { getGA4Script } from "../../server/lib/ga4-script";
+import { getMetaPixelScript } from "../../server/lib/meta-pixel";
 import { getGscVerificationMeta } from "../../server/lib/gsc-verification";
 import { Footer } from "../chrome/footer";
 import { chromeHeaderNav } from "./layout-nav";
@@ -78,6 +79,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         ${raw(jsonLdHtml)}
         ${analytics ? raw(getGA4Script()) : ""}
         ${analytics ? raw(getPlausibleScript()) : ""}
+        ${analytics ? raw(getMetaPixelScript()) : ""}
         <script src="/js/vendor/htmx.min.js" defer></script>
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
         <style>

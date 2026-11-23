@@ -7,9 +7,9 @@ import { listTools } from "@agentbadge/mcp";
  */
 export function ArchitectureSection() {
   const pills = [
-    { name: "HTS", description: "Hedera Token Service for NFT passports" },
-    { name: "HCS", description: "Hedera Consensus Service for directory & messaging" },
-    { name: "Mirror Node", description: "Free REST API for on-chain reads" },
+    { name: "ERC-721", description: "Soulbound NFT passports on Arc" },
+    { name: "ERC-8004", description: "Agent registry & attestations on Arc" },
+    { name: "USDC", description: "Payments & escrows settled on Arc" },
     { name: "x402", description: "HTTP 402 payment protocol for micropayments" },
     { name: "MCP", description: `Model Context Protocol server (${listTools().length} tools)` },
     { name: "IPFS", description: "Decentralized metadata storage for NFTs" },
@@ -20,7 +20,7 @@ export function ArchitectureSection() {
       <div class="mx-auto max-w-4xl">
         <div class="fade-in-up mb-12 text-center">
           <h2 class="text-2xl font-bold text-white md:text-3xl">
-            Built on Hedera's Native Infrastructure
+            Built on Arc's EVM Infrastructure
           </h2>
           <p class="mt-3 text-slate-400">
             Six core technologies working together for on-chain agent identity.

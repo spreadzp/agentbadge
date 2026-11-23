@@ -10,7 +10,9 @@ import { BLOG_ARTICLES } from "../../src/server/lib/blog-data";
 const app = new Hono();
 app.route("/", blogRoutes);
 
-const SLUG = BLOG_ARTICLES[0].slug;
+// SLICE-259-12: skip canonical-overridden articles — their /blog twin
+// now 301s to the authority page, there is no HTML head to inspect.
+const SLUG = BLOG_ARTICLES.find((a) => !a.canonical)!.slug;
 
 describe("blog article HTML discovery (201-12)", () => {
   it("head has rel=alternate application/json → /blog/:slug.json", async () => {
@@ -30,7 +32,7 @@ describe("blog article HTML discovery (201-12)", () => {
     });
     const tech = lds.find((o) => o["@type"] === "TechArticle");
     expect(tech).toBeTruthy();
-    const a = BLOG_ARTICLES[0];
+    const a = BLOG_ARTICLES.find((x) => !x.canonical)!;
     expect(tech.headline).toBe(a.title);
     expect(tech.author.name).toBe(a.author);
     expect(tech.datePublished).toBe(a.date);

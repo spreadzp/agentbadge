@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../../lib/page-meta";
 import { BLOG_CHANNELS } from "../../lib/blog-data";
-import { BUILD_DATE } from "../../lib/build-info";
 import { BLOG_ARTICLES } from "../../lib/blog-data";
 import { MCP_NAMESPACES } from "./agent-card";
+import { renderRobotsTxt } from "../../lib/crawl-policy";
 
 export const sitemapRoutes = new Hono();
 
@@ -380,9 +380,9 @@ sitemapRoutes.get(
   "/robots.txt",
   describeRoute({
     tags: ["Discovery"],
-    summary: "robots.txt — crawler directives with spam bot blocking",
+    summary: "robots.txt — generated from the crawl-policy matrix",
     description:
-      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, PerplexityBot, Perplexity-User, Google-Extended, Applebot-Extended, CCBot, cohere-ai, ElevenlabsCrawler, ElevenlabsBot, ExaBot, ExaSearchBot, Googlebot, Bingbot, DuckDuckBot) — each group repeats the wildcard disallows — and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
+      "Generated from CRAWL_POLICY (SLICE-259-14/15): wildcard baseline, named training-bot group repeating base rules + selective-train disallows (/rules*, /blog/*.json), full-block group for SEO-tool/high-load crawlers, Content-Signal + Sitemap lines. Search/user bots inherit the wildcard group deliberately.",
     responses: {
       200: {
         description: "robots.txt",
@@ -391,84 +391,20 @@ sitemapRoutes.get(
     },
   }),
   () => {
-    const baseUrl = BASE_URL;
-    // A named User-agent group fully REPLACES the `*` group for that bot —
-    // so every allow group must repeat the wildcard disallows or the bot
-    // inherits unrestricted access to /admin, /ui/, /api/ (audit P0).
-    const disallows = `Disallow: /admin
-Disallow: /ui/
-Disallow: /a2a/
-# /agents is a JSON API directory — not an indexable page (SLICE-131-3)
-Disallow: /agents
-Disallow: /market/tasks/
-# /api/* are JSON endpoints — not indexable pages (SLICE-131-4)
-Disallow: /api/
-Disallow: /ui/a2a/inbox/fragment`;
-
-    // Welcomed AI/search crawlers — official UA tokens only.
-    const allowBots = [
-      "GPTBot",
-      "OAI-SearchBot",
-      "ChatGPT-User",
-      "ClaudeBot",
-      "PerplexityBot",
-      "Perplexity-User",
-      "Google-Extended",
-      "Applebot-Extended",
-      "CCBot",
-      "cohere-ai",
-      "ElevenlabsCrawler",
-      "ElevenlabsBot",
-      "ExaBot",
-      "ExaSearchBot",
-      "Googlebot",
-      "Bingbot",
-      "DuckDuckBot",
-    ];
-    const allowGroups = allowBots
-      .map((bot) => `User-agent: ${bot}\nAllow: /\n${disallows}`)
-      .join("\n\n");
-
-    const body = `User-agent: *
-Allow: /
-${disallows}
-Crawl-delay: 1
-
-# Content-Signal (D-218-2): crawlers below may READ (allowlist answers
-# "who may fetch"), this signal answers "what may be done with content":
-# indexing/search + AI input (RAG/answers) OK, model training is NOT.
-Content-Signal: ai-train=no, search=yes, ai-input=yes
-
-# ── Allow useful LLM / AI crawlers (same restrictions as User-agent: *) ──
-${allowGroups}
-
-# ── Block SEO-spam / link-analysis crawlers ──
-User-agent: AhrefsBot
-Disallow: /
-
-User-agent: SemrushBot
-Disallow: /
-
-User-agent: SemrushBot-SA
-Disallow: /
-
-User-agent: MJ12bot
-Disallow: /
-
-User-agent: DotBot
-Disallow: /
-
-User-agent: BLEXBot
-Disallow: /
-
-# ── Block high-load Chinese crawler ──
-User-agent: Bytespider
-Disallow: /
-
-Sitemap: ${baseUrl}/sitemap.xml
-Sitemap: ${baseUrl}/ai-sitemap.xml
-Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
-`;
+    // SLICE-259-15: generated from the crawl-policy matrix — the file
+    // is a projection of CRAWL_POLICY, not hand-edited content.
+    const body = renderRobotsTxt({
+      baseUrl: BASE_URL,
+      sitemaps: [
+        "/sitemap.xml",
+        "/ai-sitemap.xml",
+      ],
+      // Off-site docs sitemap — was on the hand-edited robots pre-259-15;
+      // gitbook-discovery E2E pins the reference.
+      externalSitemaps: [
+        "https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml",
+      ],
+    });
     return new Response(body, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
@@ -480,7 +416,10 @@ Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
 
 // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
 
-// Per-page lastmod: dynamic pages use BUILD_DATE, static guides use curated dates
+// Per-page lastmod: only dates we actually know — STATIC_LASTMOD
+// curated dates or blog article publish/modify dates. Pages without a
+// real date emit no <lastmod> (SLICE-259-11: absent > fake; a deploy
+// with no content change must not move lastmod).
 const STATIC_LASTMOD: Record<string, string> = {
   "/agent-guide": "2026-07-25",
   "/market-guide": "2026-07-25",
@@ -488,11 +427,9 @@ const STATIC_LASTMOD: Record<string, string> = {
   "/faq": "2026-07-29",
   "/use-cases": "2026-07-29",
   "/contact": "2026-07-24",
-  "/work-with-us": BUILD_DATE,
-  "/changelog": BUILD_DATE,
 };
 
-function pageLastmod(path: string): string {
+function pageLastmod(path: string): string | undefined {
   // F9 (D-218-5): blog articles carry their real publish/modify dates —
   // same pattern as ai-sitemap — not the build date.
   const slug = path.startsWith("/blog/") ? path.slice("/blog/".length) : null;
@@ -500,7 +437,16 @@ function pageLastmod(path: string): string {
     const article = BLOG_ARTICLES.find((a) => a.slug === slug);
     if (article) return article.dateModified ?? article.date;
   }
-  return STATIC_LASTMOD[path] ?? BUILD_DATE;
+  return STATIC_LASTMOD[path];
+}
+
+// Blog listing/channel pages change when articles do — their real
+// lastmod is the newest article's dateModified (not the build date).
+function latestArticleDate(): string | undefined {
+  const dates = BLOG_ARTICLES.map((a) => a.dateModified ?? a.date).filter(
+    (d): d is string => Boolean(d),
+  );
+  return dates.sort().pop();
 }
 
 // SLICE-234-25: hreflang alternates for sitemap xhtml:link annotations.
@@ -540,9 +486,10 @@ export function buildSitemap(): string {
           )
           .join("\n")
       : "";
+    const lastmod = pageLastmod(p.path);
+    const lastmodTag = lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : "";
     return `  <url>
-    <loc>${baseUrl}${p.path}</loc>
-    <lastmod>${pageLastmod(p.path)}</lastmod>
+    <loc>${baseUrl}${p.path}</loc>${lastmodTag}
     <changefreq>${p.changefreq}</changefreq>
     <priority>${p.priority}</priority>
 ${hreflangLinks}
@@ -551,10 +498,14 @@ ${hreflangLinks}
 
   // SLICE-217-14: rubric channel pages are canonical crawl targets —
   // the canonical URL *includes* the ?channel= query param.
+  // SLICE-259-11: lastmod = newest article date (real signal), not BUILD_DATE.
+  const channelLastmod = latestArticleDate();
+  const channelLastmodTag = channelLastmod
+    ? `\n    <lastmod>${channelLastmod}</lastmod>`
+    : "";
   const channelUrls = BLOG_CHANNELS.map(
     (ch) => `  <url>
-    <loc>${baseUrl}/blog?channel=${encodeURIComponent(ch.key)}</loc>
-    <lastmod>${STATIC_LASTMOD["/blog"] ?? BUILD_DATE}</lastmod>
+    <loc>${baseUrl}/blog?channel=${encodeURIComponent(ch.key)}</loc>${channelLastmodTag}
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`,

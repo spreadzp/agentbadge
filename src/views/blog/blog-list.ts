@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { type BlogArticle, type PaginationMeta } from "../../server/lib/blog-data";
+import { articleHtmlUrl, type BlogArticle, type PaginationMeta } from "../../server/lib/blog-data";
 
 export interface TagFilterData {
   tagCounts: { tag: string; count: number }[];
@@ -145,7 +145,7 @@ function articleCard(a: BlogArticle): string {
     ? `<span class="rounded-full border border-amber-700/60 bg-amber-900/30 px-2 py-0.5 text-[10px] font-medium text-amber-400">legacy</span>`
     : "";
   return `<article class="blog-post flex flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900/50 transition-all hover:border-emerald-500">
-    <a href="/blog/${a.slug}" class="block">${thumb}</a>
+    <a href="${articleHtmlUrl(a)}" class="block">${thumb}</a>
     <div class="flex flex-1 flex-col p-5">
       <div class="flex items-center gap-3 text-xs text-slate-500">
         <time datetime="${a.date}">${a.date}</time>
@@ -154,13 +154,13 @@ function articleCard(a: BlogArticle): string {
         ${legacyBadge}
       </div>
       <h2 class="mt-3 text-lg font-bold text-white leading-snug">
-        <a href="/blog/${a.slug}" class="hover:text-emerald-400">${a.title}</a>
+        <a href="${articleHtmlUrl(a)}" class="hover:text-emerald-400">${a.title}</a>
       </h2>
       <p class="mt-2 text-sm text-slate-400 flex-1">${desc}</p>
       <div class="mt-3 flex flex-wrap gap-1.5">
         ${a.tags.slice(0, 3).map((t) => `<a href="/blog?tag=${encodeURIComponent(t)}" class="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 hover:text-emerald-400">${t}</a>`).join("")}
       </div>
-      <a href="/blog/${a.slug}" class="mt-4 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300">
+      <a href="${articleHtmlUrl(a)}" class="mt-4 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300">
         Read more →
       </a>
     </div>

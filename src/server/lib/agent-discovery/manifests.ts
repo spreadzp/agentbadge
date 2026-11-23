@@ -20,6 +20,7 @@ import {
   buildSecurityTxt,
 } from "./wellknown";
 import { buildDidWebDocument } from "./did";
+import { buildAgentWorkflows } from "./agent-workflows";
 
 export interface ManifestEntry {
   /** URL path the manifest is served at. */
@@ -106,6 +107,15 @@ export const MANIFEST_REGISTRY: ManifestEntry[] = [
     cacheMaxAge: 3600,
     summary: "EIP-8004 agent registration (registration-v1) — legacy alias",
     build: buildErc8004Agent,
+  },
+  {
+    // SLICE-259-18: versioned executable workflow contract.
+    path: "/.well-known/agent-workflows.json",
+    publicPath: ".well-known/agent-workflows.json",
+    contentType: "application/json",
+    cacheMaxAge: 3600,
+    summary: "Agent workflows v1 — executable discover→execute→verify recipes",
+    build: buildAgentWorkflows,
   },
   {
     path: "/.well-known/mcp/server-card.json",

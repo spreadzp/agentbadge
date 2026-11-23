@@ -1,18 +1,18 @@
 import { html, raw } from "hono/html";
 
 /**
- * PricingPreviewSection — 4 tier cards with HBAR prices.
+ * PricingPreviewSection — 4 tier cards with USD prices.
  * (SLICE-19-10)
  *
  * Tier data matches OfferCatalog JSON-LD:
- * Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR.
+ * Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99.
  * Gold is highlighted as the recommended tier.
  */
 export function PricingPreviewSection() {
   const tiers = [
     {
       name: "Bronze",
-      price: "10",
+      price: "9.99",
       color: "text-amber-300",
       border: "border-amber-700/40",
       bg: "bg-amber-700/5",
@@ -21,7 +21,7 @@ export function PricingPreviewSection() {
     },
     {
       name: "Silver",
-      price: "50",
+      price: "49.99",
       color: "text-slate-300",
       border: "border-slate-400/40",
       bg: "bg-slate-400/5",
@@ -30,7 +30,7 @@ export function PricingPreviewSection() {
     },
     {
       name: "Gold",
-      price: "200",
+      price: "199.99",
       color: "text-yellow-300",
       border: "border-yellow-500",
       bg: "bg-yellow-500/10",
@@ -39,7 +39,7 @@ export function PricingPreviewSection() {
     },
     {
       name: "Platinum",
-      price: "500",
+      price: "499.99",
       color: "text-emerald-300",
       border: "border-emerald-500/40",
       bg: "bg-emerald-500/5",
@@ -56,7 +56,7 @@ export function PricingPreviewSection() {
             Passport Tiers
           </h2>
           <p class="mt-3 text-slate-400">
-            Choose a tier that matches your agent's reputation needs. Pay once in HBAR.
+            Choose a tier that matches your agent's reputation needs. Pay once — card or USDC on Arc.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export function PricingPreviewSection() {
                     ${t.highlighted ? html`<div class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-yellow-500 px-3 py-0.5 text-xs font-bold text-slate-900">Popular</div>` : ""}
                     <div class="text-center">
                       <h3 class="text-lg font-bold ${t.color}">${t.name}</h3>
-                      <div class="mt-2 text-3xl font-bold text-white">${t.price} <span class="text-sm font-normal text-slate-400">HBAR</span></div>
+                      <div class="mt-2 text-3xl font-bold text-white">$${t.price} <span class="text-sm font-normal text-slate-400">USD</span></div>
                     </div>
                     <ul class="mt-4 space-y-2">
                       ${raw(t.features.map((f) => html`<li class="flex items-center gap-2 text-sm text-slate-400">

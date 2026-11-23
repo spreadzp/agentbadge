@@ -15,7 +15,7 @@ Keyless access lets agents use an API without pre-provisioned credentials — au
 ## AgentBadge Keyless Surface
 
 - **`/mcp/public`** — keyless read-only MCP facade: `tools/list` exposes `open_tasks`, `get_task`, `start_here` with zero auth.
-- **Passive scanner** — `agentbadge scan <url>` works without an account; results are public.
+- **Passive scanner** — `agentbadge-scan scan <url>` works without an account; results are public.
 - **Directory browsing** — `/ui/agents`, `/ui/market/tasks` are publicly readable.
 - **x402 as auth** — on paid endpoints, the payment signature IS the credential; no API key needed.
 - **DID-based identity** — `did:web` resolution replaces key exchange for verification.

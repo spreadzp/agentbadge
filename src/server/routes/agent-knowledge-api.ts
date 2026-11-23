@@ -107,7 +107,18 @@ export function createAgentKnowledgeRoutes(
 
   const rateLimit = (surface: string): MiddlewareHandler => {
     return async (c, next: Next) => {
-      if (!limiter.allow(tierOf(c), searchLimiterKey(c))) {
+      const tier = tierOf(c);
+      if (!limiter.allow(tier, searchLimiterKey(c))) {
+        // SLICE-259-19: agent-readable 429 — Retry-After + RateLimit-*
+        // alongside the retryable:true body.
+        const retryAfter = limiter.retryAfterSec();
+        c.header("Retry-After", String(retryAfter));
+        c.header("X-RateLimit-Limit", String(SEARCH_TIER_LIMITS[tier]));
+        c.header("X-RateLimit-Remaining", "0");
+        c.header(
+          "X-RateLimit-Reset",
+          String(Math.ceil((Date.now() + retryAfter * 1000) / 1000)),
+        );
         return tooMany(c, surface);
       }
       return next();

@@ -216,7 +216,9 @@ describe("honest-zero sweep (D-181-5)", () => {
     expect(body.note).toBe("no_data");
   });
 
-  it("benchmark insufficient_data refusal carries note:no_data", async () => {
+  // SLICE-259-21: empty corpus is a 200 empty collection — 503 is
+  // reserved for genuine source failure.
+  it("benchmark empty corpus → 200 empty collection with note:no_data", async () => {
     vi.doMock("../src/agent-readiness/corpus/corpus-store", () => ({
       FileCorpusStore: class {
         async query() {
@@ -232,9 +234,10 @@ describe("honest-zero sweep (D-181-5)", () => {
     );
     const app = new Hono().route("/", benchmarkRoutes);
     const res = await app.request("/api/benchmarks");
-    expect(res.status).toBe(503);
+    expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.error).toBe("insufficient_data");
+    expect(body.sample_count).toBe(0);
+    expect(body.data).toEqual([]);
     expect(body.note).toBe("no_data");
   });
 });

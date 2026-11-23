@@ -285,11 +285,13 @@ export function registerKnowledgeTools(ns?: NamespaceRegistry): void {
     "Search AgentBadge knowledge graph: articles (Knowledge Objects), readiness rules and concepts. Ranking: exact slug/tag > text > relation edges. Results carry status (LIVE/PRODUCTION/...) and ref links — fetch details via get_knowledge_object or GET <ref>.",
     searchArgs,
     searchHandler,
+    { exposure: "public", publicTier: "curated" },
   );
   r.registerTool(
     "get_knowledge_object",
     "Fetch a full Knowledge Object by id: article:<slug> (Content Object v1 — status, claims, evidence, actions, economicContext), rule:<id> (readiness rule), concept:<id> (knowledge-map node), guide:<slug>. Use after search_knowledge to get the full document.",
     getArgs,
     getHandler,
+    { exposure: "public", publicTier: "curated" },
   );
 }

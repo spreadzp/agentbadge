@@ -233,5 +233,6 @@ export function registerComplianceTools(ns?: NamespaceRegistry): void {
         .describe("The URL to scan for agent readiness compliance (e.g. https://agentbadge.xyz)"),
     },
     checkComplianceHandler,
+    { exposure: "public", publicTier: "curated" },
   );
 }

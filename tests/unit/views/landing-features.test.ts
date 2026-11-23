@@ -21,10 +21,10 @@ describe("SLICE-19-8: Features section (6 capability cards)", () => {
 
     it("contains 6 feature cards", () => {
       const html = FeaturesSection().toString();
-      // Card 1: HTS NFT Passports
-      expect(html).toMatch(/HTS NFT Passport/i);
-      // Card 2: HCS Agent Directory
-      expect(html).toMatch(/HCS.*Directory|Agent Directory/i);
+      // Card 1: NFT Passports (ERC-721 on Arc)
+      expect(html).toMatch(/NFT Passports?/i);
+      // Card 2: Agent Directory
+      expect(html).toMatch(/Agent Directory/i);
       // Card 3: A2A Messaging
       expect(html).toMatch(/A2A|Messaging/i);
       // Card 4: Task Marketplace

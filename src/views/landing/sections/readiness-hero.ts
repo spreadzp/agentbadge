@@ -56,11 +56,11 @@ export function ReadinessHeroSection() {
             <span class="w-2 h-2 rounded-full bg-red-400"></span>
             <span class="w-2 h-2 rounded-full bg-amber-400"></span>
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span class="ml-2 text-xs text-slate-500 font-mono">agentbadge scan</span>
+            <span class="ml-2 text-xs text-slate-500 font-mono">agentbadge-scan scan</span>
           </div>
           <!-- Terminal body -->
           <div class="p-5 font-mono text-[13px] leading-loose">
-            <div class="text-slate-500">$ agentbadge scan https://api.example.com</div>
+            <div class="text-slate-500">$ agentbadge-scan scan https://api.example.com</div>
             <div class="text-emerald-400">✓ discovery /openapi.json</div>
             <div class="text-emerald-400">✓ OpenAPI schema detected</div>
             <div class="text-emerald-400">✓ authentication documented</div>

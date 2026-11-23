@@ -249,7 +249,7 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
       "What does AgentBadge's scanner actually do when it scans my API?",
       "What problems does AgentBadge solve that OpenAPI alone doesn't?",
       "How does MCP complement REST APIs for AI agents?",
-      "How do x402 payments work with AI agents on {{CHAIN_NAME}}?",
+      "How do x402 payments work with AI agents on Arc?",
       "What is the SEO → GEO → Agent Readiness progression?",
       "How does API discovery work for AI agents in the agentic web?",
       "Does my API need SEO if it has Agent Readiness?",

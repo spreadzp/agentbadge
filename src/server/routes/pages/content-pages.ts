@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 import { Hono } from "hono";
+import { createHash } from "crypto";
 import { describeRoute } from "hono-openapi";
 import { FaqPage, getFaqEntries } from "../../../views/pages/faq-page";
 import { UseCasesPage, USE_CASES } from "../../../views/pages/use-cases-page";
@@ -44,6 +45,22 @@ import type { RegistryIndex } from "../../registry/types";
 
 export const contentPageRoutes = new Hono();
 
+// SLICE-259-17: /faq is the heaviest crawler-facing page (~90KB JSON-LD,
+// 99 Q&A). Entries are deterministic module data → memoize the render once
+// per process; weak ETag over the bytes enables cheap 304 revalidation.
+let faqRender: { html: string; etag: string } | null = null;
+
+function renderFaq(): { html: string; etag: string } {
+  if (!faqRender) {
+    const allEntries = getFaqEntries();
+    const schemas = [...pageCoreSchemas(), faqPageLd(allEntries), breadcrumbFor("/faq", "FAQ")];
+    // FaqPage returns a JSX HtmlEscapedString — coerce to primitive for hashing.
+    const html = FaqPage(allEntries, schemas).toString();
+    faqRender = { html, etag: `W/"${createHash("sha256").update(html).digest("hex").slice(0, 32)}"` };
+  }
+  return faqRender;
+}
+
 contentPageRoutes.get(
   "/faq",
   describeRoute({
@@ -53,9 +70,38 @@ contentPageRoutes.get(
     },
   }),
   (c) => {
-    const allEntries = getFaqEntries();
-    const schemas = [...pageCoreSchemas(), faqPageLd(allEntries), breadcrumbFor("/faq", "FAQ")];
-    return c.html(FaqPage(allEntries, schemas));
+    const { html, etag } = renderFaq();
+    const inm = c.req.header("If-None-Match");
+    if (inm?.split(",").some((t) => t.trim() === "*" || t.trim() === etag)) {
+      return new Response(null, { status: 304, headers: { ETag: etag } });
+    }
+    c.header("ETag", etag);
+    return c.html(html);
+  },
+);
+
+// SLICE-259-16: .json mirror of /faq — the structured Q&A representation
+// served for `Accept: application/json` via the json-mirror negotiation.
+contentPageRoutes.get(
+  "/faq.json",
+  describeRoute({
+    description: "Structured FAQ Q&A pairs — JSON mirror of /faq.",
+    responses: {
+      200: { description: "FAQ entries as JSON" },
+    },
+  }),
+  (c) => {
+    const entries = getFaqEntries();
+    return c.json(
+      {
+        type: "faq",
+        page: "/faq",
+        count: entries.length,
+        entries,
+      },
+      200,
+      { "Link": `</faq>; rel="canonical"` },
+    );
   },
 );
 
@@ -115,7 +161,7 @@ contentPageRoutes.get(
       aboutPageLd({
         title: "About AgentBadge — On-Chain Identity for AI Agents",
         description:
-          "AgentBadge gives AI agents a verifiable on-chain identity on Hedera. NFT passports (HTS), HCS directory, A2A messaging, marketplace, MCP server.",
+          "AgentBadge gives AI agents a verifiable on-chain identity on Arc. ERC-721 passports, agent directory, A2A messaging, marketplace, MCP server. (legacy: HTS/HCS on Hedera — read-only verify.)",
         path: "/about",
       }),
       breadcrumbFor("/about", "About"),

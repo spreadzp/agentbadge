@@ -10,6 +10,7 @@
 
 import type { DiscoverySources } from "./sources";
 import { PUBLIC_STATS } from "../public-stats";
+import { BRAND_DISAMBIGUATION } from "../brand";
 import { listingsAsLines } from "./marketplace-listings";
 
 /**
@@ -39,13 +40,20 @@ Paid services are also reachable through external agent marketplaces:
 ${listingsAsLines().join("\n")}
 
 ## 
+## Identity
+
+${BRAND_DISAMBIGUATION}
+
 ## Authentication
 
 No API key for reads. Paid endpoints use [x402](https://x402.org) (HTTP 402) — USDC on Arc. Access passes on /api/total-scan: pay once via x402 → soulbound AccessPassNFT → signed challenge headers \`X-Wallet\`/\`X-Sig\`/\`X-Timestamp\`. Marketplace and A2A mutations require DID-signed challenges.
 
+MCP access tiers: anonymous \`tools/list\` is a curated capability set (~20 onboarding/discovery tools); an \`agb_\` API key (free via /api/v1/agents/register, \`Authorization: Bearer agb_…\`) unlocks the full public+authenticated list; DID signatures (\`X-AgentBadge-Did\`/\`X-AgentBadge-Signature\`/\`X-AgentBadge-Timestamp\`/\`X-AgentBadge-Nonce\`) authorize ownership-scoped calls. Denied calls return a JSON-RPC error or 403 whose message names the path to access.
+
 ## Machine-readable Entry Points
 
 - [Agent Card JSON](/.well-known/agent-card.json) — Server Agent Card (capabilities, endpoints, payment)
+- [Agent Workflows](/.well-known/agent-workflows.json) — Executable workflow contract v1: discover→execute→verify recipes with autonomy class + retryable error codes
 - [OpenAPI 3.1 Spec](/api/specs) — Full API specification (JSON)
 - [OpenAPI YAML](/openapi.yaml) — Full API specification (YAML)
 - [AI Sitemap](/ai-sitemap.xml) — AI resource discovery map (XML)
@@ -57,6 +65,7 @@ No API key for reads. Paid endpoints use [x402](https://x402.org) (HTTP 402) —
 - [Agents JSON Feed](/agents.json) — Agent directory as JSON Feed 1.1
 - [Market Tasks JSON Feed](/market/tasks.json) — Open marketplace tasks as JSON Feed 1.1
 - [Task Board](/api/board/cards) — open work: claim a card, submit a deliverableHash, receipt at /api/board/cards/:id/receipt
+- [Request Inbox QA](/api/requests/qa?q=how+do+I+verify+a+verdict) — human-answered QA corpus search; \`?q=\` required, e.g. \`?q=verify+passport\`
 
 ## Quick Start
 
@@ -89,7 +98,7 @@ export function mcpSection(src: DiscoverySources): string {
   return `
 ## MCP Server
 
-${mcp.tools.length} tools across ${mcp.namespaces.length} namespaces at \`/mcp\` (JSON-RPC over HTTP; namespaces at \`/mcp/<ns>\`).
+${mcp.tools.length} curated tools across ${mcp.namespaces.length} namespaces at \`/mcp\` (JSON-RPC over HTTP; namespaces at \`/mcp/<ns>\`). Anonymous callers see this curated set; authenticate with an \`agb_\` key to list the full public+authenticated surface (operator tools live on \`/mcp/ops\`).
 
 ${nsLines}
 

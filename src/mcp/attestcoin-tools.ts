@@ -219,6 +219,7 @@ export function registerAttestcoinTools(ns?: NamespaceRegistry): void {
       txHash: z.string().describe("Ethereum Sepolia transaction hash (0x-prefixed, 64 hex chars)"),
     },
     verifyCrossChainTaskHandler,
+    { exposure: "authenticated" },
   );
 
   r.registerTool(
@@ -231,6 +232,7 @@ export function registerAttestcoinTools(ns?: NamespaceRegistry): void {
         .describe("Filter by task status"),
     },
     listVerifiedTasksHandler,
+    { exposure: "public" },
   );
 
   r.registerTool(
@@ -240,6 +242,7 @@ export function registerAttestcoinTools(ns?: NamespaceRegistry): void {
       taskId: z.string().describe("Task ID (numeric string)"),
     },
     getTaskStatusHandler,
+    { exposure: "public" },
   );
 }
 

@@ -86,7 +86,7 @@ content-type: text/markdown; charset=utf-8</code></pre>
 <li><strong>Live now</strong>: all 11 manifests <code>200 OK</code> on agentbadge.xyz; markdown negotiation serving <code>text/markdown</code>; <code>.md</code> mirrors on blog articles; generated, not hand-edited.</li>
 <li><strong>Deliberately absent</strong>: <code>ai-plugin.json</code> — OpenAI killed ChatGPT Plugins in 2024; publishing a dead manifest is cargo cult, not compliance. <code>/.well-known/agent.json</code> returns <code>301</code> to <code>agent-card.json</code> instead of rotting as a stale v0.x file.</li>
 <li><strong>Identity</strong>: <code>did:web:agentbadge.xyz</code> resolves (see <a href="https://agentbadge.xyz/blog/arc-c27-did-web-identity">C27</a>); Arc-era identities stay as ERC-8004 <code>eip155:</code> refs, not DIDs.</li>
-<li><strong>To verify right now</strong>: <code>curl https://agentbadge.xyz/.well-known/agent-card.json</code> — or point our scanner at us: <code>npx agentbadge-scan agentbadge.xyz</code>.</li>
+<li><strong>To verify right now</strong>: <code>curl https://agentbadge.xyz/.well-known/agent-card.json</code> — or point our scanner at us: <code>npx @agentbadge/scanner scan https://agentbadge.xyz</code>.</li>
 </ul>
 <p><em>C14 in the Arc Campaign series. <a href="https://agentbadge.xyz/blog/arc-c15-x402-bazaar">C15</a> continues the journey — the agent found us, now it reads the price list. Earlier: <a href="https://agentbadge.xyz/blog/arc-c27-did-web-identity">C27</a> made the domain itself the identity.</em></p>`,
 };

@@ -220,7 +220,9 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
   function limited(c: Context, entry: RateLimitEntry, max: number, now: number): Response {
     const retryAfter = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
     c.header("Retry-After", String(retryAfter));
-    return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "Too Many Requests");
+    return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "Too Many Requests", {
+      retryable: true,
+    });
   }
 
   return async (c: Context, next: Next): Promise<Response | void> => {

@@ -112,13 +112,11 @@ export function createAgentRegisterRoutes(
         xff?.split(",").at(-1)?.trim() ??
         "anonymous";
       if (!(await daily.allow(ip))) {
-        return errorResponse(
-          c,
-          429,
-          ErrorCodes.REGISTER_RATE_LIMITED,
-          "registration rate limit exceeded",
-          { retryable: true },
-        );
+        const msToMidnight = new Date().setUTCHours(24, 0, 0, 0) - Date.now();
+        // SLICE-259-19: daily-UTC bucket → honest Retry-After to midnight.
+        c.header("Retry-After", String(Math.ceil(msToMidnight / 1000)));
+        return errorResponse(c, 429, ErrorCodes.REGISTER_RATE_LIMITED,
+          "registration rate limit exceeded", { retryable: true });
       }
 
       let body: SponsoredBody;

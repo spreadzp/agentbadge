@@ -3,11 +3,12 @@ import { openApiConfig } from "../../openapi";
 import { MCP_NAMESPACES, MCP_NAMESPACE_DESCRIPTIONS, type DiscoverySources } from "./sources";
 
 /** MCP introspection — namespaces + tool listings from the live registry. */
-// SLICE-217-14: hide ops tools from public catalogs (llms.txt, agent-card) —
-// the [OPS/INTERNAL] description marker plus explicit admin-only names.
-const INTERNAL_TOOL_NAMES = new Set(["rebuild_cache"]);
-const isPublicTool = (t: { name: string; description?: string }) =>
-  !INTERNAL_TOOL_NAMES.has(t.name) && !t.description?.includes("[OPS/INTERNAL]");
+// SLICE-217-14 → EPIC-259-3 → EPIC-259-7: catalog visibility follows the
+// registry's anon projection — public catalogs list exactly what an
+// anonymous caller sees in tools/list: exposure:"public" AND
+// publicTier:"curated". The [OPS/INTERNAL] marker stays as docs only.
+const isPublicTool = (t: { exposure?: string; publicTier?: string }) =>
+  t.exposure === "public" && t.publicTier === "curated";
 
 export function collectMcpServer(): DiscoverySources["mcpServer"] {
   try {

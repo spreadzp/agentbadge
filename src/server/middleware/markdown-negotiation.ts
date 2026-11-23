@@ -24,44 +24,16 @@ import type { Context, Next } from "hono";
 import { htmlToMarkdown } from "../lib/agent-discovery/markdown";
 import { BASE_URL } from "../lib/page-meta";
 import { recordSrcAttribution } from "./src-attribution";
+import {
+  headOf,
+  isJsonContentType,
+  notAcceptable,
+  pickPreferred,
+  serveJsonMirror,
+  serveMarkdownMirror,
+} from "./markdown-negotiation-helpers";
 
-// ─── Accept parsing ──────────────────────────────────────────────────────────
-
-interface AcceptEntry {
-  type: string;
-  q: number;
-}
-
-function parseAccept(header: string): AcceptEntry[] {
-  return header
-    .split(",")
-    .map((part) => {
-      const [mediaType, ...params] = part.trim().split(";");
-      const qParam = params.find((p) => p.trim().startsWith("q="));
-      const q = qParam ? parseFloat(qParam.trim().slice(2)) : 1;
-      return { type: mediaType.trim().toLowerCase(), q: isNaN(q) ? 1 : q };
-    })
-    .filter((e) => e.type.length > 0);
-}
-
-/** True when the request prefers markdown over html (q or order). */
-export function prefersMarkdown(accept: string | undefined): boolean {
-  if (!accept) return false;
-  const entries = parseAccept(accept);
-  const qFor = (t: string): number | null => {
-    const exact = entries.find((e) => e.type === t);
-    if (exact) return exact.q;
-    const wild = entries.find(
-      (e) => e.type === "*/*" || (e.type.endsWith("/*") && t.startsWith(e.type.slice(0, -1))),
-    );
-    return wild ? wild.q : null;
-  };
-  const md = qFor("text/markdown");
-  if (md === null || md === 0) return false;
-  const html = qFor("text/html");
-  if (html === null) return true;
-  return md > html;
-}
+export { setMirrorApp } from "./markdown-negotiation-helpers";
 
 // ─── Scope ───────────────────────────────────────────────────────────────────
 
@@ -91,55 +63,14 @@ export function isMarkdownNegotiablePath(path: string): boolean {
   return true;
 }
 
-// ─── `.md` mirror helper ────────────────────────────────────────────────────
-
-let mirrorApp: Hono | null = null;
-
-/**
- * Late-bound app reference for internal mirror sub-requests. Set once after
- * the app is fully assembled (next to `setDiscoveryApp`) — the middleware is
- * wired before route mounts, so it can't capture `app` directly.
- */
-export function setMirrorApp(app: Hono): void {
-  mirrorApp = app;
-}
-
-/**
- * Internal mirror fetch: re-request `path` minus the `.md` suffix (query kept) with
- * `Accept: text/markdown`. Returns the markdown Response, or null when the
- * target isn't a negotiable page (real 404s, JSON APIs, excluded paths).
- */
-async function serveMarkdownMirror(
-  path: string,
-  search = "",
-): Promise<Response | null> {
-  if (!mirrorApp) return null;
-  const stripped = path.slice(0, -3);
-  // Recursive mirrors are meaningless — /x.md.md must not resolve through
-  // the catch-all again, or crawlers discover an infinite .md URL space.
-  if (stripped.endsWith(".md")) return null;
-  const target = stripped === "" || stripped === "/index" ? "/" : stripped;
-  const inner = await mirrorApp.request(target + search, {
-    method: "GET",
-    headers: { Accept: "text/markdown" },
-  });
-  if (!inner.ok) return null;
-  const ct = inner.headers.get("content-type") ?? "";
-  if (!ct.includes("text/markdown")) return null;
-  return new Response(await inner.text(), {
-    status: 200,
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      Vary: "Accept",
-    },
-  });
-}
-
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 export function markdownNegotiation() {
   return async (c: Context, next: Next): Promise<Response | void> => {
-    if (c.req.method !== "GET") {
+    // SLICE-259-16: HEAD runs the same negotiation as GET — the
+    // response is computed normally and the body dropped at the end.
+    const isHead = c.req.method === "HEAD";
+    if (c.req.method !== "GET" && !isHead) {
       await next();
       return;
     }
@@ -152,11 +83,15 @@ export function markdownNegotiation() {
     // <link rel="alternate" type="text/markdown"> never 404s (audit P0).
     if (path.endsWith(".md")) {
       await next();
-      if (c.res.status !== 404) return;
+      if (c.res.status !== 404) {
+        if (isHead) c.res = headOf(c.res);
+        return;
+      }
       // SLICE-178-5: ?src= attribution on .md entry points.
       await recordSrcAttribution(c);
       const mirrored = await serveMarkdownMirror(path, new URL(c.req.url).search);
       if (mirrored) c.res = mirrored;
+      if (isHead) c.res = headOf(c.res);
       return;
     }
 
@@ -164,19 +99,35 @@ export function markdownNegotiation() {
       await next();
       return;
     }
-    const wantsMd = prefersMarkdown(c.req.header("Accept"));
+    const preferred = pickPreferred(c.req.header("Accept"));
 
     await next();
     const res = c.res;
-    if (!res.headers.get("content-type")?.includes("text/html")) return;
+    const resType = res.headers.get("content-type") ?? "";
 
-    if (!wantsMd) {
+    if (preferred === "json" && !isJsonContentType(resType)) {
+      // Uniform policy (SLICE-259-16): `<path>.json` is THE structured
+      // representation for a resource — whatever its default media type
+      // (text/html page, application/rss+xml feed). Mirror exists →
+      // serve it; it doesn't → honest 406.
+      const mirrored = await serveJsonMirror(path);
+      c.res = mirrored ?? notAcceptable(path);
+      if (isHead) c.res = headOf(c.res);
+      return;
+    }
+
+    if (!resType.includes("text/html")) {
+      if (isHead) c.res = headOf(res);
+      return;
+    }
+
+    if (preferred !== "md") {
       // HTML stays byte-identical; Vary tells caches the response is
       // negotiated so a markdown variant never leaks to browsers.
       const vary = res.headers.get("vary");
       const headers = new Headers(res.headers);
       headers.set("Vary", vary ? `${vary}, Accept` : "Accept");
-      c.res = new Response(await res.text(), {
+      c.res = new Response(isHead ? null : await res.text(), {
         status: res.status,
         headers,
       });
@@ -184,7 +135,7 @@ export function markdownNegotiation() {
     }
 
     const md = htmlToMarkdown(await res.text(), BASE_URL);
-    c.res = new Response(md, {
+    c.res = new Response(isHead ? null : md, {
       status: res.status,
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",

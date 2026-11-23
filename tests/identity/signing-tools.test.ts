@@ -30,7 +30,6 @@ import {
 import { Client, PrivateKey, TransferTransaction, Hbar } from "@hashgraph/sdk";
 import { signTransactionBytes } from "@agentbadge/hedera-core";
 
-const BASE_URL = "http://localhost:4021";
 
 // Generate a real frozen transfer transaction for testing
 function makeFrozenTransferTxBytes(): { txBytes: string; privateKey: PrivateKey; accountId: string } {
@@ -268,12 +267,16 @@ describe("SLICE-15-1: POST /mcp/tools/sign_transaction — MCP handler", () => {
         });
       }
       return new Response("Not found", { status: 404 });
-    }) as any;
+    });
 
     const app = makeTestApp();
     const res = await app.request("/mcp/tools/sign_transaction", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // key-family tools are admin-only since EPIC-259 SLICE-259-6
+        "X-Admin-Key": "test-admin-key",
+      },
       body: JSON.stringify({
         txBytes,
         privateKey: privateKey.toStringDer(),
@@ -291,7 +294,10 @@ describe("SLICE-15-1: POST /mcp/tools/sign_transaction — MCP handler", () => {
     const app = makeTestApp();
     const res = await app.request("/mcp/tools/sign_transaction", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": "test-admin-key",
+      },
       body: JSON.stringify({
         privateKey: "302e020100300506032b657004220420deadbeef",
       }),

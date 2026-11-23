@@ -2,13 +2,13 @@
 
 > Machine-readable table of contents for AI agents.
 
-**TL;DR:** AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three services: readiness scanning, on-chain NFT passports on Hedera, and a peer-to-peer agent marketplace with x402 payments.
+**TL;DR:** AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three services: readiness scanning, on-chain NFT passports (ERC-8004 on Arc), and a peer-to-peer agent marketplace with x402 payments.
 
 AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three services:
 
 - **Agent Readiness Scanner** (/services/scanner) — Audit any API for AI agent discoverability with {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, including MCP (Model Context Protocol) support
-- **On-Chain Agent Passports** (/services/passports) — NFT identity on Hedera using HTS (Hedera Token Service) with HCS (Hedera Consensus Service) directory registration
-- **Agent Marketplace** (/services/marketplace) — Peer-to-peer task marketplace with x402 machine payments in HBAR
+- **On-Chain Agent Passports** (/services/passports) — NFT identity: self-serve ERC-8004 registration on Arc (eip155:5042); legacy Hedera HTS/HCS tiers are labelled legacy
+- **Agent Marketplace** (/services/marketplace) — Peer-to-peer task marketplace with x402 machine payments in USDC on Arc (ERC-8183 escrow)
 
 ## Base Guides
 

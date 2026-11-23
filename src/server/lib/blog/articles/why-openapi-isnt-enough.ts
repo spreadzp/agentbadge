@@ -175,13 +175,13 @@ Should I retry?</code></pre>
   <li><strong>Audit your semantics</strong> — Do your OpenAPI operations have <code>summary</code> and <code>description</code> fields that explain intent, not just method?</li>
   <li><strong>Review your error responses</strong> — Are errors structured (RFC 9457) with recovery hints, or just <code>{"error": "something"}</code>?</li>
   <li><strong>Add examples</strong> — Does every operation have at least one concrete request/response example?</li>
-  <li><strong>Run a scan</strong> — <code>npx @agentbadge/cli scan https://your-api.com</code> — ${PUBLIC_STATS.rules} checks in seconds, free, no signup.</li>
+  <li><strong>Run a scan</strong> — <code>npx @agentbadge/scanner scan https://your-api.com</code> — ${PUBLIC_STATS.rules} checks in seconds, free, no signup.</li>
 </ol>
 
-<pre><code>npx @agentbadge/cli scan https://api.example.com
+<pre><code>npx @agentbadge/scanner scan https://api.example.com
 
 # JSON report with evidence
-npx @agentbadge/cli scan https://api.example.com --format json > report.json</code></pre>
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json</code></pre>
 
 <p>Every finding links to the HTTP response that produced it. Evidence, not assertions.</p>
 

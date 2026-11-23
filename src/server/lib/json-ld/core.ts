@@ -2,7 +2,8 @@ import { SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../page-meta";
 import { BUILD_DATE } from "../build-info";
 import { getCatalog } from "@agentbadge/hedera-core";
 import { listTools } from "@agentbadge/mcp";
-import { SCHEMA_CONTEXT, chainVars } from "./shared";
+import { SCHEMA_CONTEXT } from "./shared";
+import { BRAND_DISAMBIGUATION_SHORT, BRAND_SAME_AS } from "../brand";
 
 export function softwareApplicationLd(): object {
   return {
@@ -25,10 +26,10 @@ export function softwareApplicationLd(): object {
         url: `${BASE_URL}/pricing`,
       })),
     },
-    keywords: [chainVars().CHAIN_NAME, "AI Agents", chainVars().NFT_STANDARD, chainVars().CONSENSUS, "DID", "x402", "MCP"],
+    keywords: ["Arc", "AI Agents", "ERC-721", "ERC-8004", "DID", "x402", "MCP"],
     featureList: [
-      `NFT passport minting (${chainVars().NFT_STANDARD})`,
-      `${chainVars().CONSENSUS} directory registration`,
+      "NFT passport minting (ERC-721 on Arc)",
+      "Agent directory registration",
       "Agent-to-agent messaging (A2A)",
       `Task marketplace with USDC payments`,
       `MCP server (${listTools().length} tools)`,
@@ -36,7 +37,7 @@ export function softwareApplicationLd(): object {
     documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
     about: {
       "@type": "Thing",
-      name: `AI Agent Identity and Marketplace on ${chainVars().CHAIN_NAME}`,
+      name: "AI Agent Identity and Marketplace on Arc",
       url: "https://agentbadge.gitbook.io/agentbadge-docs",
     },
     dateModified: BUILD_DATE,
@@ -74,12 +75,9 @@ export function organizationLd(): object {
       url: `${BASE_URL}/contact`,
       availableLanguage: ["English"],
     },
-    sameAs: [
-      "https://github.com/spreadzp/agentbadge",
-      "https://www.linkedin.com/company/agentbadge",
-      "https://agentbadge.gitbook.io/agentbadge-docs",
-      // EPIC-242: external marketplace presence (Circle agent services)
-      "https://agents.circle.com/services",
-    ],
+    // SLICE-259-25: brand disambiguation vs the unscoped npm package
+    // `agentbadge` (Emreceyhnn/Agentbadge — different project).
+    disambiguatingDescription: BRAND_DISAMBIGUATION_SHORT,
+    sameAs: [...BRAND_SAME_AS],
   };
 }

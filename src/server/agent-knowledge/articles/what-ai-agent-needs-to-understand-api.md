@@ -98,10 +98,10 @@ These 8 context layers define the dimensions of Agent Readiness — the measurab
 
 ```bash
 # Run the AgentBadge scanner
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
 # JSON report
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 ```
 
 {{RULE_COUNT}} checks in seconds. Free, no signup.
@@ -126,7 +126,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json
 1. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — Foundation: what Agent Readiness is
 2. [Read Article 5](/agent-guide/articles/why-ai-agents-fail-apis) — 7 failure modes these 8 layers solve
 3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-4. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+4. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 5. Review evidence — every finding links to the HTTP response that produced it
 6. Fix gaps — add `llms.txt`, complete OpenAPI descriptions, add error schemas, add safety metadata
 7. Monitor — re-scan after changes to track improvements

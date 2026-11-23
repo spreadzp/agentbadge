@@ -61,13 +61,13 @@ Each dimension is independent. An API can excel in Documentation but fail in Dis
 
 ```bash
 # Scan an API
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
-# Scan with verbose output
-npx @agentbadge/cli scan https://api.example.com --verbose
+# Scan an API
+npx @agentbadge/scanner scan https://api.example.com
 
 # Output JSON report
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 ```
 
 ## API Endpoints
@@ -102,7 +102,7 @@ If 3+ answers are "not sure" — you have an Agent Readiness gap.
 1. [Read the context](/agent-guide/context) — Understand what AgentBadge does
 2. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — Foundation: what Agent Readiness is
 3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-4. Run a scan — Web UI, CLI (`npx @agentbadge/cli scan URL`), or GitHub Action
+4. Run a scan — Web UI, CLI (`npx @agentbadge/scanner scan URL`), or GitHub Action
 5. Review your evidence — every finding links to the HTTP response that produced it
 6. Fix the gaps — add `llms.txt`, improve OpenAPI, structure your errors
 7. Display your badge — show your measured Agent Readiness score

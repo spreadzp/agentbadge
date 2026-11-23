@@ -127,13 +127,13 @@ Phase 1: Static measurement → Phase 2: Active verification → Future: Behavio
 
 ```bash
 # Run the AgentBadge scanner
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
 # JSON report with full evidence
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 
 # Check specific category
-npx @agentbadge/cli scan https://api.example.com --category discovery
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 Every finding includes evidence — the HTTP response that produced it. Every result includes a status (VERIFIED, INFERRED, CONFLICT, MISSING). Every score includes a category breakdown.
@@ -157,7 +157,7 @@ Every finding includes evidence — the HTTP response that produced it. Every re
 1. [Read Article 7](/agent-guide/articles/why-openapi-isnt-enough) — understand the structural gap that measurement fills
 2. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — foundational definition
 3. [Check the scoring concept](/agent-guide/concepts/scoring) — how category scores and floors work
-4. Run a scan — `npx @agentbadge/cli scan https://your-api.com`
+4. Run a scan — `npx @agentbadge/scanner scan https://your-api.com`
 5. Review evidence — every finding links to the HTTP response that produced it
 6. Check assertion statuses — VERIFIED is the goal, MISSING is the opportunity
 7. Fix gaps — address MISSING assertions first, then INFERRED, then CONFLICT

@@ -77,17 +77,20 @@ export function registerBoardTools(ns?: NamespaceRegistry): void {
     "List Arc task-board cards. Same public projection as GET /api/board/cards — returns cardId, bountyId, title, column, budgetUsdc. Start here, then claim via POST /api/board/cards/:id/claim.",
     {},
     boardListHandler,
+    { exposure: "public", publicTier: "curated" },
   );
   r.registerTool(
     "board_get",
     "Get one Arc task-board card by id (same as GET /api/board/cards/:id). Returns the public card projection; fetch terms via GET /api/board/cards/:id/terms before claiming.",
     boardGetArgs,
     boardGetHandler,
+    { exposure: "public", publicTier: "curated" },
   );
   r.registerTool(
     "board_claim_status",
     "Check whether an Arc task-board card is still claimable: column, executorPassportId, attempt history. Call before POST /api/board/cards/:id/claim to avoid a 409.",
     boardGetArgs,
     boardClaimStatusHandler,
+    { exposure: "public" },
   );
 }

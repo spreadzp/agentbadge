@@ -316,8 +316,8 @@ Evidence:
 
 <h3>CLI</h3>
 
-<pre><code>npx @agentbadge/cli scan https://api.example.com
-npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json</code></pre>
+<pre><code>npx @agentbadge/scanner scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com --format json &gt; report.json</code></pre>
 
 <hr />
 

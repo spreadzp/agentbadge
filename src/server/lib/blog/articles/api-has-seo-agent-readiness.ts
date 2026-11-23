@@ -166,7 +166,7 @@ export const article: BlogArticle =
 
 <h3>CLI</h3>
 
-<p><code>npx @agentbadge/cli scan https://api.example.com</code></p>
+<p><code>npx @agentbadge/scanner scan https://api.example.com</code></p>
 
 <p>The CLI is free, runs locally, and produces the same results as the web scanner.</p>
 

@@ -35,20 +35,12 @@ export {
   type ChallengeParams,
 } from "./did-challenge";
 export { defaultVerifySignature, type VerifySignatureFn } from "./did-verify";
-
-// ─── Test Overrides ──────────────────────────────────────────────
-
-let _overrideVerifier: VerifySignatureFn | null = null;
-let _overrideNonceStore: NonceStore | null = null;
-const _defaultNonceStore = new NonceStore();
-
-export function configureDidAuthForTesting(config: {
-  verifier?: VerifySignatureFn | null;
-  nonceStore?: NonceStore | null;
-}) {
-  _overrideVerifier = config.verifier ?? null;
-  _overrideNonceStore = config.nonceStore ?? null;
-}
+export {
+  configureDidAuthForTesting,
+  didAuthTestOverrides,
+  didAuthNonceStore,
+} from "./did-auth-overrides";
+import { didAuthTestOverrides, didAuthNonceStore } from "./did-auth-overrides";
 
 // ─── Middleware ──────────────────────────────────────────────────
 
@@ -124,8 +116,8 @@ export function requireDidSignature(
     }
 
     // Resolve nonce store and verifier per-request (allows test overrides)
-    const nonceStore = opts.nonceStore ?? _overrideNonceStore ?? _defaultNonceStore;
-    const verifySig = opts.verifySignature ?? _overrideVerifier ?? defaultVerifySignature;
+    const nonceStore = opts.nonceStore ?? didAuthNonceStore();
+    const verifySig = opts.verifySignature ?? didAuthTestOverrides().verifier ?? defaultVerifySignature;
 
     const sig = c.req.header("X-AgentBadge-Signature");
     const tsStr = c.req.header("X-AgentBadge-Timestamp");

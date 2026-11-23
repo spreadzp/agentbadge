@@ -226,7 +226,7 @@ Take an API you control. Run a scan. Don't just look at the number. Open the fin
 5. Can another implementation reproduce the result?
 
 ```bash
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 ## API Endpoints

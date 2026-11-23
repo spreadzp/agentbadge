@@ -142,7 +142,7 @@ Go to [agentbadge.xyz](/) and enter your API URL. Get a full report with scores,
 ### CLI
 
 ```bash
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 The CLI runs locally and produces the same results as the web scanner. No data leaves your machine.
@@ -150,9 +150,8 @@ The CLI runs locally and produces the same results as the web scanner. No data l
 ### GitHub Action
 
 ```yaml
-- uses: agentbadge/scan-action@v1
-  with:
-    api-url: https://api.example.com
+- name: Agent readiness scan
+  run: npx @agentbadge/scanner scan https://api.example.com --format json
 ```
 
 Integrate scanning into your CI/CD pipeline to catch regressions before deployment.

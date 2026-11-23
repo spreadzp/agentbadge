@@ -20,7 +20,7 @@ describe("Namespace HTTP routes — tools/list", () => {
     const ns = createNamespace("test-ns-routes");
     ns.registerTool("ns_specific_tool", "A namespace tool", { x: z.string() }, async () => ({
       content: [{ type: "text", text: "ns-result" }],
-    }));
+    }), { exposure: "public", publicTier: "curated" });
 
     app = new Hono();
     app.route("/mcp/test-ns-routes", createNamespaceRoutes("test-ns-routes"));
@@ -108,7 +108,7 @@ describe("Namespace HTTP routes — tools/list", () => {
       body: JSON.stringify({}),
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.isError).toBe(true);
     expect(body.content[0].text).toContain("nonexistent");
@@ -139,7 +139,7 @@ describe("Namespace HTTP routes — isolation from default namespace", () => {
     const ns = createNamespace("iso-routes");
     ns.registerTool("ns_only_tool", "NS only", {}, async () => ({
       content: [{ type: "text", text: "ns" }],
-    }));
+    }), { exposure: "public", publicTier: "curated" });
 
     const app = new Hono();
     app.route("/mcp/iso-routes", createNamespaceRoutes("iso-routes"));

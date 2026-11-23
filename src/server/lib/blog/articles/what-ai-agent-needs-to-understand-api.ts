@@ -279,7 +279,7 @@ SUCCESS / FAILURE</code></pre>
 
 <p>${PUBLIC_STATS.rules} checks in seconds. Free, no signup.</p>
 
-<pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
+<pre><code>npx @agentbadge/scanner scan https://api.example.com</code></pre>
 
 <img src="/images/blog/what-ai-agent-needs-understand-api/6s.webp" alt="Agent context layers stack: 8 building blocks from Discovery to Safety" />
 

@@ -90,13 +90,13 @@ At each step, the agent needs machine-readable information. If the information e
 
 ```bash
 # Scan an API
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
-# Scan with verbose output
-npx @agentbadge/cli scan https://api.example.com --verbose
+# Scan an API
+npx @agentbadge/scanner scan https://api.example.com
 
 # Output JSON report
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 ```
 
 ## API Endpoints
@@ -118,7 +118,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json
 2. [Read Article 1](/agent-guide/articles/what-is-agent-readiness) — Foundation: what Agent Readiness is
 3. [Read Article 2](/agent-guide/articles/seo-vs-agent-readiness) — Why SEO isn't enough for agent discoverability
 4. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-5. Run a scan — Web UI, CLI (`npx @agentbadge/cli scan URL`), or GitHub Action
+5. Run a scan — Web UI, CLI (`npx @agentbadge/scanner scan URL`), or GitHub Action
 6. Review your evidence — every finding links to the HTTP response that produced it
 7. Fix the gaps — add `llms.txt`, improve OpenAPI, structure your errors
 

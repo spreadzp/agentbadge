@@ -22,9 +22,9 @@ describe("SLICE-19-10: Architecture section", () => {
 
     it("contains 6 tech pills", () => {
       const html = ArchitectureSection().toString();
-      expect(html).toMatch(/HTS/i);
-      expect(html).toMatch(/HCS/i);
-      expect(html).toMatch(/Mirror Node/i);
+      expect(html).toMatch(/ERC-721/i);
+      expect(html).toMatch(/ERC-8004/i);
+      expect(html).toMatch(/USDC/i);
       expect(html).toMatch(/x402/i);
       expect(html).toMatch(/MCP/i);
       expect(html).toMatch(/IPFS/i);
@@ -68,13 +68,13 @@ describe("SLICE-19-10: Pricing Preview section", () => {
       expect(html).toMatch(/Platinum/i);
     });
 
-    it("contains HBAR prices", () => {
+    it("contains USD prices", () => {
       const html = PricingPreviewSection().toString();
-      expect(html).toContain("10");
-      expect(html).toContain("50");
-      expect(html).toContain("200");
-      expect(html).toContain("500");
-      expect(html).toMatch(/HBAR/i);
+      expect(html).toContain("9.99");
+      expect(html).toContain("49.99");
+      expect(html).toContain("199.99");
+      expect(html).toContain("499.99");
+      expect(html).toMatch(/USD/i);
     });
 
     it("highlights Gold tier with Popular badge and ring", () => {

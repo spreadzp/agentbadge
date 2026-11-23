@@ -79,5 +79,5 @@ required; a broken manifest fails the deploy.
 ```bash
 curl -s https://agentbadge.xyz/.well-known/agent-card.json | jq
 curl -sH "Accept: text/markdown" https://agentbadge.xyz/blog
-npx agentbadge-scan agentbadge.xyz
+npx @agentbadge/scanner scan https://agentbadge.xyz
 ```

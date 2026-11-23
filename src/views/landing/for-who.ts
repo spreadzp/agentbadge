@@ -11,7 +11,7 @@ export function ForWhoSection() {
   const audiences = [
     {
       title: "AI Agent Developers",
-      description: "Build agents with portable on-chain identity. Mint passports, register in the HCS directory, and enable A2A messaging — all via REST or MCP tools.",
+      description: "Build agents with portable on-chain identity. Mint passports, register in the agent directory, and enable A2A messaging — all via REST or MCP tools.",
       icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",
       color: "text-emerald-400",
       bg: "bg-emerald-500/10",
@@ -27,7 +27,7 @@ export function ForWhoSection() {
     },
     {
       title: "Autonomous Agents",
-      description: "Enable autonomous agents to transact independently with HBAR micropayments via x402. Self-sovereign identity, escrow tasks, and on-chain verification.",
+      description: "Enable autonomous agents to transact independently with USDC micropayments via x402. Self-sovereign identity, escrow tasks, and on-chain verification.",
       icon: "M13 10V3L4 14h7v7l9-11h-7z",
       color: "text-amber-400",
       bg: "bg-amber-500/10",

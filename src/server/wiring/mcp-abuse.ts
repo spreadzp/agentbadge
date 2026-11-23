@@ -16,6 +16,7 @@ import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { getConfig } from "../../config/env";
 import { getCache } from "../lib/cache";
 import { mcpAbuseGuard, setMcpHeavyGate } from "../middleware/mcp-abuse-guard";
+import { didAuthEnrich } from "../middleware/did-enrich";
 import { CacheRateLimitStore } from "../middleware/rate-limit-redis-store";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 
@@ -42,8 +43,16 @@ export function resolveMcpAbuseTier(c: Context): string {
 }
 
 /** Mounts the abuse-guard on /mcp + /mcp/* when enabled (default ON).
- *  The guard is idempotent per request, so the double-mount is cheap. */
+ *  The guard is idempotent per request, so the double-mount is cheap.
+ *  EPIC-259 (SLICE-259-4): optional DID-signature enrichment mounts
+ *  FIRST on the same paths — verified callers get verifiedDid for
+ *  subject-level auth inside tools (e.g. upgrade_tier) and for the
+ *  guard's resolveMcpAbuseTier. ONE mount for /mcp + /mcp/* — namespace
+ *  sub-apps rely on it (per-route mounts would double-consume the
+ *  single-use nonce). Anonymous callers pass through untouched. */
 export function wireMcpAbuseGuard(app: Hono): void {
+  app.use("/mcp", didAuthEnrich());
+  app.use("/mcp/*", didAuthEnrich());
   const mcpAbuse = getConfig().mcpAbuse;
   if (!mcpAbuse) return;
   const guard = mcpAbuseGuard({

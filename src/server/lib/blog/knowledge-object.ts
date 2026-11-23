@@ -232,7 +232,7 @@ function deriveRelatedResources(article: BlogArticle): RelatedResource[] {
  * identical result (CI drift-check).
  */
 export function toKnowledgeObject(article: BlogArticle): KnowledgeObject {
-  const canonical = `${BASE_URL}/blog/${article.slug}`;
+  const canonical = `${BASE_URL}${article.canonical ?? `/blog/${article.slug}`}`;
   const topics = article.topics ?? article.tags;
   const qa =
     article.qa && article.qa.length > 0

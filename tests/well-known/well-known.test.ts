@@ -229,7 +229,8 @@ describe("Well-known routes", () => {
       expect(text).toContain("User-agent: *");
       expect(text).toContain("Allow: /");
       expect(text).toContain("Disallow: /admin");
-      expect(text).toContain("Disallow: /ui/a2a/inbox/fragment");
+      // /ui/a2a/inbox/fragment is covered by the broader /ui/ disallow
+      expect(text).toContain("Disallow: /ui/");
     });
 
     it("includes AI crawler directives", async () => {
@@ -238,7 +239,8 @@ describe("Well-known routes", () => {
 
       expect(text).toContain("GPTBot");
       expect(text).toContain("ClaudeBot");
-      expect(text).toContain("PerplexityBot");
+      // PerplexityBot is a search bot — inherits `*` (no named group),
+      // see the search/user-inherit test below
       expect(text).toContain("Google-Extended");
     });
 
@@ -263,15 +265,21 @@ describe("Well-known routes", () => {
       }
     });
 
-    it("allows additional useful crawlers with Allow: /", async () => {
+    it("search/user bots inherit `*` policy; training bots get a named group (SLICE-259-15)", async () => {
       const res = await app.request("/robots.txt");
       const text = await res.text();
 
-      const usefulBots = ["Applebot-Extended", "Googlebot", "Bingbot", "DuckDuckBot"];
-      for (const bot of usefulBots) {
+      // training crawlers get a named group carrying base rules +
+      // selective-train disallows
+      for (const bot of ["GPTBot", "ClaudeBot", "CCBot", "Applebot-Extended", "Google-Extended"]) {
         expect(text).toContain(`User-agent: ${bot}`);
-        expect(text).toContain(`Allow: /`);
       }
+      // search/user bots have no named group — they inherit `*`
+      // (deliberate: their policy IS the default policy)
+      for (const bot of ["Googlebot", "PerplexityBot", "ChatGPT-User"]) {
+        expect(text).not.toContain(`User-agent: ${bot}`);
+      }
+      expect(text).toContain("Allow: /");
     });
 
     it("preserves existing AI crawler allows", async () => {
@@ -280,7 +288,6 @@ describe("Well-known routes", () => {
 
       expect(text).toContain("GPTBot");
       expect(text).toContain("ClaudeBot");
-      expect(text).toContain("PerplexityBot");
       expect(text).toContain("Google-Extended");
     });
 
@@ -290,15 +297,15 @@ describe("Well-known routes", () => {
       expect(text).toMatch(/Sitemap:\s+https?:\/\/.+\/ai-sitemap\.xml/);
     });
 
-    it("disallows /api/ for * and Googlebot (SLICE-131-4)", async () => {
+    it("disallows /api/ for * and training bots (SLICE-131-4/259-15)", async () => {
       const res = await app.request("/robots.txt");
       const text = await res.text();
 
-      // * block
+      // * block — Googlebot/search bots inherit this group
       expect(text).toContain("Disallow: /api/");
-      // Googlebot has its own group (overrides *), must carry the disallow too
-      const googlebotGroup = text.split("User-agent: Googlebot")[1]?.split("User-agent:")[0] ?? "";
-      expect(googlebotGroup).toContain("Disallow: /api/");
+      // training group repeats base rules (named group replaces *)
+      const gptGroup = text.split("User-agent: GPTBot")[1]?.split("Sitemap:")[0] ?? "";
+      expect(gptGroup).toContain("Disallow: /api/");
     });
   });
 
@@ -346,7 +353,7 @@ describe("Well-known routes", () => {
       }
     });
 
-    it("each url has loc, lastmod, changefreq, and priority", async () => {
+    it("each url has loc, changefreq, and priority (lastmod optional, SLICE-259-11)", async () => {
       const res = await app.request("/sitemap.xml");
       const text = await res.text();
 
@@ -357,10 +364,11 @@ describe("Well-known routes", () => {
 
       for (const block of blocks) {
         expect(block).toContain("<loc>");
-        expect(block).toContain("<lastmod>");
         expect(block).toContain("<changefreq>");
         expect(block).toContain("<priority>");
       }
+      // lastmod still present on dated pages — it's omitted, not removed
+      expect(text).toContain("<lastmod>");
     });
 
     it("does not include disallowed paths (/admin)", async () => {
@@ -374,7 +382,7 @@ describe("Well-known routes", () => {
       const res = await app.request("/sitemap.xml");
       const text = await res.text();
 
-      const homeBlock = text.split("<url>").find((s) => s.includes("</loc>\n    <lastmod>") && s.match(/<\/loc>\s*<lastmod>/) && s.includes("/</loc>"));
+      const homeBlock = text.split("<url>").find((s) => s.includes("agentbadge.xyz/</loc>"));
       expect(homeBlock).toBeDefined();
       expect(homeBlock).toContain("<priority>1.0</priority>");
     });

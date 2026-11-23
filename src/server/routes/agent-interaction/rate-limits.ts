@@ -32,6 +32,9 @@ const SWEEP_INTERVAL_MS = 60_000;
 export interface TieredLimiter {
   /** false = over the tier/global budget → caller emits 429. */
   allow(tier: keyof typeof TIER_LIMITS, key: string): boolean;
+  /** SLICE-259-19: seconds until the oldest hit in the last-rejected
+   *  bucket slides out of the window — for Retry-After on 429s. */
+  retryAfterSec(): number;
 }
 
 /**
@@ -52,6 +55,7 @@ export function createTieredLimiter(opts: {
   const limits = opts.limits;
   const hits = new Map<string, number[]>();
   let lastSweep = now();
+  let lastRetrySec = Math.ceil(WINDOW_MS / 1000);
 
   const check = (key: string, limit: number): boolean => {
     const t = now();
@@ -74,12 +78,19 @@ export function createTieredLimiter(opts: {
     }
     const arr = (hits.get(key) ?? []).filter((x) => t - x < WINDOW_MS);
     hits.set(key, arr);
-    if (arr.length >= limit) return false;
+    if (arr.length >= limit) {
+      // Oldest live hit leaves the window first — honest Retry-After.
+      lastRetrySec = Math.max(1, Math.ceil((arr[0]! + WINDOW_MS - t) / 1000));
+      return false;
+    }
     arr.push(t);
     return true;
   };
 
   return {
+    retryAfterSec() {
+      return lastRetrySec;
+    },
     allow(tier, key) {
       // Per-key first: a rejected request must not burn the shared
       // global window (arc-audit H1 — one IP could lock out every

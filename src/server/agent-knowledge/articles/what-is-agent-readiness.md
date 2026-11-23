@@ -42,13 +42,13 @@ Each check is a binary rule with evidence — no subjective scoring, no opinions
 
 ```bash
 # Scan an API
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 
-# Scan with verbose output
-npx @agentbadge/cli scan https://api.example.com --verbose
+# Scan an API
+npx @agentbadge/scanner scan https://api.example.com
 
 # Output JSON report
-npx @agentbadge/cli scan https://api.example.com --format json > report.json
+npx @agentbadge/scanner scan https://api.example.com --format json > report.json
 ```
 
 ## API Endpoints
@@ -68,7 +68,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json
 1. [Read the context](/agent-guide/context) — Understand what AgentBadge does
 2. [Follow the learning path](/agent-guide/learn) — Step-by-step guide to make your API agent-ready
 3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
-4. Run a scan — Web UI, CLI (`npx @agentbadge/cli scan URL`), or GitHub Action
+4. Run a scan — Web UI, CLI (`npx @agentbadge/scanner scan URL`), or GitHub Action
 5. Review your evidence — every finding links to the HTTP response that produced it
 6. Fix the gaps — add `llms.txt`, improve OpenAPI, structure your errors
 7. Display your badge — show your measured Agent Readiness score
@@ -159,7 +159,7 @@ Go to the AgentBadge dashboard and enter your API URL. Get a full report with sc
 #### CLI
 
 ```bash
-npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/scanner scan https://api.example.com
 ```
 
 The CLI is free, runs locally, and produces the same results as the web scanner.
@@ -167,9 +167,8 @@ The CLI is free, runs locally, and produces the same results as the web scanner.
 #### GitHub Action
 
 ```yaml
-- uses: agentbadge/scan-action@v1
-  with:
-    api-url: https://api.example.com
+- name: Agent readiness scan
+  run: npx @agentbadge/scanner scan https://api.example.com --format json
 ```
 
 Integrate scanning into your CI/CD pipeline to catch regressions before deployment.

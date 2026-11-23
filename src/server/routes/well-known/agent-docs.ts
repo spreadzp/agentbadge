@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL } from "../../lib/page-meta";
+import { BRAND_DISAMBIGUATION } from "../../lib/brand";
 
 export const agentDocsRoutes = new Hono();
 
@@ -37,6 +38,8 @@ llms_txt: ${baseUrl}/llms.txt
 ## AgentBadge API Skill
 
 AgentBadge provides agent-readiness scanning (USDC x402 on Arc), EVM passport identity, and the Arc Task Board marketplace. Hedera testnet flows are retained as legacy — see the Legacy section.
+
+${BRAND_DISAMBIGUATION}
 
 ### Linked Files
 

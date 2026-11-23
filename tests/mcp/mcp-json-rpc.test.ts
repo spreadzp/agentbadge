@@ -23,7 +23,7 @@ const dummyHandler = vi.fn(async (args: Record<string, unknown>): Promise<ToolRe
 
 beforeEach(() => {
   vi.clearAllMocks();
-  registerTool("echo", "Echo the input back", { message: z.string() }, dummyHandler);
+  registerTool("echo", "Echo the input back", { message: z.string() }, dummyHandler, { exposure: "public", publicTier: "curated" });
 });
 
 describe("MCP JSON-RPC /mcp endpoint", () => {
@@ -37,7 +37,7 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
   it("responds to tools/list with tools array including inputSchema", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 2,
@@ -60,7 +60,7 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
   it("responds to tools/call with content or structured error", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 3,
@@ -79,7 +79,7 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
   it("returns -32601 for unknown method", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 4,
@@ -98,7 +98,7 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
   it("returns -32602 for tools/call with missing tool name", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 5,
@@ -116,7 +116,7 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
   it("returns -32601 for tools/call with unknown tool name", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 6,
@@ -164,13 +164,14 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   let app: Hono;
 
   beforeEach(() => {
+    process.env.ADMIN_API_KEY = "test-admin-key";
     app = makeTestApp();
   });
 
   it("POST /mcp/passport — tools/list returns only passport namespace tools", async () => {
     const res = await app.request("/mcp/passport", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
     });
     expect(res.status).toBe(200);
@@ -182,7 +183,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   it("POST /mcp/market — tools/list returns only market namespace tools", async () => {
     const res = await app.request("/mcp/market", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
     });
     expect(res.status).toBe(200);
@@ -193,7 +194,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   it("POST /mcp/discovery — tools/list returns only discovery namespace tools", async () => {
     const res = await app.request("/mcp/discovery", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
     });
     expect(res.status).toBe(200);
@@ -204,7 +205,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   it("POST /mcp/audit — tools/list returns only audit namespace tools", async () => {
     const res = await app.request("/mcp/audit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "tools/list" }),
     });
     expect(res.status).toBe(200);
@@ -215,7 +216,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   it("POST /mcp (aggregator) — tools/list returns all tools", async () => {
     const res = await app.request("/mcp", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 5, method: "tools/list" }),
     });
     expect(res.status).toBe(200);
@@ -226,7 +227,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
   it("POST /mcp/passport — tools/call rejects non-passport tool", async () => {
     const res = await app.request("/mcp/passport", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-admin-key" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 6,

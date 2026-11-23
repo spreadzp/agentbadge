@@ -86,13 +86,13 @@ We offer consulting and development services. Each service has a problem stateme
 
 ### Blockchain Infrastructure
 - Problem: Need blockchain integration, wallet setup, or tokenization infrastructure
-- Keywords: blockchain, evm, arc, ethereum, base, wallet, tokenization, web3, smart contracts, defi, crypto payments, micropayments, payment systems, x402, machine payments, agent economy, agent commerce, nft, fungible token, on-chain payments, decentralized finance, hedera, hts, hcs
+- Keywords: blockchain, evm, arc, ethereum, base, wallet, tokenization, web3, smart contracts, defi, crypto payments, micropayments, payment systems, x402, machine payments, agent economy, agent commerce, nft, fungible token, on-chain payments, decentralized finance (legacy: hedera, hts, hcs)
 - Deliverables: Integration code; Wallet setup; Token configuration; Documentation
 - Engagement: fixed-scope, contract
 
 ### Smart Contract Development
 - Problem: Need Solidity or EVM smart contracts for tokenization, DeFi, or on-chain logic
-- Keywords: smart contracts, solidity, evm, tokenization, defi, on-chain, nft, fungible token, hedera, hts
+- Keywords: smart contracts, solidity, evm, tokenization, defi, on-chain, nft, fungible token (legacy: hedera, hts)
 - Deliverables: Smart contracts; Deployment scripts; Tests; Documentation
 - Engagement: fixed-scope, contract
 
