@@ -16,6 +16,8 @@ import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { invalidateDomain } from "../lib/cache";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { captureError } from "../lib/sentry";
+import { ErrorCodes } from "../lib/error-codes";
+import { errorResponse } from "../lib/error-response";
 import {
   activeScans,
   scanDurationMs,
@@ -196,7 +198,9 @@ keeperhubApiRoutes.post(
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     // SLICE-201-7: src attribution — article/guide/mcp → scan.
@@ -305,7 +309,9 @@ keeperhubApiRoutes.post(
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     let score: number, grade: string, rulesPassed: number, rulesTotal: number;

@@ -177,7 +177,9 @@ attestationRoutes.post(
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     const agentIdRaw = (body as Record<string, unknown>)?.agentId;

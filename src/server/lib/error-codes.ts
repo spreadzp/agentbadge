@@ -30,6 +30,9 @@ export const ErrorCodes = {
   APPROVAL_ALREADY_DECIDED: "approval_already_decided",
   APPROVAL_EXPIRED: "approval_expired",
 
+  // 403 — SSRF guard (scanner-family APIs refuse private/loopback targets)
+  PRIVATE_TARGET_FORBIDDEN: "private_target_forbidden",
+
   // 403 — passport/identity
   PASSPORT_NOT_FOUND: "PASSPORT_NOT_FOUND",
   PASSPORT_REVOKED: "PASSPORT_REVOKED",

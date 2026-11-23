@@ -24,6 +24,8 @@ import { scanDomain } from "../../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../../agent-readiness/scanner/ssrf/ip-guard";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 import { trackEvent, isGa4Enabled } from "../../lib/google-analytics";
 import { trackPlausibleEvent, isPlausibleEventsEnabled } from "../../lib/plausible-events";
 import type { NextCall } from "../../lib/next-call";
@@ -47,7 +49,9 @@ webmcpApiRoutes.get(
     const did = c.req.query("did");
 
     if (!tokenId && !did) {
-      return c.json({ error: "Either tokenId or did query parameter is required" }, 400);
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Either tokenId or did query parameter is required", {
+        hint: "Pass ?tokenId=<hedera-token> or ?did=<did:hcs|did:ethr> — see /api/specs",
+      });
     }
 
     let resolvedTokenId = tokenId;
@@ -58,11 +62,15 @@ webmcpApiRoutes.get(
         if (isEvmDid(did)) {
           const parsed = parseEvmDid(did);
           if (!parsed) {
-            return c.json({ error: "Invalid DID format" }, 400);
+            return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format", {
+              hint: "Expected did:ethr:<chainId>:<address>:<tokenId> or did:hcs:<tokenId>:<serial>",
+            });
           }
           const cfg = getConfig();
           if (cfg.chainMode === "hedera") {
-            return c.json({ error: "EVM DIDs are not supported in Hedera chain mode" }, 400);
+            return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "EVM DIDs are not supported in Hedera chain mode", {
+              hint: "Pass a did:hcs:<tokenId>:<serial> on this deployment",
+            });
           }
           const adapter = await getChainAdapter();
           const passport = await adapter.getPassportInfo(parsed.nftAddress, parsed.tokenId);
@@ -81,7 +89,9 @@ webmcpApiRoutes.get(
 
         const parsed = parseDid(did);
         if (!parsed) {
-          return c.json({ error: "Invalid DID format" }, 400);
+          return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format", {
+            hint: "Expected did:hcs:<tokenId>:<serial>",
+          });
         }
         resolvedTokenId = parsed.tokenId;
         serial = parsed.serial;
@@ -132,7 +142,9 @@ webmcpApiRoutes.get(
   async (c) => {
     const url = c.req.query("url");
     if (!url) {
-      return c.json({ error: "URL is required" }, 400);
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "URL is required", {
+        hint: "Pass ?url=https://example.com",
+      });
     }
 
     let normalizedUrl = url.trim();
@@ -143,14 +155,18 @@ webmcpApiRoutes.get(
     try {
       new URL(normalizedUrl);
     } catch {
-      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
+        hint: "Expected an http(s) URL like https://example.com",
+      });
     }
 
     const hostname = new URL(normalizedUrl).hostname;
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     if (isGa4Enabled()) {
@@ -178,7 +194,9 @@ webmcpApiRoutes.get(
       return c.json({ ...report, next_call }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: `Scan failed: ${message}` }, 500);
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Scan failed: ${message}`, {
+        retryable: true,
+      });
     }
   },
 );
@@ -198,7 +216,9 @@ webmcpApiRoutes.get(
   async (c) => {
     const url = c.req.query("url");
     if (!url) {
-      return c.json({ error: "URL is required" }, 400);
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "URL is required", {
+        hint: "Pass ?url=https://example.com",
+      });
     }
 
     let normalizedUrl = url.trim();
@@ -209,14 +229,18 @@ webmcpApiRoutes.get(
     try {
       new URL(normalizedUrl);
     } catch {
-      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
+        hint: "Expected an http(s) URL like https://example.com",
+      });
     }
 
     const hostname = new URL(normalizedUrl).hostname;
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     try {
@@ -243,7 +267,9 @@ webmcpApiRoutes.get(
       return c.body(svg);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: `Badge generation failed: ${message}` }, 500);
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Badge generation failed: ${message}`, {
+        retryable: true,
+      });
     }
   },
 );
@@ -262,7 +288,9 @@ webmcpApiRoutes.get(
   async (c) => {
     const url = c.req.query("url");
     if (!url) {
-      return c.json({ error: "URL is required" }, 400);
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "URL is required", {
+        hint: "Pass ?url=https://example.com",
+      });
     }
 
     let normalizedUrl = url.trim();
@@ -273,14 +301,18 @@ webmcpApiRoutes.get(
     try {
       new URL(normalizedUrl);
     } catch {
-      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
+        hint: "Expected an http(s) URL like https://example.com",
+      });
     }
 
     const hostname = new URL(normalizedUrl).hostname;
     try {
       assertSafeTarget(hostname);
     } catch {
-      return c.json({ error: "Private URLs are not allowed" }, 403);
+      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+      });
     }
 
     try {
@@ -294,7 +326,9 @@ webmcpApiRoutes.get(
       }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: `Scan failed: ${message}` }, 500);
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Scan failed: ${message}`, {
+        retryable: true,
+      });
     }
   },
 );
