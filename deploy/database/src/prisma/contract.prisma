@@ -1865,6 +1865,31 @@ model IntelScanJob {
   @@index([tenantId])
 }
 
+// ─── EPIC-262 (SLICE-262-11) Client monthly report — canonical
+// snapshot (immutable, references the signed report by hash) +
+// versioned editorial layer. Lifecycle GENERATED→IN_REVIEW→
+// APPROVED→SENT; one report per site+period (D-UX-Q4).
+
+model IntelClientReport {
+  id               String            @id // cr_<ulid>
+  siteId           String
+  tenantId         String
+  period           String // "YYYY-MM"
+  status           String // GENERATED|IN_REVIEW|APPROVED|SENT
+  canonical        Json // immutable snapshot — never edited
+  delta            Json? // MoM delta — null = first period / ruleset change
+  editorial        Json // current revision {version, heroLine, …}
+  editorialHistory Json // archived revisions
+  approvedBy       String?
+  sentBy           String?
+  sentAt           TimestamptzString?
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+
+  @@unique([siteId, period])
+  @@index([tenantId])
+}
+
 // ─── EPIC-262 (SLICE-262-7) Tenant operators — humans on a tenant
 // with roles; the abop_ key is a TENANT-scoped credential (site owner
 // ≠ operator ≠ tenant). Plaintext never persisted — sha256+prefix.

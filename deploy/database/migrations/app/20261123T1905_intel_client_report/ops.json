@@ -1,0 +1,122 @@
+[
+  {
+    "id": "table.intelClientReport",
+    "label": "Create table \"intelClientReport\"",
+    "summary": "Creates table \"intelClientReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelClientReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelClientReport\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelClientReport\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelClientReport\"",
+        "sql": "CREATE TABLE \"public\".\"intelClientReport\" (\n  \"approvedBy\" text,\n  \"canonical\" json NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"delta\" json,\n  \"editorial\" json NOT NULL,\n  \"editorialHistory\" json NOT NULL,\n  \"id\" text NOT NULL,\n  \"period\" text NOT NULL,\n  \"sentAt\" timestamptz,\n  \"sentBy\" text,\n  \"siteId\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelClientReport\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelClientReport\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelClientReport.intelClientReport_siteId_period_key",
+    "label": "Add unique constraint on \"intelClientReport\" (siteId, period)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelClientReport_siteId_period_key",
+        "table": "intelClientReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelClientReport_siteId_period_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelClientReport_siteId_period_key",
+          "public",
+          "\"public\".\"intelClientReport\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelClientReport_siteId_period_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelClientReport\" ADD CONSTRAINT \"intelClientReport_siteId_period_key\" UNIQUE (\"siteId\", \"period\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelClientReport_siteId_period_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelClientReport_siteId_period_key",
+          "public",
+          "\"public\".\"intelClientReport\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelClientReport.intelClientReport_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelClientReport_tenantId_idx_c93ed4f1\" on \"intelClientReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelClientReport_tenantId_idx_c93ed4f1",
+        "table": "intelClientReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelClientReport_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelClientReport_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelClientReport_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelClientReport_tenantId_idx_c93ed4f1\" ON \"public\".\"intelClientReport\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelClientReport_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelClientReport_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  }
+]

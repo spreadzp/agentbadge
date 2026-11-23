@@ -172,6 +172,10 @@
       "model": "ForensicsFunding",
       "namespace": "public"
     },
+    "intelClientReport": {
+      "model": "IntelClientReport",
+      "namespace": "public"
+    },
     "intelConsent": {
       "model": "IntelConsent",
       "namespace": "public"
@@ -5483,6 +5487,157 @@
               },
               "namespaceId": "public",
               "table": "forensicsFunding"
+            }
+          },
+          "IntelClientReport": {
+            "fields": {
+              "approvedBy": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "canonical": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "delta": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "editorial": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "editorialHistory": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "period": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "sentAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "sentBy": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "siteId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "approvedBy": {
+                  "column": "approvedBy"
+                },
+                "canonical": {
+                  "column": "canonical"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "delta": {
+                  "column": "delta"
+                },
+                "editorial": {
+                  "column": "editorial"
+                },
+                "editorialHistory": {
+                  "column": "editorialHistory"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "period": {
+                  "column": "period"
+                },
+                "sentAt": {
+                  "column": "sentAt"
+                },
+                "sentBy": {
+                  "column": "sentBy"
+                },
+                "siteId": {
+                  "column": "siteId"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelClientReport"
             }
           },
           "IntelConsent": {
@@ -15404,6 +15559,108 @@
                 }
               ]
             },
+            "intelClientReport": {
+              "columns": {
+                "approvedBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "canonical": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "delta": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "editorial": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "editorialHistory": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "period": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "sentAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "sentBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "siteId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "tenantId"
+                  ],
+                  "name": "intelClientReport_tenantId_idx_c93ed4f1",
+                  "prefix": "intelClientReport_tenantId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "siteId",
+                    "period"
+                  ]
+                }
+              ]
+            },
             "intelConsent": {
               "columns": {
                 "createdAt": {
@@ -20147,10 +20404,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "3b7b82ce22615f5958f7d7e2d44047f618d8fb7d0c05a7c05882a97130cf48a5"
+    "storageHash": "f77931a1964860f33fa3f46f7c6209f885e7f613298ace482fd7dd45c995e95a"
   },
   "execution": {
-    "executionHash": "f561e3e1162245451d780fe3dffbc02dee2ccb207efd14d51e780b192cfe9a3f",
+    "executionHash": "43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475",
     "mutations": {
       "defaults": [
         {
@@ -20976,6 +21233,21 @@
             "column": "id",
             "namespace": "public",
             "table": "forensicsFunding"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "intelClientReport"
           }
         },
         {
