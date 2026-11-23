@@ -13,6 +13,7 @@ import type {
 } from "../registry/types";
 import type { IntelConsent } from "../consent";
 import type { ScanJob } from "../scan";
+import { computeMoMDelta, type MoMDelta } from "../delta";
 
 export interface PortfolioRow {
   site: IntelSite;
@@ -32,6 +33,9 @@ export interface SiteDetail {
   };
   consents: IntelConsent[];
   latestJob: ScanJob | null;
+  /** SLICE-262-12 — delta vs the site's previous report (null when
+   *  no prior report or ruleset changed) */
+  momDelta: MoMDelta | null;
   /** envelopes of the latest job's scan (empty when no scan) */
   evidence: {
     id: string;
@@ -88,7 +92,12 @@ export async function siteDetail(
   const site = await stores.sites.byId(siteId);
   if (!site) return null;
   const domains = await stores.domains.forSite(siteId);
-  const job = latest(await scanJobs.forSite(siteId));
+  const jobs = await scanJobs.forSite(siteId);
+  const job = latest(jobs);
+  // second-latest job WITH a report — the MoM baseline
+  const prevReport = jobs
+    .filter((j) => job && j.id !== job.id && j.report !== null)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0]?.report ?? null;
   return {
     site,
     domains,
@@ -105,6 +114,8 @@ export async function siteDetail(
     },
     consents: await consentStore.forSite(siteId),
     latestJob: job,
+    momDelta:
+      job?.report != null ? computeMoMDelta(prevReport, job.report) : null,
     evidence: job ? await evidenceStore.forScan(siteId, job.scanId) : [],
   };
 }

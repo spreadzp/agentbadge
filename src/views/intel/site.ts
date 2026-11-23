@@ -85,6 +85,14 @@ export const IntelSitePage = (
           </div>
         </section>
 
+        ${d.momDelta ? html`
+          <p class="mt-4 text-xs text-slate-500">
+            vs previous scan:
+            ${d.momDelta.readinessDelta !== null ? html` readiness <span class="${d.momDelta.readinessDelta > 0 ? "text-emerald-300" : d.momDelta.readinessDelta < 0 ? "text-rose-300" : "text-slate-400"}">${d.momDelta.readinessDelta > 0 ? "+" : ""}${d.momDelta.readinessDelta}</span> ·` : ""}
+            ${d.momDelta.exposureDelta !== null ? html` exposure <span class="${d.momDelta.exposureDelta < 0 ? "text-emerald-300" : d.momDelta.exposureDelta > 0 ? "text-rose-300" : "text-slate-400"}">${d.momDelta.exposureDelta > 0 ? "+" : ""}${d.momDelta.exposureDelta}</span> ·` : ""}
+            ${d.momDelta.closed.length} resolved · ${d.momDelta.newOpen.length} new · ${d.momDelta.stillOpen.length} still open
+          </p>` : ""}
+
         <div class="mt-8 grid gap-6 lg:grid-cols-3">
           <section class="rounded-lg border border-slate-800 bg-slate-900/50 p-5 lg:col-span-2">
             <h2 class="text-sm font-semibold text-white">Findings <span class="ml-1 font-normal text-slate-500">${findings.length} checks — fails and unknowns first</span></h2>

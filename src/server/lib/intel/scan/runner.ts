@@ -110,13 +110,18 @@ export async function runScanJob(
   }
 
   const completeness = probeFailures > 0 ? "partial" : "complete";
+  // MoM chain (262-12): link to the site's previous report hash so
+  // tampering with history breaks the chain — genesis = null
+  const priors = (await deps.jobs.forSite(job.siteId))
+    .filter((j) => j.id !== job.id && j.report !== null && j.createdAt < job.createdAt)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   const report = assembleIntelReport(envelopes, {
     site_id: job.siteId,
     scan_id: job.scanId,
     completeness,
     generated_at: iso(),
     report_id: generateReportId(),
-    previous_hash: null, // MoM chain lands with 262-12
+    previous_hash: priors[0]?.report?.integrity.content_hash ?? null,
     ruleset: deps.ruleset,
     key: deps.key,
   });

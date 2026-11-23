@@ -38,10 +38,14 @@ export function renderClientMarkdown(
   }
   if (r.delta) {
     const { newOpenRuleIds, closedRuleIds } = r.delta;
-    if (newOpenRuleIds.length || closedRuleIds.length) {
+    const still = r.delta.stillOpenRuleIds ?? [];
+    const trans = r.delta.transitions ?? [];
+    if (newOpenRuleIds.length || closedRuleIds.length || still.length || trans.length) {
       lines.push("### Finding delta");
       for (const id of closedRuleIds) lines.push(`- ✔ resolved: \`${id}\``);
       for (const id of newOpenRuleIds) lines.push(`- ⚠ new: \`${id}\``);
+      for (const t of trans) lines.push(`- ↻ \`${t.rule_id}\`: ${t.from} → ${t.to}`);
+      for (const id of still) lines.push(`- … still open: \`${id}\``);
       lines.push("");
     }
   }

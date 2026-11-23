@@ -42,6 +42,9 @@ export interface ClientReportCanonical {
   findingCounts: { pass: number; fail: number; warn: number; unknown: number };
   /** rule_ids of fail/warn findings — drives "attention" + delta */
   openFindingRuleIds: string[];
+  /** SLICE-262-12: full rule→status map — enables status transitions
+   *  in the MoM delta (open ids alone can't show warn↔fail flips) */
+  findingStatuses?: Record<string, string>;
   provenance: Record<string, number>;
   envelopeCount: number;
 }
@@ -55,6 +58,9 @@ export interface ClientReportDelta {
   exposureDelta: number | null;
   newOpenRuleIds: string[];
   closedRuleIds: string[];
+  /** SLICE-262-12 — open in both periods + status transitions */
+  stillOpenRuleIds?: string[];
+  transitions?: { rule_id: string; from: string; to: string }[];
 }
 
 export interface ClientReport {

@@ -31,6 +31,11 @@ export const IntelClientReportPage = (
     ? [
         ...r.delta.closedRuleIds.map((id) => ({ ok: true, txt: `resolved: ${id}` })),
         ...r.delta.newOpenRuleIds.map((id) => ({ ok: false, txt: `new: ${id}` })),
+        ...(r.delta.transitions ?? []).map((t) => ({
+          ok: false,
+          txt: `${t.rule_id}: ${t.from} → ${t.to}`,
+        })),
+        ...(r.delta.stillOpenRuleIds ?? []).map((id) => ({ ok: false, txt: `still open: ${id}` })),
       ]
     : [];
   return html`

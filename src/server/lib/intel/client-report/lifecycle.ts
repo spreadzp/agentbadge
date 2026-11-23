@@ -3,6 +3,12 @@
 
 import { generateReportId } from "../../../../agent-readiness/integrity/ulid";
 import type { IntelReport } from "../report";
+import {
+  diffRuleStatuses,
+  ruleStatusMap,
+  rulesetsCompatible,
+  type FindingStatus,
+} from "../delta";
 import type { ScanJob } from "../scan";
 import type {
   ClientReport,
@@ -39,6 +45,7 @@ export function snapshotCanonical(
     },
     findingCounts: counts,
     openFindingRuleIds: openRuleIds.sort(),
+    findingStatuses: ruleStatusMap(report),
     provenance: { ...report.evidence.provenance },
     envelopeCount: report.evidence.envelope_count,
   };
@@ -52,10 +59,28 @@ export function computeDelta(
 ): ClientReportDelta | null {
   if (!prev) return null;
   const p = prev.canonical;
-  if (p.ruleset.name !== canonical.ruleset.name || p.ruleset.version !== canonical.ruleset.version)
-    return null;
-  const prevOpen = new Set(p.openFindingRuleIds);
-  const curOpen = new Set(canonical.openFindingRuleIds);
+  if (!rulesetsCompatible(p.ruleset, canonical.ruleset)) return null;
+  // prefer the full status map when both sides carry it (262-12);
+  // older rows fall back to open-id set math (no transitions)
+  let newOpen: string[];
+  let closed: string[];
+  let stillOpen: string[] | undefined;
+  let transitions: { rule_id: string; from: string; to: string }[] | undefined;
+  if (p.findingStatuses && canonical.findingStatuses) {
+    const diff = diffRuleStatuses(
+      p.findingStatuses as Record<string, FindingStatus>,
+      canonical.findingStatuses as Record<string, FindingStatus>,
+    );
+    newOpen = diff.newOpen;
+    closed = diff.closed;
+    stillOpen = diff.stillOpen;
+    transitions = diff.transitions;
+  } else {
+    const prevOpen = new Set(p.openFindingRuleIds);
+    const curOpen = new Set(canonical.openFindingRuleIds);
+    newOpen = [...curOpen].filter((r) => !prevOpen.has(r)).sort();
+    closed = [...prevOpen].filter((r) => !curOpen.has(r)).sort();
+  }
   return {
     prevReportId: prev.id,
     readinessDelta:
@@ -66,8 +91,10 @@ export function computeDelta(
       p.scores.exposure !== null && canonical.scores.exposure !== null
         ? canonical.scores.exposure - p.scores.exposure
         : null,
-    newOpenRuleIds: [...curOpen].filter((r) => !prevOpen.has(r)).sort(),
-    closedRuleIds: [...prevOpen].filter((r) => !curOpen.has(r)).sort(),
+    newOpenRuleIds: newOpen,
+    closedRuleIds: closed,
+    stillOpenRuleIds: stillOpen,
+    transitions,
   };
 }
 
