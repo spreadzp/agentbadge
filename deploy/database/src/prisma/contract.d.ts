@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'2e1c3c464ec1924cd8bc655e4fcea3449b9817e707bc6eaa5bb9a83796d61980'>;
+  StorageHashBase<'3b7b82ce22615f5958f7d7e2d44047f618d8fb7d0c05a7c05882a97130cf48a5'>;
 export type ExecutionHash =
-  ExecutionHashBase<'00223e47e44f358cfec904d5afabcdb114f66acd1ffca778823ee40931208419'>;
+  ExecutionHashBase<'f561e3e1162245451d780fe3dffbc02dee2ccb207efd14d51e780b192cfe9a3f'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -788,6 +788,18 @@ export type FieldOutputTypes = {
       readonly isPublicSource: CodecTypes['pg/bool@1']['output'];
       readonly sourceKind: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly IntelConsent: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly siteId: CodecTypes['pg/text@1']['output'];
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly grantedByPrincipal: CodecTypes['pg/text@1']['output'];
+      readonly grantedById: CodecTypes['pg/text@1']['output'];
+      readonly grantedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly IntelCustomer: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -1960,6 +1972,18 @@ export type FieldInputTypes = {
       readonly sourceKind: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
+    readonly IntelConsent: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly siteId: CodecTypes['pg/text@1']['input'];
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly grantedByPrincipal: CodecTypes['pg/text@1']['input'];
+      readonly grantedById: CodecTypes['pg/text@1']['input'];
+      readonly grantedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
     readonly IntelCustomer: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly tenantId: CodecTypes['pg/text@1']['input'];
@@ -3131,6 +3155,18 @@ export type StorageColumnTypes = {
       readonly sourceKind: CodecTypes['pg/text@1']['output'] | null;
       readonly txHash: CodecTypes['pg/text@1']['output'];
     };
+    readonly intelConsent: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly grantedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly grantedById: CodecTypes['pg/text@1']['output'];
+      readonly grantedByPrincipal: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly siteId: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly intelCustomer: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -4301,6 +4337,18 @@ export type StorageColumnInputTypes = {
       readonly isPublicSource: CodecTypes['pg/bool@1']['input'];
       readonly sourceKind: CodecTypes['pg/text@1']['input'] | null;
       readonly txHash: CodecTypes['pg/text@1']['input'];
+    };
+    readonly intelConsent: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly grantedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly grantedById: CodecTypes['pg/text@1']['input'];
+      readonly grantedByPrincipal: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly siteId: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly intelCustomer: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -6188,6 +6236,19 @@ export namespace Models {
     revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     readonly [RelationKeys]?: never;
   };
+  export type public_IntelConsent = {
+    id: CodecTypes['pg/text@1']['output'];
+    siteId: CodecTypes['pg/text@1']['output'];
+    kind: CodecTypes['pg/text@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    grantedByPrincipal: CodecTypes['pg/text@1']['output'];
+    grantedById: CodecTypes['pg/text@1']['output'];
+    grantedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
 }
 
 export declare const models: {
@@ -6287,6 +6348,7 @@ export declare const models: {
     IntelEntitlement: Models.public_IntelEntitlement;
     IntelScanJob: Models.public_IntelScanJob;
     IntelOperator: Models.public_IntelOperator;
+    IntelConsent: Models.public_IntelConsent;
   };
 };
 
@@ -9708,6 +9770,72 @@ type ContractBase = Omit<
                   readonly name: 'forensicsFunding_chain_funder_idx_03f1cda3';
                   readonly prefix: 'forensicsFunding_chain_funder_idx';
                   readonly columns: readonly ['chain', 'funder'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly intelConsent: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly siteId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly kind: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly grantedByPrincipal: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly grantedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly grantedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly revokedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['siteId', 'kind'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'intelConsent_siteId_idx_cabdc5ab';
+                  readonly prefix: 'intelConsent_siteId_idx';
+                  readonly columns: readonly ['siteId'];
                   readonly unique: false;
                 },
               ];
@@ -13902,6 +14030,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'IntelOperator';
     };
+    readonly intelConsent: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'IntelConsent';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -16906,6 +17038,79 @@ type ContractBase = Omit<
                 readonly isPublicSource: { readonly column: 'isPublicSource' };
                 readonly sourceKind: { readonly column: 'sourceKind' };
                 readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly IntelConsent: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly siteId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly grantedByPrincipal: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly grantedById: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly grantedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'intelConsent';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly siteId: { readonly column: 'siteId' };
+                readonly kind: { readonly column: 'kind' };
+                readonly status: { readonly column: 'status' };
+                readonly grantedByPrincipal: { readonly column: 'grantedByPrincipal' };
+                readonly grantedById: { readonly column: 'grantedById' };
+                readonly grantedAt: { readonly column: 'grantedAt' };
+                readonly revokedAt: { readonly column: 'revokedAt' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
               };
             };
           };
@@ -20910,6 +21115,15 @@ type ContractBase = Omit<
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'intelConsent';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
         },
         {
           readonly ref: {

@@ -1883,3 +1883,24 @@ model IntelOperator {
   @@unique([tenantId, email])
   @@index([tenantId, status])
 }
+
+// ─── EPIC-262 (SLICE-262-8) Consent — permission for a specific
+// action, independent of entitlement/site_key (D-262-Q7); revocation
+// stops paid ops even while subscribed (D-262-Q8). One row per
+// (siteId, kind) — latest state wins, history lands with 262-23.
+
+model IntelConsent {
+  id                  String            @id // con_<ulid>
+  siteId              String
+  kind                String // audit (apply|publication later)
+  status              String // granted|revoked
+  grantedByPrincipal  String // site_key|operator
+  grantedById         String // site_key_id | operator_id
+  grantedAt           TimestamptzString
+  revokedAt           TimestamptzString?
+  createdAt           TimestamptzString @default(now())
+  updatedAt           temporal.updatedAtString()
+
+  @@unique([siteId, kind])
+  @@index([siteId])
+}

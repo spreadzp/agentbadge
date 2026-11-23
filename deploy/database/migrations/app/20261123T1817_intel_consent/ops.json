@@ -1,0 +1,122 @@
+[
+  {
+    "id": "table.intelConsent",
+    "label": "Create table \"intelConsent\"",
+    "summary": "Creates table \"intelConsent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelConsent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelConsent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelConsent\"",
+        "sql": "CREATE TABLE \"public\".\"intelConsent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"grantedAt\" timestamptz NOT NULL,\n  \"grantedById\" text NOT NULL,\n  \"grantedByPrincipal\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"revokedAt\" timestamptz,\n  \"siteId\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelConsent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelConsent.intelConsent_siteId_kind_key",
+    "label": "Add unique constraint on \"intelConsent\" (siteId, kind)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelConsent_siteId_kind_key",
+        "table": "intelConsent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelConsent_siteId_kind_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelConsent_siteId_kind_key",
+          "public",
+          "\"public\".\"intelConsent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelConsent_siteId_kind_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelConsent\" ADD CONSTRAINT \"intelConsent_siteId_kind_key\" UNIQUE (\"siteId\", \"kind\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelConsent_siteId_kind_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelConsent_siteId_kind_key",
+          "public",
+          "\"public\".\"intelConsent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelConsent.intelConsent_siteId_idx_cabdc5ab",
+    "label": "Create index \"intelConsent_siteId_idx_cabdc5ab\" on \"intelConsent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelConsent_siteId_idx_cabdc5ab",
+        "table": "intelConsent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelConsent_siteId_idx_cabdc5ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsent_siteId_idx_cabdc5ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelConsent_siteId_idx_cabdc5ab\"",
+        "sql": "CREATE INDEX \"intelConsent_siteId_idx_cabdc5ab\" ON \"public\".\"intelConsent\" (\"siteId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelConsent_siteId_idx_cabdc5ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsent_siteId_idx_cabdc5ab\""
+        ]
+      }
+    ]
+  }
+]
