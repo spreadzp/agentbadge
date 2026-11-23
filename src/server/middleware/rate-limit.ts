@@ -289,12 +289,12 @@ export function createRateLimiter(config?: RateLimitConfig) {
 
 /**
  * Legacy export — wraps createRateLimiter for backward compatibility.
- * Used by index.ts app.use(rateLimitMiddleware()).
- * Limits POST /mcp/tools/:name and /mcp/:ns/tools/:name.
+ * Used by index.ts app.use(rateLimitMiddleware()). Limits tool-call POSTs
+ * AND (SLICE-259-38, ds10) root JSON-RPC paths /mcp + /mcp/:ns.
  */
 export function rateLimitMiddleware(opts?: RateLimitOptions) {
   return createRateLimiter({
     ...opts,
-    routes: ["/mcp/tools/:name", "/mcp/:ns/tools/:name"],
+    routes: ["/mcp", "/mcp/:ns", "/mcp/tools/:name", "/mcp/:ns/tools/:name"],
   });
 }

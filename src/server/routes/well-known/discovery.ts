@@ -7,6 +7,7 @@ import { MCP_NAMESPACES } from "./agent-card";
 import { MARKETPLACE_LISTINGS } from "../../lib/agent-discovery/marketplace-listings";
 import { aauthDiscoveryRoutes } from "./discovery-aauth";
 import { internalRequest } from "../../middleware/markdown-negotiation-helpers";
+import { didKeyMaterialFromEnv } from "../../lib/agent-discovery/did-key";
 import { createHash } from "node:crypto";
 
 export const discoveryRoutes = new Hono();
@@ -439,16 +440,18 @@ discoveryRoutes.get(
     },
   }),
   (c) => {
+    // SLICE-259-38: serve the REAL DID key — the previous body shipped
+    // "x":"agentbadge.xyz" (a hostname, not a base64url key), a cosmetic
+    // trust signal in the same class as the zero-sha256 placeholders.
+    const material = didKeyMaterialFromEnv();
+    if (!material) return c.notFound();
     return c.json(
       {
         keys: [
           {
-            kty: "OKP",
+            ...material.publicJwk,
             use: "sig",
             alg: "EdDSA",
-            kid: "agentbadge-2026",
-            crv: "Ed25519",
-            x: "agentbadge.xyz",
           },
         ],
       },

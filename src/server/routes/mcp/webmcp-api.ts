@@ -24,6 +24,11 @@ import { scanDomain } from "../../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../../agent-readiness/scanner/ssrf/ip-guard";
+import {
+  SsrfBlockedError,
+  SsrfErrorCodes,
+} from "../../../agent-readiness/scanner/ssrf/ssrf-error";
+import { SsrfRedirectError } from "../../../agent-readiness/scanner/ssrf/scanner-error";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { trackEvent, isGa4Enabled } from "../../lib/google-analytics";
@@ -68,6 +73,31 @@ function resolveScanTarget(
     });
   }
   return { hostname: parsed.hostname, normalizedUrl };
+}
+
+// SLICE-259-38 (DeepSeek ds9): a refused or unresolvable target is a
+// client-class fault — a 500 leaks "internal error" semantics on the
+// block path. Map scanner error classes to the canonical contract.
+function scanErrorResponse(c: Context, err: unknown, prefix: string): Response {
+  const message = err instanceof Error ? err.message : "Unknown error";
+  if (err instanceof SsrfBlockedError) {
+    if (err.code === SsrfErrorCodes.SSRF_DNS_RESOLVE_FAILED) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `${prefix}: target hostname does not resolve`, {
+        hint: "Check the domain spelling — DNS returned no usable A/AAAA records",
+      });
+    }
+    return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+      hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+    });
+  }
+  if (err instanceof SsrfRedirectError) {
+    return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Redirect to private target blocked", {
+      hint: "Every redirect hop is re-resolved and re-validated — the chain terminates at a refused address",
+    });
+  }
+  return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `${prefix}: ${message}`, {
+    retryable: true,
+  });
 }
 
 // ─── GET /passport/verify ──────────────────────────────────────────
@@ -213,10 +243,7 @@ webmcpApiRoutes.get(
       };
       return c.json({ ...report, next_call }, 200);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Scan failed: ${message}`, {
-        retryable: true,
-      });
+      return scanErrorResponse(c, err, "Scan failed");
     }
   },
 );
@@ -268,10 +295,7 @@ webmcpApiRoutes.get(
       c.header("Cache-Control", "public, max-age=3600");
       return c.body(svg);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Badge generation failed: ${message}`, {
-        retryable: true,
-      });
+      return scanErrorResponse(c, err, "Badge generation failed");
     }
   },
 );
@@ -309,10 +333,7 @@ webmcpApiRoutes.get(
         summary: report.summary,
       }, 200);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Scan failed: ${message}`, {
-        retryable: true,
-      });
+      return scanErrorResponse(c, err, "Scan failed");
     }
   },
 );

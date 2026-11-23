@@ -9,6 +9,7 @@ import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { landingJsonLd, pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
 import { listTasks as marketListTasks } from "@agentbadge/passport";
+import { assertSafeTarget } from "../../../agent-readiness/scanner/ssrf/ip-guard";
 
 /**
  * Landing page routes.
@@ -45,6 +46,21 @@ landingRoutes.get("/r/:domain", (c) => {
   }
   if (domain === "agentbadge.xyz" || domain === "www.agentbadge.xyz") {
     return c.redirect("/agent-readiness", 301);
+  }
+  // SLICE-259-38 (DeepSeek ds12): refuse private/IP-literal targets at the
+  // facade — the redirect would land on /api/scan and 403 there anyway,
+  // but an early 403 keeps the refusal contract visible in hop 1.
+  try {
+    assertSafeTarget(domain);
+  } catch {
+    return c.json(
+      {
+        error: "Private URLs are not allowed",
+        code: "private_target_forbidden",
+        hint: "Badge report links resolve to a public-domain scan only — private/loopback/IP-literal targets are refused",
+      },
+      403,
+    );
   }
   return c.redirect(`/api/scan?url=${encodeURIComponent(`https://${domain}`)}`, 302);
 });

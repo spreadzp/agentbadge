@@ -26,7 +26,7 @@ import {
   stopForensicsIndexer,
 } from "./lib/forensics/indexer";
 import { startFxDeltaEngine } from "./lib/fx-delta/boot";
-import { rateLimitMiddleware } from "./middleware/rate-limit";
+import { rateLimitMiddleware, createRateLimiter } from "./middleware/rate-limit";
 import { agentKeyAuth } from "./middleware/agent-key-auth";
 import { wireMcpAbuseGuard, armMcpHeavyGate } from "./wiring/mcp-abuse";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
@@ -78,13 +78,10 @@ wireL402(app);
 // chain call, skipped when the flag is off (the gated route 503s anyway).
 app.use((c, next) => (passportChainEnabled() ? signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next) : next()));
 // EPIC-144: shared cache-backed counters when CACHE_ENABLED, else MemoryStore.
-app.use(
-  rateLimitMiddleware(
-    getConfig().cache?.enabled
-      ? { store: new CacheRateLimitStore(getCache()) }
-      : undefined,
-  ),
-);
+const rlStore = getConfig().cache?.enabled ? { store: new CacheRateLimitStore(getCache()) } : undefined;
+app.use(rateLimitMiddleware(rlStore));
+// SLICE-259-38 (ds12): /r/{domain} + free scanner — facade amplifies scans.
+app.use(createRateLimiter({ ...rlStore, routes: ["/r/:domain", "/api/scan", "/api/score", "/api/badge"], max: 60 }));
 // EPIC-184 SLICE-184-3: optional Bearer agb_ enrichment — sets agentId/
 // agentTier for downstream free-tier gates; bad/revoked agb_ keys → 401.
 app.use(agentKeyAuth());

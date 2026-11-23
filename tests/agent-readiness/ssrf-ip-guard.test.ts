@@ -108,6 +108,20 @@ describe("assertSafeIp", () => {
     expect(() => assertSafeIp("8.8.8.8")).not.toThrow();
   });
 
+  // SLICE-259-38 (DeepSeek ds9): reserved ranges that hosted-provider
+  // metadata endpoints hide behind.
+  it("blocks 192.0.0.0/24 (Oracle Cloud metadata at 192.0.0.192)", () => {
+    expect(isPrivateIp("192.0.0.192")).toBe(true);
+    expect(() => assertSafeIp("192.0.0.192")).toThrow(SsrfBlockedError);
+  });
+
+  it("blocks 198.18.0.0/15 benchmarking and 240.0.0.0/4 reserved", () => {
+    expect(isPrivateIp("198.18.0.1")).toBe(true);
+    expect(isPrivateIp("198.19.255.255")).toBe(true);
+    expect(isPrivateIp("240.0.0.1")).toBe(true);
+    expect(isPrivateIp("192.88.99.1")).toBe(true);
+  });
+
   it("error has correct code and details", () => {
     try {
       assertSafeIp("10.0.0.1");

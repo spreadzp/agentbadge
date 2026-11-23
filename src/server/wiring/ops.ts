@@ -15,6 +15,20 @@ import { stringify as yamlStringify } from "yaml";
 import { openApiConfig } from "../openapi";
 import { srcAttribution } from "../middleware/src-attribution";
 
+// SLICE-259-37/38: exported so the CI test can assert every new
+// admin/debug route shape stays excluded — the exclusion is an invariant,
+// not a snapshot taken once.
+export const PUBLIC_SPEC_EXCLUDE: (string | RegExp)[] = [
+  "/docs", "/api/specs", "/openapi.json", "/openapi.yaml", "/swagger.json",
+  "/ui", /^\/ui\//, "/metrics", "/api/telemetry",
+  /^\/admin(\/|$)/,
+  /^\/api\/admin(\/|$)/,
+  /^\/api\/v\d+\/admin(\/|$)/,
+  /^\/a2a\/ext\/debug(\/|$)/,
+  /^\/market\/v\/[^/]+\/admin$/,
+  /^\/api\/venue\/instances\/[^/]+\/admin$/,
+];
+
 export function wireStaticOps(app: Hono): void {
   // Serve static files from public/ (favicon, icons, logo, CSS, Google verification)
   app.use("/favicon.ico", (c, next) => {
@@ -96,16 +110,7 @@ export function wireOpenApi(app: Hono): void {
     // SLICE-259-37: operator/admin and debug surfaces are runtime-gated but
     // must not be enumerated in the public spec — an agent reading /api/specs
     // gets the callable public contract, not the internal attack map.
-    exclude: [
-      "/docs", "/api/specs", "/openapi.json", "/openapi.yaml", "/swagger.json",
-      "/ui", /^\/ui\//, "/metrics", "/api/telemetry",
-      /^\/admin(\/|$)/,
-      /^\/api\/admin(\/|$)/,
-      /^\/api\/v\d+\/admin(\/|$)/,
-      /^\/a2a\/ext\/debug(\/|$)/,
-      /^\/market\/v\/[^/]+\/admin$/,
-      /^\/api\/venue\/instances\/[^/]+\/admin$/,
-    ],
+    exclude: PUBLIC_SPEC_EXCLUDE,
     excludeMethods: ["OPTIONS"],
   };
   // SLICE-206-12: ?src= attribution on machine spec endpoints.

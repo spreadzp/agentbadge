@@ -44,4 +44,15 @@ describe("SLICE-259-35: /r/:domain badge report link", () => {
       expect(body.hint).toBeTruthy();
     }
   });
+
+  // SLICE-259-38 (DeepSeek ds12): private targets are refused at the
+  // facade — no free redirect hop into a doomed scan call.
+  it("private/IP-literal domains → 403 private_target_forbidden", async () => {
+    for (const bad of ["localhost", "127.0.0.1", "169.254.169.254", "192.168.1.1"]) {
+      const res = await app.request(`/r/${bad}`);
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.code).toBe("private_target_forbidden");
+    }
+  });
 });

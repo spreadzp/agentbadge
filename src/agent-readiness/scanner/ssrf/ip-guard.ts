@@ -11,6 +11,13 @@ const BLOCKED_RANGES_V4: readonly { cidr: string; label: string }[] = [
   { cidr: "192.0.2.0/24", label: "documentation-192" },
   { cidr: "198.51.100.0/24", label: "documentation-198" },
   { cidr: "203.0.113.0/24", label: "documentation-203" },
+  // SLICE-259-38 (DeepSeek ds9): reserved-but-nonprivate ranges that hosted
+  // provider metadata endpoints hide behind — 192.0.0.192 is Oracle Cloud
+  // metadata, 240/4 is IANA-reserved, 198.18/15 is RFC2544 benchmarking.
+  { cidr: "192.0.0.0/24", label: "ietf-protocol-assignments" },
+  { cidr: "192.88.99.0/24", label: "6to4-relay" },
+  { cidr: "198.18.0.0/15", label: "benchmarking" },
+  { cidr: "240.0.0.0/4", label: "reserved-240" },
 ];
 
 const METADATA_IPS: readonly string[] = [
