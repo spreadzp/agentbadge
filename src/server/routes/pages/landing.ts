@@ -25,6 +25,30 @@ landingRoutes.get("/scan", (c) => {
 });
 landingRoutes.get("/marketplace", (c) => c.redirect("/services/marketplace", 301));
 
+// SLICE-259-35: badge reportUrl target. /api/badge emits
+// https://agentbadge.xyz/r/{domain} inside every SVG — without this route
+// the link 404s. Our own domain → the cached self-scan showcase; other
+// domains → the free JSON scan (no stored HTML report exists for them).
+const BADGE_REPORT_HOST =
+  /^(?!.*\.\.)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
+landingRoutes.get("/r/:domain", (c) => {
+  const domain = c.req.param("domain").toLowerCase();
+  if (!BADGE_REPORT_HOST.test(domain) || domain.length > 253) {
+    return c.json(
+      {
+        error: "invalid_domain",
+        code: "invalid_domain",
+        hint: "Expected a bare hostname like example.com",
+      },
+      400,
+    );
+  }
+  if (domain === "agentbadge.xyz" || domain === "www.agentbadge.xyz") {
+    return c.redirect("/agent-readiness", 301);
+  }
+  return c.redirect(`/api/scan?url=${encodeURIComponent(`https://${domain}`)}`, 302);
+});
+
 /**
  * GET / — Agent Readiness landing page.
  *
