@@ -91,8 +91,10 @@ ${BRAND_DISAMBIGUATION}
 
 ### Authentication
 
-No API key required. Paid endpoints use x402 (HTTP 402) payment flow.
-OAuth discovery at \`/.well-known/oauth-authorization-server\`.
+Anonymous calls work on the curated public surface (rate-limited per IP).
+A free \`agb_\` key — \`POST /api/v1/agents/register\`, shown once — unlocks
+the full tool list via \`Authorization: Bearer agb_…\`. Paid endpoints use
+x402 (HTTP 402). OAuth: \`/.well-known/oauth-authorization-server\`.
 
 ### MCP Endpoint
 

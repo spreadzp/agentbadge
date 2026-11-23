@@ -122,6 +122,13 @@ describe("assertSafeIp", () => {
     expect(isPrivateIp("192.88.99.1")).toBe(true);
   });
 
+  // SLICE-259-39 (DeepSeek ds13): multicast fell through to a connect-500.
+  it("blocks 224.0.0.0/4 multicast and ff00::/8 v6 multicast", () => {
+    expect(isPrivateIp("224.0.0.1")).toBe(true);
+    expect(isPrivateIp("239.255.255.255")).toBe(true);
+    expect(isPrivateIp("ff02::1")).toBe(true);
+  });
+
   it("error has correct code and details", () => {
     try {
       assertSafeIp("10.0.0.1");

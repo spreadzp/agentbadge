@@ -53,7 +53,9 @@ describe("SLICE-259-38: http-message-signatures-directory real key", () => {
     const key = body.keys?.[0];
     expect(key.kty).toBe("OKP");
     expect(key.crv).toBe("Ed25519");
-    expect(key.kid).toBe("agentbadge-2026-1");
+    // SLICE-259-39 (ds15): kid must match jwks.json + did.json — the
+    // did:web verification-method id — so one key has one id everywhere.
+    expect(key.kid).toMatch(/^did:web:.+#key-1$/);
     // base64url(32 bytes) — 43 chars, no dots/hostnames allowed.
     expect(key.x).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(key.x).not.toBe("agentbadge.xyz");
@@ -63,5 +65,30 @@ describe("SLICE-259-38: http-message-signatures-directory real key", () => {
     delete process.env.DID_SIGNING_KEY;
     const res = await app().request("/.well-known/http-message-signatures-directory");
     expect(res.status).toBe(404);
+  });
+});
+
+// SLICE-259-39 (Grok R4): canonical agent entry point — one file that
+// gets an agent from "found the manifest" to "first useful call".
+describe("SLICE-259-39: agent-start.json canonical entry", () => {
+  function app() {
+    const a = new Hono();
+    a.route("/", createDiscoveryRoutes(() => TEST_SOURCES));
+    a.route("/", wellKnownRoutes);
+    return a;
+  }
+
+  it("serves quickstart with free scan, agb_ registration and MCP", async () => {
+    const res = await app().request("/.well-known/agent-start.json");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("application/json");
+    const body = await res.json();
+    expect(body.free_scan).toContain("/api/scan?url={url}");
+    expect(body.api_key_registration).toContain("/api/v1/agents/register");
+    expect(body.auth_model).toContain("agb_");
+    expect(body.mcp).toContain("/mcp");
+    expect(body.mcp_public).toContain("/mcp/public");
+    expect(Array.isArray(body.quickstart)).toBe(true);
+    expect(body.quickstart.length).toBeGreaterThanOrEqual(4);
   });
 });

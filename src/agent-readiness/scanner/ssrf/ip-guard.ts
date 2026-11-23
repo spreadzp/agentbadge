@@ -18,6 +18,9 @@ const BLOCKED_RANGES_V4: readonly { cidr: string; label: string }[] = [
   { cidr: "192.88.99.0/24", label: "6to4-relay" },
   { cidr: "198.18.0.0/15", label: "benchmarking" },
   { cidr: "240.0.0.0/4", label: "reserved-240" },
+  // SLICE-259-39 (DeepSeek ds13): multicast is not a scannable target —
+  // it fell through to a connect-hang/500 instead of a clean 403.
+  { cidr: "224.0.0.0/4", label: "multicast" },
 ];
 
 const METADATA_IPS: readonly string[] = [
@@ -87,6 +90,8 @@ function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
     return { blocked: true, range: "ula-v6" };
   }
   if (/^fe80:/i.test(ip)) return { blocked: true, range: "link-local-v6" };
+  // SLICE-259-39: v6 multicast ff00::/8 — same class as 224.0.0.0/4.
+  if (/^ff[0-9a-f]{2}:/i.test(ip)) return { blocked: true, range: "multicast-v6" };
   if (ip === "::" || ip === "::ffff:0.0.0.0") return { blocked: true, range: "unspecified" };
 
   return { blocked: false };

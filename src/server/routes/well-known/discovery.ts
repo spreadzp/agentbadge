@@ -7,7 +7,7 @@ import { MCP_NAMESPACES } from "./agent-card";
 import { MARKETPLACE_LISTINGS } from "../../lib/agent-discovery/marketplace-listings";
 import { aauthDiscoveryRoutes } from "./discovery-aauth";
 import { internalRequest } from "../../middleware/markdown-negotiation-helpers";
-import { didKeyMaterialFromEnv } from "../../lib/agent-discovery/did-key";
+import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "../../lib/agent-discovery/did-key";
 import { createHash } from "node:crypto";
 
 export const discoveryRoutes = new Hono();
@@ -128,9 +128,10 @@ discoveryRoutes.get(
         agent_guide: `${baseUrl}/agent-guide/context`,
       },
       "ab:auth": {
-        type: "none",
+        type: "optional-api-key",
         description:
-          "No API key required. Paid endpoints use x402 (HTTP 402) payment flow. OAuth discovery at /.well-known/oauth-authorization-server.",
+          "Anonymous calls work on the curated public surface (rate-limited per IP). A free agb_ key — POST /api/v1/agents/register, shown once — unlocks the full public+authenticated list via Authorization: Bearer agb_…. Paid endpoints use x402 (HTTP 402). OAuth discovery at /.well-known/oauth-authorization-server.",
+        api_key: `POST ${baseUrl}/api/v1/agents/register`,
         oauth: `${baseUrl}/.well-known/oauth-authorization-server`,
       },
       "ab:payment": {
@@ -445,15 +446,65 @@ discoveryRoutes.get(
     // trust signal in the same class as the zero-sha256 placeholders.
     const material = didKeyMaterialFromEnv();
     if (!material) return c.notFound();
+    // SLICE-259-39 (DeepSeek ds15): kid must match jwks.json + did.json —
+    // one key, one id across all three surfaces, or verifiers correlating
+    // by kid resolve the same public key under two different identities.
     return c.json(
       {
         keys: [
           {
             ...material.publicJwk,
+            kid: `did:web:${new URL(BASE_URL).host}${DID_VM_FRAGMENT}`,
             use: "sig",
             alg: "EdDSA",
           },
         ],
+      },
+      200,
+      {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
+
+// ─── SLICE-259-39: canonical agent entry point (Grok R4 proposal) ──
+// One small file an agent can start from: free scan, first useful call,
+// auth model, MCP endpoint — closes the manifest→action gap.
+discoveryRoutes.get(
+  "/.well-known/agent-start.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Canonical agent entry point — free scan, auth model, quickstart",
+    responses: {
+      200: {
+        description: "Agent quickstart manifest",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const b = BASE_URL;
+    return c.json(
+      {
+        version: "1.0",
+        name: "AgentBadge",
+        description:
+          "Start here for AI agents: free readiness scan, badge, MCP tools, marketplace.",
+        free_scan: `GET ${b}/api/scan?url={url}`,
+        quickstart: [
+          `GET ${b}/.well-known/agent-card.json`,
+          `GET ${b}/llms.txt`,
+          `GET ${b}/api/scan?url=https://example.com`,
+          `POST ${b}/api/v1/agents/register — free agb_ API key (observer tier)`,
+        ],
+        auth_model: "aauth + x402 + did-signature + agb_ bearer",
+        api_key_registration: `POST ${b}/api/v1/agents/register`,
+        mcp: `${b}/mcp`,
+        mcp_public: `${b}/mcp/public`,
+        a2a: `${b}/a2a`,
+        next: `${b}/agent-guide/getting-started`,
       },
       200,
       {
