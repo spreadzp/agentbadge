@@ -10,3 +10,4 @@ graphify-out/
 lighthouserc.cjs
 *.md
 .windsurf/
+dist/

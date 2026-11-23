@@ -64,7 +64,7 @@ export function FaqPage(
   const content = html`<section class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8">
     <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">FAQ</span>
     <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Frequently Asked Questions</h1>
-    <p class="mt-4 max-w-2xl text-slate-400">Answers to 40+ questions about AgentBadge, agent readiness, and on-chain identity.</p>
+    <p class="mt-4 max-w-2xl text-slate-400">Answers to ${entries.length} questions about AgentBadge, agent readiness, and on-chain identity.</p>
 
     <!-- Category Navigation: Desktop sidebar + Mobile tabs -->
     <div class="mt-8 flex flex-col gap-8 md:flex-row">

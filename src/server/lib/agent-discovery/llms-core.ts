@@ -48,7 +48,7 @@ ${BRAND_DISAMBIGUATION}
 
 No API key for reads. Paid endpoints use [x402](https://x402.org) (HTTP 402) — USDC on Arc. Access passes on /api/total-scan: pay once via x402 → soulbound AccessPassNFT → signed challenge headers \`X-Wallet\`/\`X-Sig\`/\`X-Timestamp\`. Marketplace and A2A mutations require DID-signed challenges.
 
-MCP access tiers: anonymous \`tools/list\` is a curated capability set (~20 onboarding/discovery tools); an \`agb_\` API key (free via /api/v1/agents/register, \`Authorization: Bearer agb_…\`) unlocks the full public+authenticated list; DID signatures (\`X-AgentBadge-Did\`/\`X-AgentBadge-Signature\`/\`X-AgentBadge-Timestamp\`/\`X-AgentBadge-Nonce\`) authorize ownership-scoped calls. Denied calls return a JSON-RPC error or 403 whose message names the path to access.
+MCP access tiers: anonymous \`tools/list\` is a curated capability set (${src.mcpServer?.tools.length ?? "~15"} onboarding/discovery tools of the full registry); an \`agb_\` API key (free via /api/v1/agents/register, \`Authorization: Bearer agb_…\`) unlocks the full public+authenticated list; DID signatures (\`X-AgentBadge-Did\`/\`X-AgentBadge-Signature\`/\`X-AgentBadge-Timestamp\`/\`X-AgentBadge-Nonce\`) authorize ownership-scoped calls. Denied calls return a JSON-RPC error or 403 whose message names the path to access.
 
 ## Machine-readable Entry Points
 

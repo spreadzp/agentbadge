@@ -436,6 +436,18 @@ agentDocsRoutes.get(
   },
 );
 
+// ─── /agentbadge-docs* redirect (SLICE-259-33, F4) ─────────────
+// ai-sitemap advertises gitbook.io URLs; naive resolvers strip the
+// host and hit us at the same path → was 404. Catch-all 301 to the
+// GitBook equivalent. Content lives on GitBook — no local serving.
+const GITBOOK_BASE = "https://agentbadge.gitbook.io/agentbadge-docs";
+
+agentDocsRoutes.get("/agentbadge-docs", (c) => c.redirect(GITBOOK_BASE, 301));
+agentDocsRoutes.get("/agentbadge-docs/*", (c) => {
+  const sub = new URL(c.req.url).pathname.slice("/agentbadge-docs".length);
+  return c.redirect(`${GITBOOK_BASE}${sub}`, 301);
+});
+
 // ─── SLICE-49-4: Auth.md ─────────────────────────────────────────
 
 agentDocsRoutes.get(

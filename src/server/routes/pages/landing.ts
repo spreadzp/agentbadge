@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createHash } from "node:crypto";
 import { LandingLayout } from "../../../views/landing/layout";
 import { LandingPage } from "../../../views/landing/landing-page";
 import { ReadinessLandingPage, getHomepageFaqJsonLd } from "../../../views/landing/readiness-landing-page";
@@ -30,13 +31,33 @@ landingRoutes.get("/marketplace", (c) => c.redirect("/services/marketplace", 301
  * Renders the new Agent Readiness product landing page.
  * SLICE-43-2: Hero section implemented. More sections in subsequent slices.
  */
-landingRoutes.get("/", async (c) => {
-  const meta = PageMetaRegistry["/"];
-  const jsonLd = [...landingJsonLd(), getHomepageFaqJsonLd()];
+// SLICE-259-33 (F5): homepage renders static module data — memoize
+// once per process; weak ETag over the bytes gives crawlers cheap
+// 304 revalidation (same pattern as /faq, SLICE-259-17).
+let landingRender: { html: string; etag: string } | null = null;
 
-  const content = ReadinessLandingPage().toString();
-  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
-  const response = await c.html(pageHtml);
+function renderLanding(): { html: string; etag: string } {
+  if (!landingRender) {
+    const meta = PageMetaRegistry["/"];
+    const jsonLd = [...landingJsonLd(), getHomepageFaqJsonLd()];
+    const content = ReadinessLandingPage().toString();
+    const html = LandingLayout(content, undefined, meta, jsonLd).toString();
+    landingRender = {
+      html,
+      etag: `W/"${createHash("sha256").update(html).digest("hex").slice(0, 32)}"`,
+    };
+  }
+  return landingRender;
+}
+
+landingRoutes.get("/", async (c) => {
+  const { html, etag } = renderLanding();
+  const inm = c.req.header("If-None-Match");
+  if (inm?.split(",").some((t) => t.trim() === "*" || t.trim() === etag)) {
+    return new Response(null, { status: 304, headers: { ETag: etag } });
+  }
+  const response = await c.html(html);
+  response.headers.set("ETag", etag);
   response.headers.set("Vary", "Accept");
   response.headers.set(
     "Link",

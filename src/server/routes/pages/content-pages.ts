@@ -64,7 +64,7 @@ function renderFaq(): { html: string; etag: string } {
 contentPageRoutes.get(
   "/faq",
   describeRoute({
-    description: "FAQ page with 40+ Q&A pairs about AgentBadge, organized by category, rendered server-side with FAQPage JSON-LD.",
+    description: "FAQ page with categorized Q&A pairs about AgentBadge, rendered server-side with FAQPage JSON-LD.",
     responses: {
       200: { description: "HTML FAQ page" },
     },

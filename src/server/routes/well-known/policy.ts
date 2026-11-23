@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { didAuthSectionCompact } from "../../lib/did-auth-docs";
 import { PUBLIC_STATS } from "../../lib/public-stats";
+import { BRAND_DISAMBIGUATION } from "../../lib/brand";
 
 export const policyRoutes = new Hono();
 
@@ -127,6 +128,8 @@ ${didAuthSectionCompact()}
 
 AgentBadge is an agency for the agentic web. We help businesses become agent-ready
 through agent-readiness scanning, identity, and marketplace services on EVM (Arc, USDC).
+
+${BRAND_DISAMBIGUATION}
 
 - Team overview: /agent-guide/team
 - Capabilities: /agent-guide/team/capabilities
