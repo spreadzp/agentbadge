@@ -75,22 +75,19 @@ export function buildAccessChallenge(p: AccessChallengeParams): string {
 const ACCESS_BODY_HASH_KEY = "access.bodyHash";
 
 /** SLICE-234-21: sha256 of the raw request body — binds the signature
- *  to the exact payload. Clone so downstream c.req.json() still works;
- *  empty body hashes to the "-" sentinel (same as commerce v2).
- *  If the body was already consumed, falls back to Hono's text() cache
- *  (same raw bytes); "-" when neither is available — fail-closed. */
+ *  to the exact payload. Reads through c.req.text() (Hono bodyCache) so
+ *  a downstream c.req.json() reuses the same bytes — raw.clone() was
+ *  flaky under undici tee (intermittent "invalid JSON body" 400s).
+ *  Empty body hashes to the "-" sentinel (same as commerce v2);
+ *  "-" when the body is unreadable — fail-closed. */
 export async function accessBodyHash(c: Context): Promise<string> {
   const cached = c.get(ACCESS_BODY_HASH_KEY) as string | undefined;
   if (cached) return cached;
   let raw = "";
   try {
-    raw = await c.req.raw.clone().text();
+    raw = await c.req.text(); // bodyCache → downstream json()/text() reuse
   } catch {
-    try {
-      raw = await c.req.text(); // consumed via text() earlier → cached
-    } catch {
-      raw = "";
-    }
+    raw = "";
   }
   const hash = raw.length
     ? createHash("sha256").update(raw).digest("hex")
