@@ -19,17 +19,23 @@ export function weakEtag() {
     ) {
       return;
     }
-    const body = await c.res.clone().text();
-    if (!body) return;
-    const etag = `W/"${createHash("sha256").update(body).digest("hex").slice(0, 16)}"`;
-    c.res.headers.set("ETag", etag);
+    // NOTE: do NOT use res.clone() here — Bun's clone() on a streamed body
+    // leaves the original empty in production (200 + 0B). Consume the body
+    // and rebuild the Response instead.
+    const buf = await c.res.arrayBuffer();
+    if (buf.byteLength === 0) return;
+    const etag = `W/"${createHash("sha256").update(Buffer.from(buf)).digest("hex").slice(0, 16)}"`;
+    const headers = new Headers(c.res.headers);
+    headers.set("ETag", etag);
     if (c.req.header("if-none-match") === etag) {
-      const headers = new Headers();
+      const minimal = new Headers();
       for (const name of HOP_HEADERS) {
-        const value = c.res.headers.get(name);
-        if (value) headers.set(name, value);
+        const value = headers.get(name);
+        if (value) minimal.set(name, value);
       }
-      c.res = new Response(null, { status: 304, headers });
+      c.res = new Response(null, { status: 304, headers: minimal });
+      return;
     }
+    c.res = new Response(buf, { status: 200, headers });
   };
 }
