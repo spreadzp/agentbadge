@@ -26,7 +26,12 @@ const now = () => new Date().toISOString();
 // audit/invite authority, not op surface (invites land with dashboard).
 export function rolePermitted(role: OperatorRole, op: string): boolean {
   if (role === "viewer") return false;
-  return ["deep_scan", "fix_apply"].includes(op);
+  return [
+    "deep_scan",
+    "fix_apply",
+    "ownership_verify",
+    "consent",
+  ].includes(op);
 }
 
 export async function inviteOperator(

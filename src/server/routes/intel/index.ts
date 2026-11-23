@@ -8,6 +8,8 @@ import type { IntelEvidenceStore } from "../../lib/intel/evidence/store";
 import type { IntelEntitlementStore } from "../../lib/intel/entitlement";
 import type { IntelRuleset } from "../../lib/intel/rules";
 import type { IntelScanJobStore, ScanFetch } from "../../lib/intel/scan";
+import type { IntelConsentStore } from "../../lib/intel/consent";
+import type { DnsResolver } from "../../lib/intel/ownership";
 
 export interface IntelRouteDeps {
   /** null → enabled but misconfigured: handlers answer 503 intel_key_missing. */
@@ -34,6 +36,12 @@ export interface IntelRouteDeps {
   scanJobs?: IntelScanJobStore;
   ruleset?: IntelRuleset;
   scanFetch?: ScanFetch;
+  /**
+   * SLICE-262-8 — consent store (scans gate + consent routes) and
+   * DNS resolver for domain_control verification.
+   */
+  consent?: IntelConsentStore;
+  dnsResolver?: DnsResolver;
 }
 
 export const INTEL_KEY_MISSING = {

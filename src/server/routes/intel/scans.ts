@@ -7,6 +7,7 @@
 import type { Hono } from "hono";
 import { generateReportId } from "../../../agent-readiness/integrity/ulid";
 import { checkEntitlement } from "../../lib/intel/entitlement";
+import { hasActiveConsent } from "../../lib/intel/consent";
 import { runScanJob, SCAN_PLAN } from "../../lib/intel/scan";
 import { rolePermitted } from "../../lib/intel/registry";
 import { resolveScanAuth } from "./scan-auth";
@@ -26,6 +27,7 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       !deps.evidence ||
       !deps.scanJobs ||
       !deps.entitlement ||
+      !deps.consent ||
       !deps.ruleset ||
       !deps.scanFetch
     ) {
@@ -87,6 +89,15 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       return c.json(
         { error: "site_no_domain", message: "site has no active domain to scan" },
         409,
+      );
+    }
+
+    // consent BEFORE entitlement (D-262-Q8): the owner's revocation
+    // stops scans even while the subscription is alive — both channels
+    if (!(await hasActiveConsent(deps.consent, siteId, "audit"))) {
+      return c.json(
+        { error: "consent_denied", message: "no active audit consent for this site" },
+        403,
       );
     }
 

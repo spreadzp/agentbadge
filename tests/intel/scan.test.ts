@@ -11,6 +11,11 @@ import {
 import { inviteOperator } from "../../src/server/lib/intel/registry/operators";
 import { createMemoryIntelEvidenceStore } from "../../src/server/lib/intel/evidence/store";
 import { createMemoryEntitlementStore } from "../../src/server/lib/intel/entitlement";
+import {
+  createMemoryIntelConsentStore,
+  grantConsent,
+  revokeConsent,
+} from "../../src/server/lib/intel/consent";
 import { createMemoryScanJobStore } from "../../src/server/lib/intel/scan/memory";
 import {
   runScanJob,
@@ -139,6 +144,7 @@ describe("POST /api/intel/scans", () => {
   let stores: ReturnType<typeof createMemoryIntelRegistry>;
   let registry: IntelRegistryService;
   let entitlement: ReturnType<typeof createMemoryEntitlementStore>;
+  let consent: ReturnType<typeof createMemoryIntelConsentStore>;
   let app: Hono;
   let siteId: string;
   let siteKey: string;
@@ -148,12 +154,17 @@ describe("POST /api/intel/scans", () => {
     stores = createMemoryIntelRegistry();
     registry = createIntelRegistryService(stores);
     entitlement = createMemoryEntitlementStore();
+    consent = createMemoryIntelConsentStore();
     const tenant = await registry.createTenant({ slug: "pryme", name: "P" });
     tenantId = tenant.id;
     const customer = await registry.createCustomer(tenant.id, { name: "C" });
     const site = await registry.createSite(customer.id, { domains: ["bakery.com"] });
     siteId = site.id;
     siteKey = (await registry.mintSiteKey(site.id)).plaintext;
+    await grantConsent(consent, site.id, "audit", {
+      principal: "site_key",
+      id: "key_seed",
+    });
     app = new Hono();
     app.route(
       "/api/intel",
@@ -161,6 +172,7 @@ describe("POST /api/intel/scans", () => {
         key,
         registry,
         registryStores: stores,
+        consent,
         evidence: createMemoryIntelEvidenceStore(),
         entitlement,
         scanJobs: createMemoryScanJobStore(),
@@ -194,6 +206,17 @@ describe("POST /api/intel/scans", () => {
   it("401 without site_key", async () => {
     expect((await post()).status).toBe(401);
     expect((await post("Bearer absk_nope")).status).toBe(401);
+  });
+
+  it("403 consent_denied without audit consent (before entitlement)", async () => {
+    await entitleTenant(tenantId, [siteId]);
+    await revokeConsent(consent, siteId, "audit", {
+      principal: "operator",
+      id: "op_x",
+    });
+    const res = await post(`Bearer ${siteKey}`);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("consent_denied");
   });
 
   it("403 no_entitlement when tenant has no row", async () => {
