@@ -12,7 +12,7 @@ import { INTEL_API_VERSION } from "../keys";
 import { assembleIntelReport } from "../report";
 import type { IntelRuleset } from "../rules";
 import type { ScanFetch } from "./fetcher";
-import { SCAN_PLAN, probeToSubmission } from "./plan";
+import { SCAN_PLAN, probeToSubmissions } from "./plan";
 import type { IntelScanJobStore } from "./store";
 import type { ScanJob } from "./types";
 
@@ -52,7 +52,7 @@ export async function runScanJob(
       probeFailures += 1; // transport failure ⇒ no evidence, honestly
       continue;
     }
-    const sub = probeToSubmission({
+    for (const sub of probeToSubmissions({
       siteId: job.siteId,
       scanId: job.scanId,
       collectorId,
@@ -61,21 +61,21 @@ export async function runScanJob(
       url,
       obs,
       nowIso: iso(),
-    });
-    const envelope = acceptSubmission(
-      sub,
-      {
-        collector: {
-          type: "external_scan",
-          id: collectorId,
-          version: INTEL_API_VERSION,
+    })) {
+      const envelope = acceptSubmission(
+        sub,
+        {
+          collector: {
+            type: "external_scan",
+            id: collectorId,
+            version: INTEL_API_VERSION,
+          },
+          site_id: job.siteId,
         },
-        site_id: job.siteId,
-      },
-      deps.key,
-      now(),
-    );
-    envelopes.push(envelope);
+        deps.key,
+        now(),
+      );
+      envelopes.push(envelope);
 
     const receivedAt = envelope.received_at;
     const days = deps.evidenceRetentionDays ?? 0;
@@ -94,6 +94,7 @@ export async function runScanJob(
           : null,
       envelope,
     });
+    }
   }
 
   job = { ...job, probeFailures, probeTotal: SCAN_PLAN.length };

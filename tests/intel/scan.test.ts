@@ -90,8 +90,10 @@ describe("runScanJob", () => {
     expect(job.status).toBe("complete");
     expect(job.reportId).toBeTruthy();
     expect(job.report!.scan.completeness).toBe("complete");
+    // probes with docType html/wp_json dual-emit (obs + doc fact):
+    // /, /wp-json/, /wp-content/uploads/ → 3 extra envelopes
     const stored = await deps.evidence.forSite("site_t");
-    expect(stored).toHaveLength(SCAN_PLAN.length);
+    expect(stored).toHaveLength(SCAN_PLAN.length + 3);
     expect(
       stored.every((e) => e.provenance === "EXTERNAL_OBSERVED"),
     ).toBe(true);
@@ -135,7 +137,7 @@ describe("runScanJob", () => {
     const deps = depsFor(happyFetch, evidence);
     await runScanJob(mkJob({ id: "job_a", scanId: "scan_a" }), deps);
     await runScanJob(mkJob({ id: "job_b", scanId: "scan_b" }), deps);
-    expect((await evidence.forSite("site_t")).length).toBe(SCAN_PLAN.length * 2);
+    expect((await evidence.forSite("site_t")).length).toBe((SCAN_PLAN.length + 3) * 2);
   });
 });
 

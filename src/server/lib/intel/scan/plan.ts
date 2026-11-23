@@ -10,7 +10,7 @@ export interface ScanProbe {
   /** path appended to baseUrl */
   path: string;
   /** document kind when the body is parseable (2xx) */
-  docType?: "robots" | "sitemap" | "llms_txt" | "well_known";
+  docType?: "robots" | "sitemap" | "llms_txt" | "well_known" | "html" | "wp_json";
   /** file_presence semantics: status<400 ⇒ present (sensitive paths) */
   asFilePresence?: boolean;
   /** probe with this User-Agent instead of the default */
@@ -22,15 +22,15 @@ export const SCAN_UAS = ["GPTBot", "ClaudeBot", "AgentBadge-Probe"] as const;
 // Keep in sync with INTEL_WP_PROFILE_V1 selectors — every rule should
 // have at least one probe that can feed it.
 export const SCAN_PLAN: ScanProbe[] = [
-  { path: "/" },
+  { path: "/", docType: "html" },
   ...SCAN_UAS.map((ua): ScanProbe => ({ path: "/", ua })),
   { path: "/robots.txt", docType: "robots" },
   { path: "/sitemap.xml", docType: "sitemap" },
   { path: "/llms.txt", docType: "llms_txt" },
   { path: "/.well-known/agent.json", docType: "well_known" },
-  { path: "/wp-json/" },
+  { path: "/wp-json/", docType: "wp_json" },
   { path: "/wp-json/wp/v2/users" },
-  { path: "/wp-content/uploads/" },
+  { path: "/wp-content/uploads/", docType: "html" },
   { path: "/xmlrpc.php" },
   { path: "/wp-content/debug.log", asFilePresence: true },
   { path: "/debug.log", asFilePresence: true },
@@ -97,6 +97,33 @@ export function llmsFacts(bodyText: string): Record<string, unknown> {
 
 // ─── observation → submission payloads ──────────────────────────────
 
+
+// html page → facts the profile consumes: json-ld marker, directory
+// listing signature, raw sql-error text (X-015). Only booleans —
+// we never store page content in facts.
+export function htmlFacts(bodyText: string): Record<string, unknown> {
+  const body = bodyText.toLowerCase();
+  return {
+    has_jsonld: /application\/ld\+json/.test(body),
+    directory_listing:
+      /index of \//.test(body) || /parent directory/.test(body),
+    sql_error:
+      /sql syntax|mysql_fetch|mysql_num_rows|ora-\d{4}|sqlstate\[|database error/i.test(
+        bodyText,
+      ),
+  };
+}
+
+// /wp-json/ index → namespaces array (WP REST root document)
+export function wpJsonFacts(bodyText: string): Record<string, unknown> {
+  try {
+    const doc = JSON.parse(bodyText) as { namespaces?: unknown };
+    return { namespaces: Array.isArray(doc.namespaces) ? doc.namespaces : [] };
+  } catch {
+    return {};
+  }
+}
+
 const INTERESTING_HEADERS = [
   "server",
   "x-generator",
@@ -113,7 +140,7 @@ function pickHeaders(
   return out;
 }
 
-export function probeToSubmission(opts: {
+export function probeToSubmissions(opts: {
   siteId: string;
   scanId: string;
   collectorId: string;
@@ -122,7 +149,7 @@ export function probeToSubmission(opts: {
   url: string;
   obs: ScanObservation;
   nowIso: string;
-}): CollectorSubmission {
+}): CollectorSubmission[] {
   const { probe, url, obs } = opts;
   const base = {
     site_ref: opts.siteId,
@@ -133,40 +160,21 @@ export function probeToSubmission(opts: {
   };
 
   if (probe.asFilePresence) {
-    return {
-      ...base,
-      subject: { type: "file_path", path: probe.path },
-      payload: {
-        type: "file_presence",
-        path: probe.path,
-        present: obs.status < 400,
-        detail: `http ${obs.status}`,
+    return [
+      {
+        ...base,
+        subject: { type: "file_path", path: probe.path },
+        payload: {
+          type: "file_presence",
+          path: probe.path,
+          present: obs.status < 400,
+          detail: `http ${obs.status}`,
+        },
       },
-    };
+    ];
   }
 
-  if (probe.docType && obs.status >= 200 && obs.status < 300) {
-    const facts =
-      probe.docType === "robots"
-        ? robotsFacts(obs.bodyText)
-        : probe.docType === "sitemap"
-          ? sitemapFacts(obs.bodyText, opts.nowIso)
-          : probe.docType === "llms_txt"
-            ? llmsFacts(obs.bodyText)
-            : {};
-    return {
-      ...base,
-      subject: { type: "url", url },
-      payload: {
-        type: "document_fact",
-        doc_type: probe.docType,
-        url,
-        facts,
-      },
-    };
-  }
-
-  return {
+  const httpObs: CollectorSubmission = {
     ...base,
     subject: { type: "url", url },
     payload: {
@@ -180,6 +188,44 @@ export function probeToSubmission(opts: {
       resolved_ip: obs.resolvedIp,
     },
   };
+
+  if (probe.docType && obs.status >= 200 && obs.status < 300) {
+    const facts =
+      probe.docType === "robots"
+        ? robotsFacts(obs.bodyText)
+        : probe.docType === "sitemap"
+          ? sitemapFacts(obs.bodyText, opts.nowIso)
+          : probe.docType === "llms_txt"
+            ? llmsFacts(obs.bodyText)
+            : probe.docType === "html"
+              ? htmlFacts(obs.bodyText)
+              : probe.docType === "wp_json"
+                ? wpJsonFacts(obs.bodyText)
+                : {};
+    const docFact: CollectorSubmission = {
+      ...base,
+      subject: { type: "url", url },
+      payload: {
+        type: "document_fact",
+        // submission schema allows robots|sitemap|llms_txt|well_known|
+        // other — custom probe kinds map onto "other" (the rules'
+        // docWhere("other", …) selectors expect exactly that)
+        doc_type:
+          probe.docType === "html" || probe.docType === "wp_json"
+            ? "other"
+            : probe.docType,
+        url,
+        facts,
+      },
+    };
+    // html/wp_json urls also feed observation rules (status, headers,
+    // content) → dual emit; classic doc urls emit the fact only
+    return ["html", "wp_json"].includes(probe.docType)
+      ? [httpObs, docFact]
+      : [docFact];
+  }
+
+  return [httpObs];
 }
 
 import { createHash } from "node:crypto";

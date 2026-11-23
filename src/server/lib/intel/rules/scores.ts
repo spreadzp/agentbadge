@@ -70,9 +70,12 @@ export function scoreFindings(
   }
   for (const surface of ["readiness", "exposure"] as const) {
     if (possible[surface] > 0) {
-      out[surface].score = Math.round(
-        (earned[surface] / possible[surface]) * 100,
-      );
+      const rate = (earned[surface] / possible[surface]) * 100;
+      // SLICE-262-30 dogfood: DESIGN §2.2 — exposure is a RISK
+      // surface (0–100, lower is better), so the axis reports the
+      // unearned share: a clean site reads ~0, not ~100
+      out[surface].score =
+        surface === "exposure" ? Math.round(100 - rate) : Math.round(rate);
     }
   }
   return out;

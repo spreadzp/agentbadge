@@ -285,8 +285,12 @@ export const INTEL_WP_PROFILE_V1: IntelRuleset = {
       m.some((e) => filePresent(e))
         ? fail("plugin files reachable")
         : pass("plugin paths closed")),
+    // selector: any doc fact carrying a sql_error boolean — the rule
+    // must be able to PASS on a clean page, not only fail on a leak
     X("015", "critical", "sql error leak", docWhere("other", (p) =>
-      p.facts.sql_error === true), () =>
-      fail("database error text leaked")),
+      typeof p.facts.sql_error === "boolean"), (m) =>
+      m.some((e) => facts(e).sql_error === true)
+        ? fail("database error text leaked")
+        : pass("no sql error text")),
   ],
 };
