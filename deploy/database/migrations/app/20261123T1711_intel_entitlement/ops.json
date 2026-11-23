@@ -1,0 +1,83 @@
+[
+  {
+    "id": "table.intelEntitlement",
+    "label": "Create table \"intelEntitlement\"",
+    "summary": "Creates table \"intelEntitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelEntitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelEntitlement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelEntitlement\"",
+        "sql": "CREATE TABLE \"public\".\"intelEntitlement\" (\n  \"coveredSiteIds\" json NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"graceUntil\" timestamptz NOT NULL,\n  \"id\" text NOT NULL,\n  \"perSiteLimits\" json NOT NULL,\n  \"plan\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"validFrom\" timestamptz NOT NULL,\n  \"validUntil\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelEntitlement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelEntitlement.intelEntitlement_tenantId_key",
+    "label": "Add unique constraint on \"intelEntitlement\" (tenantId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelEntitlement_tenantId_key",
+        "table": "intelEntitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelEntitlement_tenantId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelEntitlement_tenantId_key",
+          "public",
+          "\"public\".\"intelEntitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelEntitlement_tenantId_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelEntitlement\" ADD CONSTRAINT \"intelEntitlement_tenantId_key\" UNIQUE (\"tenantId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelEntitlement_tenantId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelEntitlement_tenantId_key",
+          "public",
+          "\"public\".\"intelEntitlement\""
+        ]
+      }
+    ]
+  }
+]

@@ -1797,3 +1797,89 @@ model IntelOwnershipProof {
   @@unique([siteId, kind])
   @@index([status, reverifyAfter])
 }
+
+// ─── EPIC-262 (SLICE-262-3) Canonical evidence envelope storage.
+// The SIGNED envelope is kept verbatim (byte-exact for later
+// verification); dedupeHash is the server-computed idempotency key;
+// expiresAt is the transparent retention deadline (D-262-Q8).
+
+model IntelEnvelope {
+  id            String            @id // env_<ulid> — same as envelope_id
+  schemaVersion String // "1.0"
+  siteId        String
+  scanId        String
+  collectorId   String
+  provenance    String // EXTERNAL_OBSERVED|PLUGIN_SELF_REPORTED|BACKEND_VERIFIED|DERIVED
+  dedupeHash    String            @unique // sha256 hex — retry idempotency
+  receivedAt    TimestamptzString // backend-stamped acceptance instant
+  expiresAt     TimestamptzString? // receivedAt + retention days
+  envelope      Json // full canonical envelope — signed, verbatim
+  createdAt     TimestamptzString @default(now())
+
+  @@index([siteId, receivedAt])
+  @@index([scanId])
+  @@index([expiresAt])
+}
+
+// ─── EPIC-262 (SLICE-262-19a) Tenant entitlement — the right to run
+// paid operations (D-262-Q7: entitlement ≠ site_key ≠ consent). One
+// row per tenant in v1; status transitions stay manual until 19b.
+// coveredSiteIds/perSiteLimits are Json to keep the contract lean.
+
+model IntelEntitlement {
+  id             String            @id // ent_<ulid>
+  tenantId       String            @unique // one entitlement per tenant (v1)
+  plan           String // operator-managed plan code
+  status         String // trial|active|past_due|expired|canceled
+  coveredSiteIds Json // string[] — empty = all tenant sites
+  perSiteLimits  Json // Record<string, number> — stored, enforced later
+  validFrom      TimestamptzString
+  validUntil     TimestamptzString // paid period end
+  graceUntil     TimestamptzString // soft-off boundary (D-262-Q8)
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+}
+
+// ─── EPIC-262 (SLICE-262-6) Hosted deep-scan job — the external scan
+// lifecycle record (queued|running|complete|partial|failed). The
+// signed canonical report is kept on the job row (v1); a dedicated
+// report surface can index it later (D-262-Q6/Q8).
+
+model IntelScanJob {
+  id            String            @id // job_<ulid>
+  siteId        String
+  tenantId      String
+  scanId        String // scan_<ulid> — shared with envelopes + report
+  status        String // queued|running|complete|partial|failed
+  baseUrl       String
+  probeFailures Int               @default(0)
+  probeTotal    Int               @default(0)
+  error         String?
+  reportId      String?
+  report        Json? // signed canonical report — verbatim
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+  finishedAt    TimestamptzString?
+
+  @@index([siteId, createdAt])
+  @@index([tenantId])
+}
+
+// ─── EPIC-262 (SLICE-262-7) Tenant operators — humans on a tenant
+// with roles; the abop_ key is a TENANT-scoped credential (site owner
+// ≠ operator ≠ tenant). Plaintext never persisted — sha256+prefix.
+
+model IntelOperator {
+  id        String            @id // op_<ulid>
+  tenantId  String
+  email     String // normalized lowercase
+  role      String // owner|operator|viewer
+  status    String            @default("active") // active|revoked
+  keyHash   String            @unique // sha256 hex
+  keyPrefix String // "abop_"+8 — identification only, no secret
+  createdAt TimestamptzString @default(now())
+  revokedAt TimestamptzString?
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+}

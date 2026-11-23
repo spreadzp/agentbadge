@@ -180,8 +180,24 @@
       "model": "IntelDomain",
       "namespace": "public"
     },
+    "intelEntitlement": {
+      "model": "IntelEntitlement",
+      "namespace": "public"
+    },
+    "intelEnvelope": {
+      "model": "IntelEnvelope",
+      "namespace": "public"
+    },
+    "intelOperator": {
+      "model": "IntelOperator",
+      "namespace": "public"
+    },
     "intelOwnershipProof": {
       "model": "IntelOwnershipProof",
+      "namespace": "public"
+    },
+    "intelScanJob": {
+      "model": "IntelScanJob",
       "namespace": "public"
     },
     "intelSite": {
@@ -5607,6 +5623,349 @@
               "table": "intelDomain"
             }
           },
+          "IntelEntitlement": {
+            "fields": {
+              "coveredSiteIds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "graceUntil": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "perSiteLimits": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "plan": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "validFrom": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "validUntil": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "coveredSiteIds": {
+                  "column": "coveredSiteIds"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "graceUntil": {
+                  "column": "graceUntil"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "perSiteLimits": {
+                  "column": "perSiteLimits"
+                },
+                "plan": {
+                  "column": "plan"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "validFrom": {
+                  "column": "validFrom"
+                },
+                "validUntil": {
+                  "column": "validUntil"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelEntitlement"
+            }
+          },
+          "IntelEnvelope": {
+            "fields": {
+              "collectorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "dedupeHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "envelope": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "expiresAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "provenance": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "receivedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "scanId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "schemaVersion": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "siteId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "collectorId": {
+                  "column": "collectorId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "dedupeHash": {
+                  "column": "dedupeHash"
+                },
+                "envelope": {
+                  "column": "envelope"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "provenance": {
+                  "column": "provenance"
+                },
+                "receivedAt": {
+                  "column": "receivedAt"
+                },
+                "scanId": {
+                  "column": "scanId"
+                },
+                "schemaVersion": {
+                  "column": "schemaVersion"
+                },
+                "siteId": {
+                  "column": "siteId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelEnvelope"
+            }
+          },
+          "IntelOperator": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "email": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "keyHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "keyPrefix": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "revokedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "role": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "email": {
+                  "column": "email"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "keyHash": {
+                  "column": "keyHash"
+                },
+                "keyPrefix": {
+                  "column": "keyPrefix"
+                },
+                "revokedAt": {
+                  "column": "revokedAt"
+                },
+                "role": {
+                  "column": "role"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelOperator"
+            }
+          },
           "IntelOwnershipProof": {
             "fields": {
               "createdAt": {
@@ -5726,6 +6085,157 @@
               },
               "namespaceId": "public",
               "table": "intelOwnershipProof"
+            }
+          },
+          "IntelScanJob": {
+            "fields": {
+              "baseUrl": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "error": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "finishedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "probeFailures": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "probeTotal": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "report": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "reportId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "scanId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "siteId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "baseUrl": {
+                  "column": "baseUrl"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "error": {
+                  "column": "error"
+                },
+                "finishedAt": {
+                  "column": "finishedAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "probeFailures": {
+                  "column": "probeFailures"
+                },
+                "probeTotal": {
+                  "column": "probeTotal"
+                },
+                "report": {
+                  "column": "report"
+                },
+                "reportId": {
+                  "column": "reportId"
+                },
+                "scanId": {
+                  "column": "scanId"
+                },
+                "siteId": {
+                  "column": "siteId"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelScanJob"
             }
           },
           "IntelSite": {
@@ -14907,6 +15417,273 @@
                 }
               ]
             },
+            "intelEntitlement": {
+              "columns": {
+                "coveredSiteIds": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "graceUntil": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "perSiteLimits": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "plan": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "validFrom": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "validUntil": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "tenantId"
+                  ]
+                }
+              ]
+            },
+            "intelEnvelope": {
+              "columns": {
+                "collectorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "dedupeHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "envelope": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "provenance": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "receivedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "scanId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "schemaVersion": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "siteId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "expiresAt"
+                  ],
+                  "name": "intelEnvelope_expiresAt_idx_6b6b8c10",
+                  "prefix": "intelEnvelope_expiresAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "scanId"
+                  ],
+                  "name": "intelEnvelope_scanId_idx_7c201901",
+                  "prefix": "intelEnvelope_scanId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "siteId",
+                    "receivedAt"
+                  ],
+                  "name": "intelEnvelope_siteId_receivedAt_idx_f6304c44",
+                  "prefix": "intelEnvelope_siteId_receivedAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "dedupeHash"
+                  ]
+                }
+              ]
+            },
+            "intelOperator": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "email": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "keyHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "keyPrefix": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "revokedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "role": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "active"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "tenantId",
+                    "status"
+                  ],
+                  "name": "intelOperator_tenantId_status_idx_d3d04256",
+                  "prefix": "intelOperator_tenantId_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "keyHash"
+                  ]
+                },
+                {
+                  "columns": [
+                    "tenantId",
+                    "email"
+                  ]
+                }
+              ]
+            },
             "intelOwnershipProof": {
               "columns": {
                 "createdAt": {
@@ -14998,6 +15775,118 @@
                   ]
                 }
               ]
+            },
+            "intelScanJob": {
+              "columns": {
+                "baseUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "error": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "finishedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "probeFailures": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "probeTotal": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "report": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "reportId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "scanId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "siteId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "siteId",
+                    "createdAt"
+                  ],
+                  "name": "intelScanJob_siteId_createdAt_idx_2fcd3bd2",
+                  "prefix": "intelScanJob_siteId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "tenantId"
+                  ],
+                  "name": "intelScanJob_tenantId_idx_c93ed4f1",
+                  "prefix": "intelScanJob_tenantId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "intelSite": {
               "columns": {
@@ -19061,10 +19950,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "7b39bf54b1f345dd0eb5a268bedbf2a8ce145c90ee077000d4d7c98b3bce8894"
+    "storageHash": "2e1c3c464ec1924cd8bc655e4fcea3449b9817e707bc6eaa5bb9a83796d61980"
   },
   "execution": {
-    "executionHash": "eb7b1212691f242057d8db3df7d3b6d9b0419f61e6b7b9a8eb1712d8ab666423",
+    "executionHash": "00223e47e44f358cfec904d5afabcdb114f66acd1ffca778823ee40931208419",
     "mutations": {
       "defaults": [
         {
@@ -19919,7 +20808,37 @@
           "ref": {
             "column": "updatedAt",
             "namespace": "public",
+            "table": "intelEntitlement"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
             "table": "intelOwnershipProof"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "intelScanJob"
           }
         },
         {

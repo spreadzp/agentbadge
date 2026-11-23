@@ -1,0 +1,200 @@
+[
+  {
+    "id": "table.intelEnvelope",
+    "label": "Create table \"intelEnvelope\"",
+    "summary": "Creates table \"intelEnvelope\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelEnvelope"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelEnvelope\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelEnvelope\"",
+        "sql": "CREATE TABLE \"public\".\"intelEnvelope\" (\n  \"collectorId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dedupeHash\" text NOT NULL,\n  \"envelope\" json NOT NULL,\n  \"expiresAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"provenance\" text NOT NULL,\n  \"receivedAt\" timestamptz NOT NULL,\n  \"scanId\" text NOT NULL,\n  \"schemaVersion\" text NOT NULL,\n  \"siteId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelEnvelope\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelEnvelope.intelEnvelope_dedupeHash_key",
+    "label": "Add unique constraint on \"intelEnvelope\" (dedupeHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelEnvelope_dedupeHash_key",
+        "table": "intelEnvelope"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelEnvelope_dedupeHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelEnvelope_dedupeHash_key",
+          "public",
+          "\"public\".\"intelEnvelope\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelEnvelope_dedupeHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelEnvelope\" ADD CONSTRAINT \"intelEnvelope_dedupeHash_key\" UNIQUE (\"dedupeHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelEnvelope_dedupeHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelEnvelope_dedupeHash_key",
+          "public",
+          "\"public\".\"intelEnvelope\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelEnvelope.intelEnvelope_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"intelEnvelope_expiresAt_idx_6b6b8c10\" on \"intelEnvelope\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelEnvelope_expiresAt_idx_6b6b8c10",
+        "table": "intelEnvelope"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelEnvelope_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelEnvelope_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"intelEnvelope_expiresAt_idx_6b6b8c10\" ON \"public\".\"intelEnvelope\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelEnvelope_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelEnvelope.intelEnvelope_scanId_idx_7c201901",
+    "label": "Create index \"intelEnvelope_scanId_idx_7c201901\" on \"intelEnvelope\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelEnvelope_scanId_idx_7c201901",
+        "table": "intelEnvelope"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelEnvelope_scanId_idx_7c201901\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_scanId_idx_7c201901\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelEnvelope_scanId_idx_7c201901\"",
+        "sql": "CREATE INDEX \"intelEnvelope_scanId_idx_7c201901\" ON \"public\".\"intelEnvelope\" (\"scanId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelEnvelope_scanId_idx_7c201901\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_scanId_idx_7c201901\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelEnvelope.intelEnvelope_siteId_receivedAt_idx_f6304c44",
+    "label": "Create index \"intelEnvelope_siteId_receivedAt_idx_f6304c44\" on \"intelEnvelope\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelEnvelope_siteId_receivedAt_idx_f6304c44",
+        "table": "intelEnvelope"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelEnvelope_siteId_receivedAt_idx_f6304c44\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_siteId_receivedAt_idx_f6304c44\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelEnvelope_siteId_receivedAt_idx_f6304c44\"",
+        "sql": "CREATE INDEX \"intelEnvelope_siteId_receivedAt_idx_f6304c44\" ON \"public\".\"intelEnvelope\" (\"siteId\", \"receivedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelEnvelope_siteId_receivedAt_idx_f6304c44\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEnvelope_siteId_receivedAt_idx_f6304c44\""
+        ]
+      }
+    ]
+  }
+]

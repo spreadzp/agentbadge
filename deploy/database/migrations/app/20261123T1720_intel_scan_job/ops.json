@@ -1,0 +1,119 @@
+[
+  {
+    "id": "table.intelScanJob",
+    "label": "Create table \"intelScanJob\"",
+    "summary": "Creates table \"intelScanJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelScanJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelScanJob\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelScanJob\"",
+        "sql": "CREATE TABLE \"public\".\"intelScanJob\" (\n  \"baseUrl\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"error\" text,\n  \"finishedAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"probeFailures\" int4 DEFAULT 0 NOT NULL,\n  \"probeTotal\" int4 DEFAULT 0 NOT NULL,\n  \"report\" json,\n  \"reportId\" text,\n  \"scanId\" text NOT NULL,\n  \"siteId\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelScanJob\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelScanJob.intelScanJob_siteId_createdAt_idx_2fcd3bd2",
+    "label": "Create index \"intelScanJob_siteId_createdAt_idx_2fcd3bd2\" on \"intelScanJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelScanJob_siteId_createdAt_idx_2fcd3bd2",
+        "table": "intelScanJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelScanJob_siteId_createdAt_idx_2fcd3bd2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_siteId_createdAt_idx_2fcd3bd2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelScanJob_siteId_createdAt_idx_2fcd3bd2\"",
+        "sql": "CREATE INDEX \"intelScanJob_siteId_createdAt_idx_2fcd3bd2\" ON \"public\".\"intelScanJob\" (\"siteId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelScanJob_siteId_createdAt_idx_2fcd3bd2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_siteId_createdAt_idx_2fcd3bd2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelScanJob.intelScanJob_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelScanJob_tenantId_idx_c93ed4f1\" on \"intelScanJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelScanJob_tenantId_idx_c93ed4f1",
+        "table": "intelScanJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelScanJob_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelScanJob_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelScanJob_tenantId_idx_c93ed4f1\" ON \"public\".\"intelScanJob\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelScanJob_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  }
+]
