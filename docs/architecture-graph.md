@@ -39,12 +39,14 @@ flowchart LR
   agent_readiness_rule_engine["agent-readiness/rule-engine"] --> agent_readiness["agent-readiness"]
   agent_readiness_rule_engine["agent-readiness/rule-engine"] --> agent_readiness_scanner["agent-readiness/scanner"]
   agent_readiness_rule_engine["agent-readiness/rule-engine"] --> pkg_passport_logger["pkg: passport/logger"]
+  agent_readiness_rule_engine["agent-readiness/rule-engine"] --> pkg_x402_payto_proof["pkg: x402-payto-proof"]
   agent_readiness_rules["agent-readiness/rules"] --> agent_readiness["agent-readiness"]
   agent_readiness_runtime["agent-readiness/runtime"] --> agent_readiness_rule_engine["agent-readiness/rule-engine"]
   agent_readiness_runtime["agent-readiness/runtime"] --> agent_readiness_scanner["agent-readiness/scanner"]
   agent_readiness_scanner["agent-readiness/scanner"] --> agent_readiness["agent-readiness"]
   agent_readiness_scanner["agent-readiness/scanner"] --> pkg_cache["pkg: cache"]
   agent_readiness_scanner["agent-readiness/scanner"] --> pkg_passport_logger["pkg: passport/logger"]
+  agent_readiness_scanner["agent-readiness/scanner"] --> pkg_x402_payto_proof["pkg: x402-payto-proof"]
   agent_readiness_scanner["agent-readiness/scanner"] --> server_metrics["server/metrics"]
   agent_readiness_scoring["agent-readiness/scoring"] --> agent_readiness["agent-readiness"]
   agent_readiness_scoring["agent-readiness/scoring"] --> agent_readiness_rule_engine["agent-readiness/rule-engine"]
@@ -204,4 +206,4 @@ flowchart LR
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).
 - `pkg:*` nodes are `@agentbadge/*` packages — dependency direction is
   always server → package, never the reverse.
-- 34 modules import across boundaries; 17 packages consumed.
+- 34 modules import across boundaries; 18 packages consumed.

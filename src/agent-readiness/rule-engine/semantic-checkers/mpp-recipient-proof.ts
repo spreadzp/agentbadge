@@ -6,7 +6,7 @@
 // shared via payto-proof-verdict.ts. Every live quote here is
 // evidence_tier "live_mpp" — authoritative like live402.
 import type { SemanticChecker, SemanticCheckResult } from "./helpers";
-import { evaluatePaytoProofs } from "../../../../../../packages/x402-payto-proof/src/index.ts";
+import { evaluatePaytoProofs } from "@agentbadge/x402-payto-proof";
 import { collectMppInputs } from "./mpp-recipient-inputs";
 import {
   liveRows,

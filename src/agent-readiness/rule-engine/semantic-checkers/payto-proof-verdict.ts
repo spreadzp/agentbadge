@@ -9,7 +9,7 @@ import type {
   EvaluationResult,
   AddressOutcome,
   ProofOutcome,
-} from "../../../../../../packages/x402-payto-proof/src/index.ts";
+} from "@agentbadge/x402-payto-proof";
 
 export interface ProofCoverage {
   accepts_found: number;

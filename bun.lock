@@ -20,6 +20,7 @@
         "@agentbadge/payment-forensics": "^0.1.1",
         "@agentbadge/payments": "^0.1.1",
         "@agentbadge/webmcp": "^0.5.0",
+        "@agentbadge/x402-payto-proof": "0.1.0",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/swagger-ui": "^0.6.1",
         "@modelcontextprotocol/sdk": "^1.12.0",
@@ -109,6 +110,8 @@
     "@agentbadge/verify-verdict": ["@agentbadge/verify-verdict@0.1.0", "", { "dependencies": { "@agentbadge/circle-payments": "0.1.18", "viem": "^2.0.0" }, "bin": { "verify-verdict": "dist/cli.js" } }, "sha512-yzjLoy7JVrlHC/UExa0M7oM5nqW4kTvWoxmjl70zFRKoUt7MU4pieewQGjc3DXcBgyJ2s1VeEcxoV5awJEFh7w=="],
 
     "@agentbadge/webmcp": ["@agentbadge/webmcp@0.5.0", "", {}, "sha512-NkOepNmikQohadBIPL2xK0TqB4KEwhgu3T7yvzNwq4Y6PiYGB0/G1XGEjlMUY7LMdclgc/T6VHROOF3IfdCUeA=="],
+
+    "@agentbadge/x402-payto-proof": ["@agentbadge/x402-payto-proof@0.1.0", "", { "dependencies": { "@noble/curves": "^2.4.0", "@noble/hashes": "^2.4.0" } }, "sha512-7tHqhcSsOqZE8SwbFJ+Y95a34Y7otHHVMBQBkR/UI+/t1dk0EGa+qUIiLcXg9TEMReR2N/nL6hj6C62bpcazUQ=="],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 

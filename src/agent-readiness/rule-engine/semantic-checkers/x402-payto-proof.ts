@@ -13,7 +13,7 @@ import type { SemanticChecker, SemanticCheckResult } from "./helpers";
 import {
   evaluatePaytoProofs,
   observationKey,
-} from "../../../../../../packages/x402-payto-proof/src/index.ts";
+} from "@agentbadge/x402-payto-proof";
 import { collectPaytoInputs } from "./x402-payto-inputs";
 import {
   liveRows,

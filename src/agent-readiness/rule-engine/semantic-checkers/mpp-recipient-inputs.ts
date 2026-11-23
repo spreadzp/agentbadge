@@ -14,7 +14,7 @@ import {
   observationKey,
   normalizeAddress,
   type PayToObservation,
-} from "../../../../../../packages/x402-payto-proof/src/index.ts";
+} from "@agentbadge/x402-payto-proof";
 import {
   parsePaymentChallengeQuotes,
   mppQuotesDivergent,

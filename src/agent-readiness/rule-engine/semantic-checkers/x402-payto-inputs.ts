@@ -12,7 +12,7 @@ import {
   normalizeAddress,
   type PayToObservation,
   type ProofEntry,
-} from "../../../../../../packages/x402-payto-proof/src/index.ts";
+} from "@agentbadge/x402-payto-proof";
 
 // ─── Snapshot payload shapes (what the handlers put in body) ────────────────
 

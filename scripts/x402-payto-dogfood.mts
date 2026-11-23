@@ -29,7 +29,7 @@ import {
   recoverEvmAddress,
   type PayToObservation,
   type ProofEntry,
-} from "../../../packages/x402-payto-proof/src/index.ts";
+} from "@agentbadge/x402-payto-proof";
 import { queryDohTxt } from "../src/agent-readiness/scanner/fetchers/doh-txt.ts";
 
 const REPO_ROOT = resolve(import.meta.dir, "../../..");

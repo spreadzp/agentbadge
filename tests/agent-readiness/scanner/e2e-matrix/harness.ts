@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { scanDomain } from "../../../../src/agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../../../src/agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../../../src/agent-readiness/report-formatter";
-import { buildCanonicalMessage } from "../../../../../../packages/x402-payto-proof/src/index.ts";
+import { buildCanonicalMessage } from "@agentbadge/x402-payto-proof";
 import { privateKeyToAccount } from "viem/accounts";
 
 export const PUBLIC_IP = "93.184.216.34";

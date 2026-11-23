@@ -12,46 +12,12 @@
  *   negative results cache for NEGATIVE_CACHE_MS; an explicit live
  *   re-check is rate-limited to once per RECHECK_MIN_MS per domain
  * - resolver failure => status "unchecked", NEVER "absent"
- *
- * NOTE: `lookupNameCandidates`/`isSharedHostingSuffix` mirror
- * packages/x402-payto-proof/src/psl.ts — keep the sets in sync
- * until @agentbadge/x402-payto-proof is published and can be
- * imported directly.
  */
 import { queryDohTxt } from "./doh-txt";
-
-const SHARED_HOSTING_SUFFIXES = new Set([
-  "onrender.com",
-  "workers.dev",
-  "vercel.app",
-  "netlify.app",
-  "herokuapp.com",
-  "fly.dev",
-  "pages.dev",
-  "github.io",
-  "gitlab.io",
-  "web.app",
-  "firebaseapp.com",
-  "azurewebsites.net",
-  "cloudfront.net",
-  "amazonaws.com",
-  "up.railway.app",
-  "railway.app",
-  "repl.co",
-  "replit.app",
-  "glitch.me",
-  "surge.sh",
-  "deno.dev",
-  "edgecompute.app",
-]);
-
-function isSharedHostingSuffix(name: string): boolean {
-  const lower = name.toLowerCase().replace(/\.$/, "");
-  for (const suffix of SHARED_HOSTING_SUFFIXES) {
-    if (lower === suffix || lower.endsWith(`.${suffix}`)) return true;
-  }
-  return false;
-}
+import {
+  isSharedHostingSuffix,
+  lookupNameCandidates,
+} from "@agentbadge/x402-payto-proof";
 
 /**
  * Host + parents up to (but not including) the registrable suffix.
@@ -60,14 +26,7 @@ function isSharedHostingSuffix(name: string): boolean {
  * domain itself.
  */
 export function paytoLookupNames(host: string): string[] {
-  const labels = host.toLowerCase().replace(/\.$/, "").split(".");
-  const names: string[] = [];
-  for (let i = 0; i <= labels.length - 2; i++) {
-    const name = labels.slice(i).join(".");
-    if (SHARED_HOSTING_SUFFIXES.has(name)) break;
-    names.push(name);
-  }
-  return names;
+  return lookupNameCandidates(host);
 }
 
 export type PayToDnsStatus = "hit" | "absent" | "unchecked";
@@ -118,8 +77,14 @@ async function lookupLive(
   for (const qname of queryNames) {
     // Defensive: never accept a record published AT the shared
     // parent itself — it says nothing about the customer subdomain.
+    // Exact suffix only: tenant names ARE shared-hosting names but
+    // their own records still count (D-258-Q19).
     const parentPart = qname.slice("_x402-payto.".length);
-    if (SHARED_HOSTING_SUFFIXES.has(parentPart)) continue;
+    if (
+      isSharedHostingSuffix(parentPart) &&
+      lookupNameCandidates(parentPart).length === 0
+    )
+      continue;
     const r = await queryDohTxt(qname, { dual: true });
     if (r.status === "ok") {
       return {
