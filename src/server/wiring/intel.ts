@@ -25,9 +25,8 @@ export function wireIntel(app: Hono): void {
 
   const key = resolveIntelSigningKey(cfg);
   const db = getDatabase();
-  const registry = createIntelRegistryService(
-    pickIntelRegistryStores(db),
-  );
+  const registryStores = pickIntelRegistryStores(db);
+  const registry = createIntelRegistryService(registryStores);
   const evidence = pickIntelEvidenceStore(db);
   const entitlement = pickIntelEntitlementStore(db);
   const scanJobs = pickIntelScanJobStore(db);
@@ -36,6 +35,7 @@ export function wireIntel(app: Hono): void {
     createIntelApiRoutes({
       key,
       registry,
+      registryStores,
       evidence,
       evidenceRetentionDays: cfg.evidenceRetentionDays,
       entitlement,

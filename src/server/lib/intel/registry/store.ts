@@ -6,6 +6,7 @@
 import type {
   IntelCustomer,
   IntelDomain,
+  IntelOperator,
   IntelOwnershipProof,
   IntelSite,
   IntelSiteKey,
@@ -55,6 +56,14 @@ export interface IntelOwnershipRepo {
   due(nowIso: string): Promise<IntelOwnershipProof[]>;
 }
 
+export interface IntelOperatorsRepo {
+  insert(o: IntelOperator): Promise<IntelOperator>;
+  byId(id: string): Promise<IntelOperator | null>;
+  byKeyHash(hash: string): Promise<IntelOperator | null>;
+  forTenant(tenantId: string): Promise<IntelOperator[]>;
+  update(o: IntelOperator): Promise<IntelOperator>;
+}
+
 export interface IntelRegistryStores {
   backend: "memory" | "postgres";
   tenants: IntelTenantsRepo;
@@ -63,4 +72,5 @@ export interface IntelRegistryStores {
   domains: IntelDomainsRepo;
   siteKeys: IntelSiteKeysRepo;
   ownership: IntelOwnershipRepo;
+  operators: IntelOperatorsRepo;
 }

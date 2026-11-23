@@ -1,6 +1,9 @@
 // EPIC-262: Agent Surface Intelligence route barrel (SLICE-262-0a/3).
 import type { SigningKey } from "../../../agent-readiness/integrity/key-manager";
-import type { IntelRegistryService } from "../../lib/intel/registry";
+import type {
+  IntelRegistryService,
+  IntelRegistryStores,
+} from "../../lib/intel/registry";
 import type { IntelEvidenceStore } from "../../lib/intel/evidence/store";
 import type { IntelEntitlementStore } from "../../lib/intel/entitlement";
 import type { IntelRuleset } from "../../lib/intel/rules";
@@ -15,6 +18,11 @@ export interface IntelRouteDeps {
    * intake_unavailable when absent.
    */
   registry?: IntelRegistryService;
+  /**
+   * SLICE-262-7: raw stores for operator-key auth — operator ops are
+   * store-level functions (service.ts is at its line budget).
+   */
+  registryStores?: IntelRegistryStores;
   evidence?: IntelEvidenceStore;
   /** retention window in days — stamped as expiresAt on each row. */
   evidenceRetentionDays?: number;

@@ -8,6 +8,7 @@ import {
   createIntelRegistryService,
   type IntelRegistryService,
 } from "../../src/server/lib/intel/registry";
+import { inviteOperator } from "../../src/server/lib/intel/registry/operators";
 import { createMemoryIntelEvidenceStore } from "../../src/server/lib/intel/evidence/store";
 import { createMemoryEntitlementStore } from "../../src/server/lib/intel/entitlement";
 import { createMemoryScanJobStore } from "../../src/server/lib/intel/scan/memory";
@@ -135,6 +136,7 @@ describe("runScanJob", () => {
 
 // ─── route: POST /api/intel/scans ───────────────────────────────────
 describe("POST /api/intel/scans", () => {
+  let stores: ReturnType<typeof createMemoryIntelRegistry>;
   let registry: IntelRegistryService;
   let entitlement: ReturnType<typeof createMemoryEntitlementStore>;
   let app: Hono;
@@ -143,7 +145,8 @@ describe("POST /api/intel/scans", () => {
   let tenantId: string;
 
   beforeEach(async () => {
-    registry = createIntelRegistryService(createMemoryIntelRegistry());
+    stores = createMemoryIntelRegistry();
+    registry = createIntelRegistryService(stores);
     entitlement = createMemoryEntitlementStore();
     const tenant = await registry.createTenant({ slug: "pryme", name: "P" });
     tenantId = tenant.id;
@@ -157,6 +160,7 @@ describe("POST /api/intel/scans", () => {
       createIntelApiRoutes({
         key,
         registry,
+        registryStores: stores,
         evidence: createMemoryIntelEvidenceStore(),
         entitlement,
         scanJobs: createMemoryScanJobStore(),
@@ -166,11 +170,26 @@ describe("POST /api/intel/scans", () => {
     );
   });
 
-  const post = (auth?: string) =>
+  const post = (auth?: string, body?: unknown) =>
     app.request("/api/intel/scans", {
       method: "POST",
-      headers: auth !== undefined ? { authorization: auth } : {},
+      headers: {
+        ...(auth !== undefined ? { authorization: auth } : {}),
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+
+  const entitleTenant = async (tid: string, siteIds: string[]) => {
+    await entitlement.upsert({
+      id: "ent_1", tenantId: tid, plan: "pilot", status: "active",
+      coveredSiteIds: siteIds, perSiteLimits: {},
+      validFrom: "2020-01-01T00:00:00Z",
+      validUntil: "2030-01-01T00:00:00Z",
+      graceUntil: "2030-01-08T00:00:00Z",
+      createdAt: "2020-01-01T00:00:00Z", updatedAt: "2020-01-01T00:00:00Z",
+    });
+  };
 
   it("401 without site_key", async () => {
     expect((await post()).status).toBe(401);
@@ -214,5 +233,54 @@ describe("POST /api/intel/scans", () => {
     expect(body.job.tenantId).toBe(tenantId);
     expect(body.report.integrity.signature.value).toBeTruthy();
     expect(body.report.scan.completeness).toBe("complete");
+  });
+
+  describe("operator key channel (SLICE-262-7)", () => {
+    const invite = (email: string, role: "owner" | "operator" | "viewer", tid = tenantId) =>
+      inviteOperator(stores, tid, { email, role });
+
+    it("201 via abop_ + {site_id} — entitlement on the operator tenant", async () => {
+      await entitleTenant(tenantId, [siteId]);
+      const { plaintext } = await invite("op@pryme.io", "operator");
+      const res = await post(`Bearer ${plaintext}`, { site_id: siteId });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.job.siteId).toBe(siteId);
+      expect(body.job.tenantId).toBe(tenantId);
+    });
+
+    it("403 role_denied for viewer even when tenant is entitled", async () => {
+      await entitleTenant(tenantId, [siteId]);
+      const { plaintext } = await invite("ro@pryme.io", "viewer");
+      const res = await post(`Bearer ${plaintext}`, { site_id: siteId });
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe("role_denied");
+    });
+
+    it("403 site_not_in_tenant for a foreign site", async () => {
+      const rival = await registry.createTenant({ slug: "rival", name: "R" });
+      const cust = await registry.createCustomer(rival.id, { name: "X" });
+      const foreign = await registry.createSite(cust.id, {
+        domains: ["foreign.io"],
+      });
+      await entitleTenant(tenantId, [siteId]);
+      await entitleTenant(rival.id, [foreign.id]);
+      const { plaintext } = await invite("op@pryme.io", "operator");
+      const res = await post(`Bearer ${plaintext}`, { site_id: foreign.id });
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe("site_not_in_tenant");
+    });
+
+    it("400 site_id_required when abop_ is used without a body site", async () => {
+      await entitleTenant(tenantId, [siteId]);
+      const { plaintext } = await invite("op@pryme.io", "operator");
+      const res = await post(`Bearer ${plaintext}`);
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("site_id_required");
+    });
+
+    it("401 for unknown/malformed operator keys", async () => {
+      expect((await post("Bearer abop_" + "a".repeat(32), { site_id: siteId })).status).toBe(401);
+    });
   });
 });

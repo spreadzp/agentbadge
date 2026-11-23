@@ -13,6 +13,7 @@ import type {
 import type {
   IntelCustomer,
   IntelDomain,
+  IntelOperator,
   IntelOwnershipProof,
   IntelSite,
   IntelSiteKey,
@@ -129,6 +130,27 @@ export function createMemoryIntelRegistry(): IntelRegistryStores {
     },
   };
 
+  const operators = new Map<string, IntelOperator>();
+  const operatorsRepo: IntelRegistryStores["operators"] = {
+    async insert(o) {
+      operators.set(o.id, o);
+      return o;
+    },
+    async byId(id) {
+      return operators.get(id) ?? null;
+    },
+    async byKeyHash(hash) {
+      return [...operators.values()].find((o) => o.keyHash === hash) ?? null;
+    },
+    async forTenant(tenantId) {
+      return [...operators.values()].filter((o) => o.tenantId === tenantId);
+    },
+    async update(o) {
+      operators.set(o.id, o);
+      return o;
+    },
+  };
+
   return {
     backend: "memory",
     tenants: tenantsRepo,
@@ -137,5 +159,6 @@ export function createMemoryIntelRegistry(): IntelRegistryStores {
     domains: domainsRepo,
     siteKeys: siteKeysRepo,
     ownership: ownershipRepo,
+    operators: operatorsRepo,
   };
 }

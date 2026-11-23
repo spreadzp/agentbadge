@@ -85,3 +85,27 @@ export interface IntelOwnershipProof {
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }
+
+// ─── SLICE-262-7: operators — humans attached to a tenant with roles.
+// Site owner ≠ operator ≠ tenant (EXPLAINED §0): the operator key is
+// a tenant-scoped credential, not a site credential.
+export const OPERATOR_ROLES = ["owner", "operator", "viewer"] as const;
+export type OperatorRole = (typeof OPERATOR_ROLES)[number];
+
+export interface IntelOperator {
+  id: string; // op_<ulid>
+  tenantId: string;
+  email: string;
+  role: OperatorRole;
+  status: "active" | "revoked";
+  keyHash: string; // sha256 hex of plaintext
+  keyPrefix: string; // "abop_" + 8 — identification only
+  createdAt: string; // ISO
+  revokedAt: string | null;
+}
+
+export interface OperatorAuthContext {
+  operator_id: string;
+  tenant_id: string;
+  role: OperatorRole;
+}
