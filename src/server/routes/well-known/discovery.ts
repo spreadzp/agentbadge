@@ -6,6 +6,8 @@ import { buildDiscoveryJson, toolsFor } from "@agentbadge/webmcp";
 import { MCP_NAMESPACES } from "./agent-card";
 import { MARKETPLACE_LISTINGS } from "../../lib/agent-discovery/marketplace-listings";
 import { aauthDiscoveryRoutes } from "./discovery-aauth";
+import { internalRequest } from "../../middleware/markdown-negotiation-helpers";
+import { createHash } from "node:crypto";
 
 export const discoveryRoutes = new Hono();
 
@@ -356,7 +358,7 @@ discoveryRoutes.get(
       },
     },
   }),
-  (c) => {
+  async (c) => {
     const baseUrl = BASE_URL;
     const skills = [
       {
@@ -364,27 +366,34 @@ discoveryRoutes.get(
         type: "text/markdown",
         description: "Scan any URL for agent readiness compliance",
         url: `${baseUrl}/skill.md`,
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+        path: "/skill.md",
       },
       {
         name: "passport-issuance",
         type: "application/json",
         description: "Issue agent passport NFTs via x402 payment (USDC on Arc; legacy: Hedera)",
         url: `${baseUrl}/.well-known/agent-card.json`,
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+        path: "/.well-known/agent-card.json",
       },
       {
         name: "marketplace-trading",
         type: "application/json",
         description: "Post, claim, deliver, and complete marketplace tasks on Arc (USDC; legacy: Hedera)",
         url: `${baseUrl}/marketplace-guide`,
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+        path: "/marketplace-guide",
       },
     ];
+    // SLICE-259-37: sha256 over the actual served bytes (self-fetch through
+    // the late-bound app, memoized per process). All-zero placeholders lied
+    // about integrity — now the field carries the real hash or is omitted.
+    const hashes = await skillsHashes();
     return c.json(
       {
         $schema: "https://agentskills.io/schema/v0.2.0",
-        skills,
+        skills: skills.map(({ path, ...rest }) => {
+          const sha256 = hashes.get(path);
+          return sha256 ? { ...rest, sha256 } : rest;
+        }),
       },
       200,
       {
@@ -394,6 +403,26 @@ discoveryRoutes.get(
     );
   },
 );
+
+// SLICE-259-37: lazily hash the three advertised skill artifacts through
+// the assembled app — memoized per process, shared promise avoids
+// stampede on first hit.
+let skillsHashPromise: Promise<Map<string, string>> | null = null;
+function skillsHashes(): Promise<Map<string, string>> {
+  if (!skillsHashPromise) {
+    skillsHashPromise = (async () => {
+      const map = new Map<string, string>();
+      for (const path of ["/skill.md", "/.well-known/agent-card.json", "/marketplace-guide"]) {
+        const res = await internalRequest(path);
+        if (res) {
+          map.set(path, createHash("sha256").update(Buffer.from(await res.arrayBuffer())).digest("hex"));
+        }
+      }
+      return map;
+    })().catch(() => new Map<string, string>());
+  }
+  return skillsHashPromise;
+}
 
 // ─── SLICE-49-7: Web Bot Auth directory ──────────────────────────
 

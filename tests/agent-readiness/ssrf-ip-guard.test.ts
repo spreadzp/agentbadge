@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { isPrivateIp, isBlockedIp, assertSafeIp } from "../../src/agent-readiness/scanner/ssrf/ip-guard";
 import { SsrfBlockedError, SsrfErrorCodes } from "../../src/agent-readiness/scanner/ssrf/ssrf-error";
 
@@ -62,6 +62,23 @@ describe("isPrivateIp — IPv6", () => {
     expect(isPrivateIp("::ffff:127.0.0.1")).toBe(true);
     expect(isPrivateIp("::ffff:10.0.0.1")).toBe(true);
     expect(isPrivateIp("::ffff:169.254.169.254")).toBe(true);
+  });
+
+  // SLICE-259-37: WHATWG URL keeps brackets on IPv6 hostnames — without
+  // normalization every bracketed literal bypassed the guard.
+  it("blocks bracketed IPv6 literals (URL hostname form)", () => {
+    expect(isPrivateIp("[::1]")).toBe(true);
+    expect(isPrivateIp("[fe80::1]")).toBe(true);
+    expect(isPrivateIp("[fd00::1]")).toBe(true);
+    expect(isPrivateIp("[::]")).toBe(true);
+    expect(isPrivateIp("[::ffff:127.0.0.1]")).toBe(true);
+    expect(isPrivateIp("[2606:4700:4700::1111]")).toBe(false);
+  });
+
+  it("blocks hex-compressed IPv4-mapped IPv6", () => {
+    expect(isPrivateIp("::ffff:7f00:1")).toBe(true);
+    expect(isPrivateIp("::ffff:a9fe:a9fe")).toBe(true);
+    expect(isPrivateIp("[::ffff:7f00:1]")).toBe(true);
   });
 
   it("allows public IPv6", () => {

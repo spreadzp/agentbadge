@@ -11,6 +11,7 @@ import { contentNegotiationMiddleware } from "../middleware/content-negotiation"
 import { markdownNegotiation } from "../middleware/markdown-negotiation";
 import { errorHints } from "../middleware/error-hints";
 import { cacheHeadersMiddleware } from "../middleware/cache-headers";
+import { weakEtag } from "../middleware/weak-etag";
 
 /**
  * Middleware every request passes through, in order: request logging →
@@ -41,4 +42,21 @@ export function wireRequestPipeline(app: Hono): void {
     await next();
     c.header("X-Robots-Tag", "noindex");
   });
+
+  // SLICE-259-37: weak ETag + 304 on byte-stable generated surfaces —
+  // agent fleets re-fetch robots/llms/manifests every run; a revalidation
+  // must not re-transfer the body (DeepSeek ds8: no ETag → full re-download).
+  for (const path of [
+    "/robots.txt",
+    "/llms.txt",
+    "/llms-full.txt",
+    "/heartbeat.md",
+    "/sitemap.xml",
+    "/ai-sitemap.xml",
+    "/faq",
+    "/skill.md",
+    "/.well-known/*",
+  ]) {
+    app.use(path, weakEtag());
+  }
 }

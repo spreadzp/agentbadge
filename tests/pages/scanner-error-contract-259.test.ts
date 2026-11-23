@@ -35,6 +35,24 @@ describe("SLICE-259-36: scanner API error contract", () => {
     expect(body.hint).toContain("SSRF");
   });
 
+  // SLICE-259-37 (DeepSeek ds7): bracketed IPv6 and non-http(s) schemes
+  // used to slip past the guard and surface as 500 INTERNAL_ERROR.
+  it("bracketed IPv6 loopback → 403 private_target_forbidden", async () => {
+    const res = await app.request("/api/scan?url=" + encodeURIComponent("http://[::1]/"));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe("private_target_forbidden");
+  });
+
+  it("non-http(s) scheme → 400 INVALID_ENDPOINT_URL, not 500", async () => {
+    for (const target of ["file:///etc/passwd", "gopher://127.0.0.1/"]) {
+      const res = await app.request("/api/scan?url=" + encodeURIComponent(target));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.code).toBe("INVALID_ENDPOINT_URL");
+    }
+  });
+
   it("/api/passport/verify without params → MISSING_FIELDS + hint", async () => {
     const res = await app.request("/api/passport/verify");
     expect(res.status).toBe(400);

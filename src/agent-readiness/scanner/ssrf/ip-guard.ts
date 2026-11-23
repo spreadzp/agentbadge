@@ -38,7 +38,15 @@ function cidrV4ToRange(cidr: string): { start: number; end: number } {
 
 function parseIPv4MappedV6(ip: string): string | null {
   const m = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  // SLICE-259-37: hex-compressed mapped form — ::ffff:7f00:1 is ::ffff:127.0.0.1
+  const hex = ip.match(/^::ffff:0*([0-9a-f]{1,4}):0*([0-9a-f]{1,4})$/i);
+  if (hex) {
+    const hi = parseInt(hex[1], 16);
+    const lo = parseInt(hex[2], 16);
+    return `${(hi >>> 8) & 0xff}.${hi & 0xff}.${(lo >>> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return null;
 }
 
 function isIPv4(ip: string): boolean {
@@ -77,12 +85,20 @@ function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
   return { blocked: false };
 }
 
+// SLICE-259-37: WHATWG URL keeps brackets on IPv6 hostnames
+// (new URL("http://[::1]/").hostname === "[::1]") — normalize before
+// range checks or every bracketed literal bypasses the guard.
+function unbracketV6(ip: string): string {
+  return ip.startsWith("[") && ip.endsWith("]") ? ip.slice(1, -1) : ip;
+}
+
 export function isPrivateIp(ip: string): boolean {
   if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
     return false;
   }
-  if (isIPv4(ip)) return isIPv4InBlockedRange(ip).blocked;
-  if (isIPv6(ip)) return isIPv6Blocked(ip).blocked;
+  const normalized = unbracketV6(ip);
+  if (isIPv4(normalized)) return isIPv4InBlockedRange(normalized).blocked;
+  if (isIPv6(normalized)) return isIPv6Blocked(normalized).blocked;
   return false;
 }
 
@@ -164,14 +180,15 @@ export function assertSafeIp(ip: string): void {
   if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
     return;
   }
-  if (isIPv4(ip)) {
-    const result = isIPv4InBlockedRange(ip);
-    if (result.blocked) throw new SsrfBlockedError(ip, result.range);
+  const normalized = unbracketV6(ip);
+  if (isIPv4(normalized)) {
+    const result = isIPv4InBlockedRange(normalized);
+    if (result.blocked) throw new SsrfBlockedError(normalized, result.range);
     return;
   }
-  if (isIPv6(ip)) {
-    const result = isIPv6Blocked(ip);
-    if (result.blocked) throw new SsrfBlockedError(ip, result.range);
+  if (isIPv6(normalized)) {
+    const result = isIPv6Blocked(normalized);
+    if (result.blocked) throw new SsrfBlockedError(normalized, result.range);
     return;
   }
   throw new SsrfBlockedError(ip, "unparseable");

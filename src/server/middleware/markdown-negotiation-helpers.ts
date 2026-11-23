@@ -70,6 +70,22 @@ export function setMirrorApp(app: Hono): void {
 }
 
 /**
+ * SLICE-259-37: internal GET against the assembled app — returns the raw
+ * Response (any content type) or null when the app isn't bound yet or the
+ * target fails. Used by manifests that need canonical bytes of sibling
+ * routes (e.g. sha256 attestations over served artifacts).
+ */
+export async function internalRequest(path: string): Promise<Response | null> {
+  if (!mirrorApp) return null;
+  try {
+    const res = await mirrorApp.request(path, { method: "GET" });
+    return res.ok ? res : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Internal mirror fetch: re-request `path` minus the `.md` suffix (query kept) with
  * `Accept: text/markdown`. Returns the markdown Response, or null when the
  * target isn't a negotiable page (real 404s, JSON APIs, excluded paths).

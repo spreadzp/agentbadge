@@ -38,6 +38,9 @@ export function buildAgentCard(src: DiscoverySources): string {
       "Agent readiness scanner + x402 paid services on Arc",
     version: src.apiInfo?.version ?? "0.0.0",
     provider: { organization: "AgentBadge", url: b },
+    // SLICE-259-37: top-level url for pre-0.3 A2A clients — the spec moved
+    // the endpoint into supportedInterfaces, older parsers read card.url.
+    url: `${b}/a2a`,
     supportedInterfaces: [
       // SLICE-203-7: /a2a now serves the real A2A v1.0 surface — JSON-RPC
       // (preferred, SDK transports select it first) + REST HTTP+JSON.
@@ -229,8 +232,7 @@ export function buildAgentCard(src: DiscoverySources): string {
         team_match: `${b}/agent-guide/team/match`,
         work_requests: `${b}/api/work-requests`,
         demand_request: `${b}/api/demand/request`,
-        // SLICE-259-19: copy-pasteable ?q= example — bare-400 without q
-        // was the top agent error on this surface.
+        // SLICE-259-19: copy-pasteable ?q= example (bare-400 was the top agent error here).
         qa_search_example: `${b}/api/requests/qa?q=how+do+I+verify+a+verdict`,
         agents_txt: `${b}/agents.txt`,
         keeperhub_scan: `${b}/api/keeperhub/scan`,
@@ -254,10 +256,8 @@ export function buildAgentCard(src: DiscoverySources): string {
         facilitator: env?.facilitatorUrl,
       },
       blockchain: {
-        // SLICE-218-8 (D-218-11/13): EVM-first — Arc is the primary
-        // settlement network (matches ab:payment). The Hedera/HCS
-        // identity stack stays readable under `legacy` — existing
-        // agents keep working; new agents mint on EVM.
+        // SLICE-218-8 (D-218-11/13): EVM-first — Arc is the primary settlement
+        // network; the Hedera/HCS stack stays readable under `legacy`.
         network: `eip155:${env?.evmChainId ?? "5042"}`,
         asset: "USDC",
         legacy: {

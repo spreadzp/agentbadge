@@ -156,6 +156,8 @@ export function buildMcpServerCard(src: DiscoverySources): string {
         url: `${b}/mcp/${ns.name}`,
       })),
       { name: "all", transport: "http", url: `${b}/mcp` },
+      // SLICE-256-5: keyless public facade — WebMCP programmatic twin.
+      { name: "public", transport: "http", url: `${b}/mcp/public` },
     ],
     namespaces: (mcp?.namespaces ?? []).map((ns) => ns.name),
     tools: mcp?.tools ?? [],

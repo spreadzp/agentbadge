@@ -82,6 +82,9 @@ agentCardRoutes.get(
       name: "agentbadge",
       version: openApiConfig.info.version,
       description: "AgentBadge MCP server — namespaced endpoints for agent readiness",
+      // SLICE-259-37: top-level url — naive manifest parsers look for
+      // server.url/url, not remotes[]. Points at the all-namespaces endpoint.
+      url: `${baseUrl}/mcp`,
       remotes: [
         ...MCP_NAMESPACES.map((ns) => ({
           name: ns,

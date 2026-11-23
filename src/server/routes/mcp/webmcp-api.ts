@@ -11,7 +11,7 @@
  * GET /rules/search     — search agent readiness rules catalog
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getPassportInfo } from "@agentbadge/passport";
 import { isEvmDid, parseEvmDid } from "@agentbadge/evm-core";
@@ -31,6 +31,44 @@ import { trackPlausibleEvent, isPlausibleEventsEnabled } from "../../lib/plausib
 import type { NextCall } from "../../lib/next-call";
 
 export const webmcpApiRoutes = new Hono();
+
+// SLICE-259-37: shared normalize+guard for the three scanner endpoints.
+// Explicit non-http(s) schemes (file:, gopher:, ftp:, javascript:) used to
+// become https://<scheme>/... scans and die as DNS-fail 500s — now they are
+// rejected up front as INVALID_ENDPOINT_URL.
+function resolveScanTarget(
+  c: Context,
+  url: string,
+): { hostname: string; normalizedUrl: string } | Response {
+  let normalizedUrl = url.trim();
+  const scheme = normalizedUrl.match(/^([a-z][a-z0-9+.-]*):\/\//i)?.[1];
+  if (scheme && !/^https?$/i.test(scheme)) {
+    return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Unsupported scheme: ${scheme}://`, {
+      hint: "Only http(s) URLs are scannable — pass https://example.com",
+    });
+  }
+  if (!normalizedUrl.match(/^https?:\/\//)) {
+    normalizedUrl = "https://" + normalizedUrl;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(normalizedUrl);
+  } catch {
+    return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
+      hint: "Expected an http(s) URL like https://example.com",
+    });
+  }
+
+  try {
+    assertSafeTarget(parsed.hostname);
+  } catch {
+    return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
+      hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
+    });
+  }
+  return { hostname: parsed.hostname, normalizedUrl };
+}
 
 // ─── GET /passport/verify ──────────────────────────────────────────
 webmcpApiRoutes.get(
@@ -147,27 +185,9 @@ webmcpApiRoutes.get(
       });
     }
 
-    let normalizedUrl = url.trim();
-    if (!normalizedUrl.match(/^https?:\/\//)) {
-      normalizedUrl = "https://" + normalizedUrl;
-    }
-
-    try {
-      new URL(normalizedUrl);
-    } catch {
-      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
-        hint: "Expected an http(s) URL like https://example.com",
-      });
-    }
-
-    const hostname = new URL(normalizedUrl).hostname;
-    try {
-      assertSafeTarget(hostname);
-    } catch {
-      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
-        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
-      });
-    }
+    const target = resolveScanTarget(c, url);
+    if (target instanceof Response) return target;
+    const { hostname, normalizedUrl } = target;
 
     if (isGa4Enabled()) {
       void trackEvent("scan_started", { method: "web", target_host: hostname });
@@ -221,27 +241,9 @@ webmcpApiRoutes.get(
       });
     }
 
-    let normalizedUrl = url.trim();
-    if (!normalizedUrl.match(/^https?:\/\//)) {
-      normalizedUrl = "https://" + normalizedUrl;
-    }
-
-    try {
-      new URL(normalizedUrl);
-    } catch {
-      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
-        hint: "Expected an http(s) URL like https://example.com",
-      });
-    }
-
-    const hostname = new URL(normalizedUrl).hostname;
-    try {
-      assertSafeTarget(hostname);
-    } catch {
-      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
-        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
-      });
-    }
+    const target = resolveScanTarget(c, url);
+    if (target instanceof Response) return target;
+    const { hostname, normalizedUrl } = target;
 
     try {
       const sourceState = await scanDomain(normalizedUrl, {});
@@ -293,27 +295,9 @@ webmcpApiRoutes.get(
       });
     }
 
-    let normalizedUrl = url.trim();
-    if (!normalizedUrl.match(/^https?:\/\//)) {
-      normalizedUrl = "https://" + normalizedUrl;
-    }
-
-    try {
-      new URL(normalizedUrl);
-    } catch {
-      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`, {
-        hint: "Expected an http(s) URL like https://example.com",
-      });
-    }
-
-    const hostname = new URL(normalizedUrl).hostname;
-    try {
-      assertSafeTarget(hostname);
-    } catch {
-      return errorResponse(c, 403, ErrorCodes.PRIVATE_TARGET_FORBIDDEN, "Private URLs are not allowed", {
-        hint: "Publicly resolvable hostnames only — private/loopback/IP-literal targets are refused by the SSRF guard",
-      });
-    }
+    const target = resolveScanTarget(c, url);
+    if (target instanceof Response) return target;
+    const { normalizedUrl } = target;
 
     try {
       const sourceState = await scanDomain(normalizedUrl, {});
