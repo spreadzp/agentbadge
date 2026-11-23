@@ -15,6 +15,7 @@ import {
   grantConsent,
 } from "../../src/server/lib/intel/consent";
 import { createMemoryScanJobStore } from "../../src/server/lib/intel/scan/memory";
+import { createMemoryIntelClientReportStore } from "../../src/server/lib/intel/client-report";
 import type { ScanJob, ScanFetch, ScanObservation } from "../../src/server/lib/intel/scan";
 import { INTEL_WP_PROFILE_V1 } from "../../src/server/lib/intel/rules";
 import { createIntelUiRoutes } from "../../src/server/routes/intel";
@@ -43,6 +44,7 @@ let evidence: ReturnType<typeof createMemoryIntelEvidenceStore>;
 let jobs: ReturnType<typeof createMemoryScanJobStore>;
 let entitlement: ReturnType<typeof createMemoryEntitlementStore>;
 let consent: ReturnType<typeof createMemoryIntelConsentStore>;
+let clientReports: ReturnType<typeof createMemoryIntelClientReportStore>;
 
 const cookieFor = (key_: string) => `intel_session=${key_}`;
 
@@ -62,6 +64,7 @@ beforeEach(async () => {
   jobs = createMemoryScanJobStore();
   entitlement = createMemoryEntitlementStore();
   consent = createMemoryIntelConsentStore();
+  clientReports = createMemoryIntelClientReportStore();
 
   const tenant = await registry.createTenant({ slug: "t1", name: "T1" });
   tenantId = tenant.id;
@@ -96,6 +99,7 @@ beforeEach(async () => {
     ruleset: INTEL_WP_PROFILE_V1,
     scanFetch: happyFetch,
     consent,
+    clientReports,
   }));
 });
 
@@ -235,5 +239,128 @@ describe("site + report views", () => {
     expect(html).toContain("sha256:");
     expect(html).toContain("content_hash");
     expect(html).toContain("Signed canonical report");
+  });
+});
+
+describe("client reports (262-11)", () => {
+  const generate = () =>
+    app.request(`/intel/sites/${siteId}/client-report`, {
+      method: "POST",
+      headers: { cookie: cookieFor(opKey) },
+    });
+
+  beforeEach(async () => {
+    // need a scan report to generate from
+    await app.request(`/intel/sites/${siteId}/scan`, {
+      method: "POST",
+      headers: { cookie: cookieFor(opKey) },
+    });
+  });
+
+  it("generate → GENERATED client report + redirect", async () => {
+    const res = await generate();
+    expect(res.status).toBe(302);
+    const all = await clientReports.forSite(siteId);
+    expect(all).toHaveLength(1);
+    expect(all[0].status).toBe("GENERATED");
+    expect(all[0].canonical.findingCounts.fail).toBeGreaterThanOrEqual(0);
+  });
+
+  it("same period → redirects to existing (no dup)", async () => {
+    await generate();
+    const res = await generate();
+    const all = await clientReports.forSite(siteId);
+    expect(all).toHaveLength(1);
+    expect(res.headers.get("location")).toContain(all[0].id);
+  });
+
+  it("viewer cannot generate", async () => {
+    const res = await app.request(`/intel/sites/${siteId}/client-report`, {
+      method: "POST",
+      headers: { cookie: cookieFor(viewerKey) },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("full lifecycle: edit → review → approve → send → frozen", async () => {
+    await generate();
+    const cr = (await clientReports.forSite(siteId))[0];
+    const hash = cr.canonical.contentHash;
+
+    // editorial edit
+    const edit = await app.request(`/intel/client-reports/${cr.id}/edit`, {
+      method: "POST",
+      headers: {
+        cookie: cookieFor(opKey),
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: "heroLine=Your+site+is+ready&whatChanged=-+fixed&nextMonth=1+pending&internalNote=secret",
+    });
+    expect(edit.status).toBe(302);
+    const after = await clientReports.byId(cr.id);
+    expect(after!.editorial.version).toBe(2);
+    expect(after!.canonical.contentHash).toBe(hash);
+
+    // transitions forward
+    for (const act of ["review", "approve", "send"]) {
+      const r = await app.request(`/intel/client-reports/${cr.id}/${act}`, {
+        method: "POST",
+        headers: { cookie: cookieFor(opKey) },
+      });
+      expect(r.status).toBe(302);
+    }
+    expect((await clientReports.byId(cr.id))!.status).toBe("SENT");
+
+    // frozen: edit now 409
+    const frozen = await app.request(`/intel/client-reports/${cr.id}/edit`, {
+      method: "POST",
+      headers: {
+        cookie: cookieFor(opKey),
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: "heroLine=x",
+    });
+    expect(frozen.status).toBe(409);
+  });
+
+  it("illegal transition → 409", async () => {
+    await generate();
+    const cr = (await clientReports.forSite(siteId))[0];
+    const res = await app.request(`/intel/client-reports/${cr.id}/approve`, {
+      method: "POST",
+      headers: { cookie: cookieFor(opKey) },
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("page renders hero + scores; .md serves markdown", async () => {
+    await generate();
+    const cr = (await clientReports.forSite(siteId))[0];
+    const html = await (
+      await app.request(`/intel/client-reports/${cr.id}`, {
+        headers: { cookie: cookieFor(opKey) },
+      })
+    ).text();
+    expect(html).toContain("Agent Surface Report");
+    expect(html).toContain("Agent readiness");
+    expect(html).toContain("Surface exposure");
+
+    const md = await app.request(`/intel/client-reports/${cr.id}.md`, {
+      headers: { cookie: cookieFor(opKey) },
+    });
+    expect(md.headers.get("content-type")).toContain("text/markdown");
+    expect(await md.text()).toContain("# Agent Surface Report");
+  });
+
+  it("foreign operator cannot read client report (404)", async () => {
+    await generate();
+    const cr = (await clientReports.forSite(siteId))[0];
+    // mint a third tenant + its operator — must not see t1's report
+    const tenant2 = await createIntelRegistryService(stores).createTenant({ slug: "t9", name: "T9" });
+    const { plaintext: k9 } = await inviteOperator(stores, tenant2.id, { email: "o@t9.dev", role: "operator" });
+    const res = await app.request(`/intel/client-reports/${cr.id}`, {
+      headers: { cookie: cookieFor(k9) },
+    });
+    expect(res.status).toBe(404);
   });
 });

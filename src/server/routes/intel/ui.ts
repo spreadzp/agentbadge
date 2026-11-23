@@ -14,15 +14,17 @@ import {
 } from "../../lib/intel/registry/operators";
 import type { OperatorAuthContext } from "../../lib/intel/registry/types";
 import { listPortfolio, siteDetail } from "../../lib/intel/dashboard/data";
+import {
+  } from "../../lib/intel/client-report";
 import { hasActiveConsent } from "../../lib/intel/consent";
 import { checkEntitlement } from "../../lib/intel/entitlement";
 import { runScanJob, SCAN_PLAN } from "../../lib/intel/scan";
 import { generateReportId } from "../../../agent-readiness/integrity/ulid";
-import { Layout } from "../../../views/chrome/layout";
 import { IntelLoginPage } from "../../../views/intel/login";
 import { IntelPortfolioPage } from "../../../views/intel/portfolio";
 import { IntelSitePage } from "../../../views/intel/site";
 import { IntelReportPage } from "../../../views/intel/report";
+import { createIntelClientReportRoutes } from "./client-reports";
 import type { EvidenceProvenanceMap } from "../../../views/intel/components";
 
 declare module "hono" {
@@ -33,8 +35,7 @@ declare module "hono" {
 
 export const INTEL_SESSION_COOKIE = "intel_session";
 
-const page = (content: string, title: string, path: string) =>
-  Layout(content, title, { title, description: title, path }, undefined, true);
+import { intelPage as page } from "./ui-page";
 
 const loginPage = (c: Context, error?: string) =>
   c.html(
@@ -115,9 +116,12 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
       siteId,
     );
     if (!d) return c.text("Not found", 404);
+    const crs = deps.clientReports
+      ? await deps.clientReports.forSite(siteId)
+      : [];
     return c.html(
       page(
-        IntelSitePage(d, op.role).toString(),
+        IntelSitePage(d, op.role, crs).toString(),
         `${ctx.primaryHostname ?? siteId} — Agent Surface Intel`,
         `/intel/sites/${siteId}`,
       ),
@@ -206,6 +210,12 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
       `/intel/sites/${siteId}${job.status === "failed" ? "?scan=failed" : ""}`,
     );
   });
+
+
+  app.route(
+    "/",
+    createIntelClientReportRoutes(deps, (c) => c.get("intelOperator")),
+  );
 
   return app;
 }

@@ -4,6 +4,7 @@
 import { html } from "hono/html";
 import type { SiteDetail } from "../../server/lib/intel/dashboard/data";
 import type { OperatorRole } from "../../server/lib/intel/registry";
+import type { ClientReport } from "../../server/lib/intel/client-report";
 import {
   ConsentBadge,
   type EvidenceProvenanceMap,
@@ -21,6 +22,7 @@ const esc = (s: unknown) =>
 export const IntelSitePage = (
   d: SiteDetail,
   role: OperatorRole,
+  clientReports: ClientReport[] = [],
   err?: string,
 ) => {
   const rep = d.latestJob?.report ?? null;
@@ -100,6 +102,11 @@ export const IntelSitePage = (
               </ul>
             </section>
             <a href="/intel/reports/${d.latestJob!.id}" class="block rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-emerald-300 hover:border-slate-600">View signed report →</a>
+            <section class="rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+              <h2 class="text-sm font-semibold text-white">Client reports</h2>
+              ${clientReports.length === 0 ? html`<p class="mt-2 text-xs text-slate-500">No client reports yet.</p>` : html`<ul class="mt-2 space-y-1">${clientReports.sort((a, b) => (a.period < b.period ? 1 : -1)).map((cr) => html`<li><a href="/intel/client-reports/${cr.id}" class="text-sm text-emerald-300 hover:text-emerald-200">${cr.period}</a> <span class="text-xs text-slate-500">${cr.status}</span></li>`)}</ul>`}
+              ${canScan ? html`<form method="post" action="/intel/sites/${d.site.id}/client-report" class="mt-3"><button class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-600">Generate from latest scan</button></form>` : ""}
+            </section>
           </div>
         </div>`}
     </div>`;
