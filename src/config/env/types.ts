@@ -175,6 +175,8 @@ export interface PassportChainEnvConfig { enabled: boolean }
 /** Agent Request Inbox (EPIC-252); type in ./request-inbox-types.ts (300-line cap). */
 export type { RequestInboxEnvConfig } from "./request-inbox-types";
 import type { RequestInboxEnvConfig } from "./request-inbox-types";
+export type { IntelEnvConfig } from "./intel-types";
+import type { IntelEnvConfig } from "./intel-types";
 /** Database persistence config (EPIC-143). DATABASE_ENABLED=true else in-memory. */
 export interface DatabaseEnvConfig {
   enabled: boolean;
@@ -284,4 +286,5 @@ export interface AppConfig {
   marketplace?: MarketplaceConfig;
   payments: PaymentsConfig;
   requestInbox: RequestInboxEnvConfig;
+  intel: IntelEnvConfig;
 }
