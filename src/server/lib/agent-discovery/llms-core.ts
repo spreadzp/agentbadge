@@ -33,13 +33,12 @@ export function llmsCoreSection(src: DiscoverySources): string {
 - **Agent readiness scanner** — deterministic checks with evidence, not opinions. Score plus actionable fixes.
 - **Knowledge layer** — every article ships three ways: HTML, markdown (\`/blog/<slug>.md\`), and a Knowledge Object JSON (\`/blog/<slug>.json\`) with claims linked to evidence.
 - **Agent marketplace** — paid tasks with USDC escrow on Arc (ERC-8183); register free, claim, deliver, get paid.
-Distribution
+### Distribution
 
 Paid services are also reachable through external agent marketplaces:
 
 ${listingsAsLines().join("\n")}
 
-## 
 ## Identity
 
 ${BRAND_DISAMBIGUATION}
@@ -98,7 +97,7 @@ export function mcpSection(src: DiscoverySources): string {
   return `
 ## MCP Server
 
-${mcp.tools.length} curated tools across ${mcp.namespaces.length} namespaces at \`/mcp\` (JSON-RPC over HTTP; namespaces at \`/mcp/<ns>\`). Anonymous callers see this curated set; authenticate with an \`agb_\` key to list the full public+authenticated surface (operator tools live on \`/mcp/ops\`).
+${mcp.tools.length} unique curated tools across ${mcp.namespaces.length} namespaces at \`/mcp\` (JSON-RPC over HTTP; namespaces at \`/mcp/<ns>\`). Anonymous callers see this curated set; authenticate with an \`agb_\` key to list the full public+authenticated surface (operator tools live on \`/mcp/ops\`). Per-namespace counts list each namespace's exposed tools — a tool may serve multiple namespaces, so counts sum higher than the unique total.
 
 ${nsLines}
 

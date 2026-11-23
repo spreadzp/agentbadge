@@ -1,7 +1,7 @@
 {
   "name": "AgentBadge",
-  "description": "On-chain identity system for AI agents on Arc Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
-  "version": "0.16.0",
+  "description": "Agent-readiness verification and attestation for AI agents. Paid x402 scans return a full ruleset verdict and can mint an AccessPass NFT on Arc; free endpoints expose the verdict registry, service catalog and machine-readable descriptors for discovery.",
+  "version": "0.17.0",
   "provider": {
     "organization": "AgentBadge",
     "url": "https://agentbadge.xyz"
@@ -114,6 +114,51 @@
       ]
     },
     {
+      "id": "request-inbox",
+      "name": "Agent Request Inbox",
+      "description": "Free async request queue: POST /api/requests → request_id, poll GET /api/requests/:id for the completed response; GET /api/requests/qa?q= searches the Q&A corpus for instant answers",
+      "tags": [
+        "request",
+        "inbox",
+        "async",
+        "qa"
+      ],
+      "examples": [
+        "submit a request",
+        "poll request status",
+        "search Q&A"
+      ]
+    },
+    {
+      "id": "agent-surveys",
+      "name": "Agent Surveys",
+      "description": "Answer open surveys: GET /api/surveys/open lists them, POST /api/surveys/:id/answer submits; verified agents earn rating milestones toward the passport",
+      "tags": [
+        "survey",
+        "rating",
+        "milestone"
+      ],
+      "examples": [
+        "list open surveys",
+        "answer a survey"
+      ]
+    },
+    {
+      "id": "webmcp-tools",
+      "name": "WebMCP Browser Tools",
+      "description": "Keyless in-browser tools via document.modelContext: readiness scan, verdict/risk checks, marketplace browse, async Request Inbox (submit-request → poll-request, ops answers in hours–days), public Q&A search. Tool catalog: /.well-known/webmcp.json",
+      "tags": [
+        "webmcp",
+        "browser",
+        "keyless",
+        "tools"
+      ],
+      "examples": [
+        "submit a request to the inbox",
+        "poll a request"
+      ]
+    },
+    {
       "id": "generic",
       "name": "Generic Fallback",
       "description": "Fallback responder on the A2A interface — acknowledges any message and returns a data artifact.",
@@ -148,21 +193,48 @@
       "cross_chain_task_verification",
       "attestcoin_protocol",
       "task_board",
-      "task_receipts"
+      "task_receipts",
+      "request_inbox",
+      "agent_surveys",
+      "webmcp"
     ],
+    "webmcp_tools": [
+      "agent-readiness-scan",
+      "get-compliance-score",
+      "search-rules",
+      "badge-generate",
+      "verify-verdict",
+      "check-address-risk",
+      "list-services",
+      "browse-tasks",
+      "get-task",
+      "get-task-status",
+      "submit-request",
+      "poll-request",
+      "search-agent-qa",
+      "list-surveys",
+      "submit-survey",
+      "how-to-register",
+      "passport-verify"
+    ],
+    "webmcp_tool_count": 17,
+    "disambiguation": "AgentBadge (agentbadge.xyz) is the agent-readiness platform for websites and APIs — not affiliated with the unscoped npm package \"agentbadge\" or github.com/Emreceyhnn/Agentbadge, a different project that scores code repositories for AI coding agents. Our npm packages ship only under the @agentbadge/* scope.",
     "endpoints": {
       "api": "https://agentbadge.xyz/api/specs",
       "docs": "https://agentbadge.gitbook.io/agentbadge-docs",
       "documentation": "https://agentbadge.gitbook.io/agentbadge-docs",
       "mcp": "https://agentbadge.xyz/mcp",
+      "mcp_public": "https://agentbadge.xyz/mcp/public",
+      "webmcp_json": "https://agentbadge.xyz/.well-known/webmcp.json",
       "gitbook_mcp": "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
       "llms_txt": "https://agentbadge.xyz/llms.txt",
       "llms_full_txt": "https://agentbadge.xyz/llms-full.txt",
+      "agent_workflows": "https://agentbadge.xyz/.well-known/agent-workflows.json",
       "pricing_json": "https://agentbadge.xyz/pricing.json",
       "pricing_md": "https://agentbadge.xyz/pricing.md",
       "getting_started": "https://agentbadge.xyz/agent-guide/getting-started",
       "guides": "https://agentbadge.xyz/agent-guide/context",
-      "did_resolver": "https://agentbadge.xyz/did",
+      "did_resolver": "https://agentbadge.xyz/did/{did}",
       "api_catalog": "https://agentbadge.xyz/.well-known/api-catalog",
       "oauth_protected_resource": "https://agentbadge.xyz/.well-known/oauth-protected-resource",
       "erc8004": "https://agentbadge.xyz/.well-known/erc8004-agent.json",
@@ -185,6 +257,7 @@
       "team_match": "https://agentbadge.xyz/agent-guide/team/match",
       "work_requests": "https://agentbadge.xyz/api/work-requests",
       "demand_request": "https://agentbadge.xyz/api/demand/request",
+      "qa_search_example": "https://agentbadge.xyz/api/requests/qa?q=how+do+I+verify+a+verdict",
       "agents_txt": "https://agentbadge.xyz/agents.txt",
       "keeperhub_scan": "https://agentbadge.xyz/api/keeperhub/scan",
       "board": "https://agentbadge.xyz/api/board/cards",
@@ -222,10 +295,16 @@
       "facilitator": "https://api.testnet.blocky402.com"
     },
     "blockchain": {
-      "network": "testnet",
-      "passport_token_id": "0.0.9681741",
-      "directory_topic_id": "0.0.9681982",
-      "audit_topic_id": "0.0.9681981",
+      "network": "eip155:5042",
+      "asset": "USDC",
+      "legacy": {
+        "network": "testnet",
+        "stack": "Hedera testnet (HCS/HBAR)",
+        "note": "Legacy identity stack — read-only verify. Deprecated for new agents: EVM passport mint + Arc Task Board + USDC.",
+        "passport_token_id": "0.0.9681741",
+        "directory_topic_id": "0.0.9681982",
+        "audit_topic_id": "0.0.9681981"
+      },
       "multi_chain": {
         "base_sepolia": {
           "chain_id": 84532,

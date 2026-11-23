@@ -34,4 +34,11 @@ export function wireRequestPipeline(app: Hono): void {
   // wraps everything after it (rate-limit, agentKeyAuth, x402 gates, routes).
   app.use(errorHints());
   app.use(cacheHeadersMiddleware());
+  // SLICE-259-34 (G7): /api/* is a callable agent surface, not indexable
+  // content — robots already disallows crawling, X-Robots-Tag noindex
+  // keeps API responses out of the index even via followed links.
+  app.use("/api/*", async (c, next) => {
+    await next();
+    c.header("X-Robots-Tag", "noindex");
+  });
 }

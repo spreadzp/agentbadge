@@ -101,23 +101,26 @@ export const CRAWL_POLICY: CrawlPolicy[] = [
   //    advertised in llms.txt / agent-card (longest-match wins over
   //    the /api/ disallow). ─────────────────────────────────────────
   { path: "/api/", contentClass: "api-docs", default: D, search: D, training: D, user: D },
-  { path: "/api/specs", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/catalog", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/search", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/start-here", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/specs$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/catalog$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/search$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/start-here$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/meta/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   // SLICE-259-15: public rate-limited read — 429s in traffic are
   // agents hitting it, which is exactly who it's for.
-  { path: "/api/v1/agent/knowledge/search", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/v1/agent/knowledge/search$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
 
-  // ── SLICE-259-33 (F6): public agent-facing API surface advertised
-  //    in llms.txt — prefix allows for read-mostly namespaces +
-  //    individual rows for top-level endpoints. Internal ops/ledger/
-  //    intel surfaces stay under the /api/ disallow. ────────────────
-  { path: "/api/v1/services", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/v1/catalog/products", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/v1/agents/register", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/v1/demo/scan-lite", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  // ── SLICE-259-33 (F6) + SLICE-259-34 (F3): public agent-facing API
+  //    surface advertised in llms.txt — prefix allows for read-mostly
+  //    namespaces, `$`-anchored rows for leaf endpoints, and explicit
+  //    disallows for scoped subtrees under allowed prefixes. POST-only
+  //    mutations, callbacks, webhooks and ops surfaces get no Allow —
+  //    a crawler has nothing to GET there. Internal ops/ledger/intel
+  //    surfaces stay under the /api/ disallow. ──────────────────────
+  { path: "/api/v1/services$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/v1/catalog/products$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/v1/catalog/products/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/v1/demo/scan-lite$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/attestcoin/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/board/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/commerce/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
@@ -125,28 +128,33 @@ export const CRAWL_POLICY: CrawlPolicy[] = [
   { path: "/api/eaas/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/fx-delta/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/keeperhub/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  // inbound webhook — POST surface under the keeperhub allow, no GET.
+  { path: "/api/keeperhub/audit/webhook", contentClass: "sensitive", default: D, search: D, training: D, user: D },
   { path: "/api/market/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/pay/gateway/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/payment/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/requests", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/surveys/open", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/payment/products$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/requests/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/surveys/open$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/tasks/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/venue/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  // caller-scoped instance subtree (admin/billing/wallets/spend) and
+  // indexer health — the allow above covers venue's public list GETs.
+  { path: "/api/venue/instances/", contentClass: "sensitive", default: D, search: D, training: D, user: D },
+  { path: "/api/venue/indexer", contentClass: "sensitive", default: D, search: D, training: D, user: D },
   { path: "/api/agent/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/attestations", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/audit", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/badge", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/benchmarks", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/bounties", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/corpus/stats", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/demand/request", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/gec/callback", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/health", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/indexnow", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/link-graph", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/attestations$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/badge$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/benchmarks$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/benchmarks/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/bounties$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/bounties/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/corpus/stats$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/health$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/link-graph$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
   { path: "/api/passport/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/scan-packs", contentClass: "api-docs", default: A, search: A, training: A, user: A },
-  { path: "/api/work-requests", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/scan-packs$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/work-requests$", contentClass: "api-docs", default: A, search: A, training: A, user: A },
+  { path: "/api/work-requests/", contentClass: "api-docs", default: A, search: A, training: A, user: A },
 
   // ── rules corpus: indexable for humans/agents, but NOT a training
   //    set — the ruleset is the product (D-259-Q6 selective-train). ──

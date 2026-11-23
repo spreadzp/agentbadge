@@ -134,38 +134,10 @@ export interface DiscoverySources {
   now?: Date;
 }
 
-/** Path prefixes that belong in the public agent-facing API surface. */
-const PUBLIC_ROUTE_PREFIXES = ["/api/", "/.well-known/"];
-/** Paths that are noise for agents (admin, internal, ops, webhooks). */
-const EXCLUDED_PREFIXES = [
-  "/api/admin",
-  "/api/internal",
-  // SLICE-217-14: operational surface must not leak into public catalogs —
-  // indexer runner is an ops trigger, webhook endpoints are inbound-only.
-  "/api/indexer",
-  "/api/stripe/webhook",
-  "/audit/webhook",
-];
-
-/**
- * Extract public route list from a Hono app. Dedupes, filters to
- * agent-relevant paths (/api/*, /.well-known/*), sorts for determinism.
- */
-export function enumeratePublicRoutes(app: {
-  routes: Array<{ method: string; path: string }>;
-}): string[] {
-  const seen = new Set<string>();
-  for (const r of app.routes) {
-    const path = r.path;
-    const isPublic = PUBLIC_ROUTE_PREFIXES.some((p) => path.startsWith(p));
-    const excluded = EXCLUDED_PREFIXES.some((p) => path.startsWith(p));
-    const method = r.method === "ALL" ? "GET" : r.method;
-    if (isPublic && !excluded && (method === "GET" || method === "POST")) {
-      seen.add(`${method} ${path}`);
-    }
-  }
-  return [...seen].sort();
-}
+// SLICE-259-34: enumeration extracted to route-enumeration.ts
+// (max-lines); re-exported so existing imports keep working.
+export { enumeratePublicRoutes } from "./route-enumeration";
+import { enumeratePublicRoutes } from "./route-enumeration";
 
 /**
  * Gather live sources. Single place allowed to touch env/modules —

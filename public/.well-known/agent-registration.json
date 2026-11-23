@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "AgentBadge",
-  "description": "On-chain identity system for AI agents on Arc Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
+  "description": "Agent-readiness verification and attestation for AI agents. Paid x402 scans return a full ruleset verdict and can mint an AccessPass NFT on Arc; free endpoints expose the verdict registry, service catalog and machine-readable descriptors for discovery.",
   "image": "https://agentbadge.xyz/icons/og-image.png",
   "services": [
     {

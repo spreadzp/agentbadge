@@ -21,6 +21,11 @@ function publicApiSection(src: DiscoverySources): string {
     const [method, path] = r.split(" ", 2);
     return `- [${method} ${path}](${src.baseUrl}${path})`;
   });
+  // SLICE-259-34: the list holds fetchable routes only — parameterized
+  // templates (/:id, /*) and operator surfaces live in the OpenAPI spec.
+  lines.push(
+    `- Parameterized routes (/:id, /:wallet, …) and the complete surface: [OpenAPI 3.1 spec](${src.baseUrl}/api/specs) · [openapi.yaml](${src.baseUrl}/openapi.yaml)`,
+  );
   return `\n## Public API (generated)\n\n${lines.join("\n")}\n`;
 }
 
