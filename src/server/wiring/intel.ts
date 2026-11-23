@@ -19,7 +19,11 @@ import {
   createSafeScanFetch,
   pickIntelScanJobStore,
 } from "../lib/intel/scan";
-import { createIntelApiRoutes, createIntelKeysRoutes } from "../routes/intel";
+import {
+  createIntelApiRoutes,
+  createIntelKeysRoutes,
+  createIntelUiRoutes,
+} from "../routes/intel";
 
 export function wireIntel(app: Hono): void {
   const cfg = getConfig().intel;
@@ -50,6 +54,22 @@ export function wireIntel(app: Hono): void {
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));
+  app.route(
+    "/intel",
+    createIntelUiRoutes({
+      key,
+      registry,
+      registryStores,
+      evidence,
+      evidenceRetentionDays: cfg.evidenceRetentionDays,
+      entitlement,
+      scanJobs,
+      ruleset: INTEL_WP_PROFILE_V1,
+      scanFetch: createSafeScanFetch(),
+      consent,
+      dnsResolver: createNodeDnsResolver(),
+    }),
+  );
   logger.info("Intel routes registered", {
     keyId: cfg.keyId,
     keyResolved: key !== null,

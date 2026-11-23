@@ -52,3 +52,4 @@ export const INTEL_KEY_MISSING = {
 
 export { createIntelApiRoutes } from "./api";
 export { createIntelKeysRoutes } from "./keys";
+export { createIntelUiRoutes } from "./ui";

@@ -29,7 +29,9 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
   // Arc R4 M-11: operator surfaces don't carry third-party analytics
   // scripts — the pageview middleware already skips /admin, but the
   // script tags themselves would still load and read admin DOM.
-  const analytics = !(meta?.path.startsWith("/admin") ?? false);
+  const analytics =
+    !(meta?.path.startsWith("/admin") ?? false) &&
+    !(meta?.path.startsWith("/intel") ?? false);
   const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
   return html`<!DOCTYPE html>
     <html lang="en" class="h-full bg-slate-950 text-slate-100">
