@@ -31,6 +31,13 @@ interface DetailPerAddress {
   level?: string;
   issued?: string;
   signatureStatus: string;
+  /** SLICE-258-17: per-probe check date + probe identity (C2). */
+  observed_at?: string;
+  probe_id?: string;
+  observer?: string;
+  /** Age of the matched proof's issued date (informational). */
+  issued_age_days?: number | null;
+  stale_issued?: boolean;
   evidence_tier: "live402" | "manifest";
   anomalies: string[];
 }
@@ -45,6 +52,10 @@ interface Detail {
   coverage: ProofCoverage;
   perAddress: DetailPerAddress[];
   anomalies: string[];
+  /** Whether freshness fields were computable (never "fresh" by default). */
+  freshness: "computed" | "not_computed";
+  /** Informational stale-proof notes, e.g. "proof issued 40 days ago". */
+  notes?: string[];
   fix?: string;
 }
 
@@ -98,9 +109,22 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     level: a.level,
     issued: a.issued,
     signatureStatus: a.signatureStatus,
+    observed_at: a.observedAt,
+    probe_id: a.probeId,
+    observer: a.observer,
+    issued_age_days: a.freshness?.issued_age_days,
+    ...(a.freshness?.stale_issued ? { stale_issued: true } : {}),
     evidence_tier: tierOf.get(a.key) === "manifest" ? "manifest" : "live402",
     anomalies: a.anomalies,
   }));
+
+  // Stale proofs stay verified — the note informs, it never warns.
+  const notes = result.perAddress
+    .filter((a) => a.freshness?.stale_issued)
+    .map(
+      (a) =>
+        `proof for ${a.payTo} issued ${a.freshness!.issued_age_days} days ago`,
+    );
 
   const detail: Detail = {
     verdict: mapped.verdict,
@@ -113,6 +137,8 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     coverage,
     perAddress,
     anomalies: result.anomalies,
+    freshness: result.freshness,
+    ...(notes.length ? { notes } : {}),
     ...(mapped.fix ? { fix: mapped.fix } : {}),
   };
   return { outcome: mapped.outcome, detail: JSON.stringify(detail) };

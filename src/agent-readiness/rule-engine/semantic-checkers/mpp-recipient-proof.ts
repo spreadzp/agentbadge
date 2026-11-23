@@ -24,6 +24,12 @@ interface DetailPerAddress {
   level?: string;
   issued?: string;
   signatureStatus: string;
+  /** SLICE-258-17: per-probe check date + probe identity (C2). */
+  observed_at?: string;
+  probe_id?: string;
+  observer?: string;
+  issued_age_days?: number | null;
+  stale_issued?: boolean;
   evidence_tier: "live_mpp";
   anomalies: string[];
 }
@@ -38,6 +44,8 @@ interface Detail {
   coverage: ProofCoverage;
   perAddress: DetailPerAddress[];
   anomalies: string[];
+  freshness: "computed" | "not_computed";
+  notes?: string[];
   fix?: string;
 }
 
@@ -87,9 +95,21 @@ export const checkerMppRecipientProof: SemanticChecker = (sources): SemanticChec
     level: a.level,
     issued: a.issued,
     signatureStatus: a.signatureStatus,
+    observed_at: a.observedAt,
+    probe_id: a.probeId,
+    observer: a.observer,
+    issued_age_days: a.freshness?.issued_age_days,
+    ...(a.freshness?.stale_issued ? { stale_issued: true } : {}),
     evidence_tier: "live_mpp",
     anomalies: a.anomalies,
   }));
+
+  const notes = result.perAddress
+    .filter((a) => a.freshness?.stale_issued)
+    .map(
+      (a) =>
+        `proof for ${a.payTo} issued ${a.freshness!.issued_age_days} days ago`,
+    );
 
   const detail: Detail = {
     verdict: mapped.verdict,
@@ -102,6 +122,8 @@ export const checkerMppRecipientProof: SemanticChecker = (sources): SemanticChec
     coverage,
     perAddress,
     anomalies: result.anomalies,
+    freshness: result.freshness,
+    ...(notes.length ? { notes } : {}),
     ...(mapped.fix ? { fix: mapped.fix } : {}),
   };
   return { outcome: mapped.outcome, detail: JSON.stringify(detail) };

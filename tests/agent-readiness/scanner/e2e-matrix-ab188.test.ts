@@ -239,6 +239,47 @@ describe("E2E outcome matrix — AB-188 (SLICE-258-11)", () => {
     expect((r.detail("AB-188").perAddress as { issued?: string }[])[0]!.issued).toBe("2020-01-01");
   });
 
+  // SLICE-258-17: freshness surface — stale issued informs, never warns.
+  it("stale-issued proof (>30d) → VERIFIED + stale_issued + note in detail", async () => {
+    const host = "stale.example.com";
+    dns(`_x402-payto.${host}`, dohOk({ data: `v=x402payto1; a=${ADDR_A}; d=2020-01-01` }));
+    x402Site(host, { accepts: [accept(ADDR_A)] });
+    const r = await scan(host);
+    expect(r.assertion("AB-188").status).toBe("VERIFIED");
+    const d = r.detail("AB-188");
+    const a = (d.perAddress as {
+      outcome: string;
+      stale_issued?: boolean;
+      issued_age_days?: number | null;
+      observed_at?: string;
+      probe_id?: string;
+      observer?: string;
+    }[])[0]!;
+    expect(a.outcome).toBe("verified");
+    expect(a.stale_issued).toBe(true);
+    expect(a.issued_age_days).toBeGreaterThan(30);
+    expect(a.observed_at).toBeTruthy();
+    expect(Date.parse(a.observed_at!)).not.toBeNaN();
+    expect(a.probe_id).toMatch(/#1$/);
+    expect(a.observer).toBe("x402-double-probe");
+    expect(d.freshness).toBe("computed");
+    expect(String((d.notes as string[]).join(" "))).toContain("days ago");
+  });
+
+  it("double-probe → each evidence row keeps its own probe_id + observed_at", async () => {
+    const host = "twoprobes.example.com";
+    dns(`_x402-payto.${host}`, dohOk({ data: txt(ADDR_A) }, { data: txt(ADDR_B) }));
+    x402Site(host, { probes: [paid402([accept(ADDR_A)]), paid402([accept(ADDR_B)])] });
+    const r = await scan(host);
+    const rows = r.detail("AB-188").perAddress as {
+      probe_id?: string;
+      observed_at?: string;
+    }[];
+    // Divergent probe surfaces both attempts — each with own probe id.
+    expect(new Set(rows.map((x) => x.probe_id)).size).toBe(rows.length);
+    expect(rows.every((x) => Date.parse(x.observed_at ?? "") > 0)).toBe(true);
+  });
+
   it("old proof + mismatch → CONFLICT — age never softens (D-258-Q13)", async () => {
     const host = "oldconflict.example.com";
     dns(`_x402-payto.${host}`, dohOk({ data: `v=x402payto1; a=${ADDR_A}; d=2020-01-01` }));

@@ -147,9 +147,16 @@ const detail = (r: { outcome: string; detail: string }) => JSON.parse(r.detail) 
     level?: string;
     issued?: string;
     signatureStatus: string;
+    observed_at?: string;
+    probe_id?: string;
+    observer?: string;
+    issued_age_days?: number | null;
+    stale_issued?: boolean;
     anomalies: string[];
   }[];
   anomalies: string[];
+  freshness?: "computed" | "not_computed";
+  notes?: string[];
 };
 
 // ─── Tests ─────────────────────────────────────────────────────────────────

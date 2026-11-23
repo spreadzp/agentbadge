@@ -68,6 +68,8 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
     quotes: MppQuote[] | undefined,
     when: string,
     suspect: boolean,
+    probeId: string,
+    observer: string,
   ) => {
     for (const q of quotes ?? []) {
       if (typeof q.payTo !== "string" || !q.payTo) continue;
@@ -77,6 +79,8 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
         asset: q.asset,
         source: "live402",
         observedAt: when,
+        probeId,
+        observer,
         perPaymentSuspect: suspect || undefined,
       };
       const key = observationKey(o);
@@ -105,10 +109,10 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
         skipReasons.add("second_probe_failed");
       } else if (mppQuotesDivergent(quotes1, quotes2)) {
         divergentSeen = true;
-        push(quotes1, observedAt, true);
-        push(quotes2, observedAt, true);
+        push(quotes1, observedAt, true, `${l402Snap.url}#1`, "mpp-l402-probe");
+        push(quotes2, observedAt, true, `${l402Snap.url}#2`, "mpp-l402-probe");
       } else {
-        push(quotes1, observedAt, false);
+        push(quotes1, observedAt, false, `${l402Snap.url}#1`, "mpp-l402-probe");
       }
     }
     if (hasProbe2) probed += 1;
@@ -127,16 +131,18 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
     probed += 1;
     if (p.mppDivergent) {
       divergentSeen = true;
-      for (const at of p.attempts) {
-        push(at.mppQuotes, at.observedAt ?? observedAt, true);
-      }
+      p.attempts.forEach((at, i) => {
+        push(at.mppQuotes, at.observedAt ?? observedAt, true,
+          `${p.endpoint}#${i + 1}`, "x402-probe-mpp-quotes");
+      });
       continue;
     }
     if (!a2 || a2.status !== 402 || m2.length === 0) {
       if (m1.length > 0) skipReasons.add("second_probe_failed");
       continue;
     }
-    push(m1, a1?.observedAt ?? observedAt, false);
+    push(m1, a1?.observedAt ?? observedAt, false,
+      `${p.endpoint}#1`, "x402-probe-mpp-quotes");
   }
 
   return {

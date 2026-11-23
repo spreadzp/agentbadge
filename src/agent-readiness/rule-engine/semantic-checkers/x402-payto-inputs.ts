@@ -217,7 +217,12 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
     anyProbe = true;
     probed += 1;
     const [a1, a2] = p.attempts;
-    const pushAccepts = (acc: X402ProbeAttempt["accepts"], observedAt: string, suspect: boolean) => {
+    const pushAccepts = (
+      acc: X402ProbeAttempt["accepts"],
+      observedAt: string,
+      suspect: boolean,
+      probeId: string,
+    ) => {
       for (const a of acc ?? []) {
         if (typeof a.payTo !== "string" || !a.payTo) continue;
         const o: PayToObservation = {
@@ -226,6 +231,8 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
           asset: a.asset,
           source: "live402",
           observedAt,
+          probeId,
+          observer: "x402-double-probe",
           perPaymentSuspect: suspect || undefined,
         };
         const key = observationKey(o);
@@ -238,7 +245,9 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
       // Per-payment/deposit heuristic (D-258-Q12): both quotes are
       // evidence, both exempt — a mismatch verdict would be meaningless.
       divergentSeen = true;
-      for (const at of p.attempts) pushAccepts(at.accepts, at.observedAt, true);
+      p.attempts.forEach((at, i) =>
+        pushAccepts(at.accepts, at.observedAt, true, `${p.endpoint}#${i + 1}`),
+      );
       continue;
     }
     const a2Failed = !a2 || a2.status !== 402 || !a2.accepts || a2.accepts.length === 0;
@@ -251,7 +260,7 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
       skipReasons.add("second_probe_failed");
       continue;
     }
-    pushAccepts(a1.accepts, a1.observedAt, false);
+    pushAccepts(a1.accepts, a1.observedAt, false, `${p.endpoint}#1`);
   }
 
   // Manifest hint — may confirm, never causes mismatch (D-258-Q11).
@@ -263,6 +272,7 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
       network: typeof m?.network === "string" ? m.network : undefined,
       source: "manifest",
       observedAt: x402Snap?.fetchedAt ?? new Date().toISOString(),
+      observer: "x402-manifest",
     });
   }
 
