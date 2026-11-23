@@ -128,6 +128,12 @@ Follow each step in order. Each step includes the tool call, expected parameters
 | \`/mcp/tools\` | GET | — | List all MCP tools (JSON) |
 | \`/mcp/tools/:toolName\` | POST | — | Call MCP tool via HTTP |
 
+Auth tiers: \`—\` = anonymous (curated surface, per-IP rate limit).
+\`agb_\` = free observer-tier API key from \`POST /api/v1/agents/register\`
+(shown once) — \`Authorization: Bearer agb_…\` unlocks the full
+public+authenticated tool list and raises limits.
+\`x402\` = USDC micropayment on Arc (HTTP 402 challenge → retry).
+
 ---
 
 ## Prerequisites
