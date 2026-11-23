@@ -21,6 +21,7 @@ export const FIXTURE_KEY = resolveIntelSigningKey({
   enabled: true,
   keyId: "bk-fixture-1",
   signingPrivateKey: FIXTURE_SEED_B64,
+  evidenceRetentionDays: 400,
 })!;
 export const FIXTURE_NOW = new Date("2026-11-23T10:00:04Z");
 

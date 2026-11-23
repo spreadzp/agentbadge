@@ -22,6 +22,7 @@ const cfgWith = (over: Partial<IntelEnvConfig> = {}): IntelEnvConfig => ({
   enabled: true,
   keyId: "intel-test-1",
   signingPrivateKey: SEED_B64,
+  evidenceRetentionDays: 400,
   ...over,
 });
 

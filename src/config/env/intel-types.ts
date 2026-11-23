@@ -20,4 +20,10 @@ export interface IntelEnvConfig {
    * key (the well-known doc must be stable across restarts).
    */
   signingPrivateKey?: string;
+  /**
+   * INTEL_EVIDENCE_RETENTION_DAYS — transparent retention deadline
+   * stamped as expiresAt on each stored envelope (D-262-Q8: no
+   * "archive forever"). Default 400; <=0 disables expiry (dev only).
+   */
+  evidenceRetentionDays: number;
 }

@@ -12,5 +12,10 @@ export function loadIntel(): IntelEnvConfig {
     enabled: booleanFlag("INTEL_ENABLED"),
     keyId: process.env.INTEL_KEY_ID ?? "intel-dev-1",
     signingPrivateKey: process.env.INTEL_SIGNING_PRIVATE_KEY || undefined,
+    evidenceRetentionDays: (() => {
+      const raw = process.env.INTEL_EVIDENCE_RETENTION_DAYS;
+      const n = raw === undefined ? 400 : Number(raw);
+      return Number.isFinite(n) ? n : 400;
+    })(),
   };
 }
