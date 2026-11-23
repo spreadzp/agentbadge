@@ -21,6 +21,9 @@ export const payloadSchema = z.discriminatedUnion("type", [
     type: z.literal("http_observation"),
     url: z.string().min(1),
     status: z.number().int().min(100).max(599),
+    // requesting User-Agent when probed with a non-default one
+    // (SLICE-262-4: per-UA agent matrix — additive v1 field)
+    ua: z.string().min(1).optional(),
     headers: z.record(z.string(), z.string()).optional(),
     content_hash: z
       .string()

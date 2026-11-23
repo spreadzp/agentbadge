@@ -174,6 +174,10 @@
               "minimum": 100,
               "maximum": 599
             },
+            "ua": {
+              "type": "string",
+              "minLength": 1
+            },
             "headers": {
               "type": "object",
               "propertyNames": {
