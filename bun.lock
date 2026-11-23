@@ -19,7 +19,7 @@
         "@agentbadge/passport": "^0.3.1",
         "@agentbadge/payment-forensics": "^0.1.1",
         "@agentbadge/payments": "^0.1.1",
-        "@agentbadge/webmcp": "^0.5.0",
+        "@agentbadge/webmcp": "^0.5.1",
         "@agentbadge/x402-payto-proof": "^0.2.0",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -109,7 +109,7 @@
 
     "@agentbadge/verify-verdict": ["@agentbadge/verify-verdict@0.1.0", "", { "dependencies": { "@agentbadge/circle-payments": "0.1.18", "viem": "^2.0.0" }, "bin": { "verify-verdict": "dist/cli.js" } }, "sha512-yzjLoy7JVrlHC/UExa0M7oM5nqW4kTvWoxmjl70zFRKoUt7MU4pieewQGjc3DXcBgyJ2s1VeEcxoV5awJEFh7w=="],
 
-    "@agentbadge/webmcp": ["@agentbadge/webmcp@0.5.0", "", {}, "sha512-NkOepNmikQohadBIPL2xK0TqB4KEwhgu3T7yvzNwq4Y6PiYGB0/G1XGEjlMUY7LMdclgc/T6VHROOF3IfdCUeA=="],
+    "@agentbadge/webmcp": ["@agentbadge/webmcp@0.5.1", "", {}, "sha512-QfZL9s82NQWrIf87k7o0uBZNaIoLGbCq2zh5u9Sb7KgqK3YNNGpn6ahPx7hlZfpef6MNmPlBiDV8CL0CRFlzBg=="],
 
     "@agentbadge/x402-payto-proof": ["@agentbadge/x402-payto-proof@0.2.0", "", { "dependencies": { "@noble/curves": "^2.4.0", "@noble/hashes": "^2.4.0" } }, "sha512-N6L2mLyrLP4Ow1iwNqvuu9PEQdrIffXxhiDSNYT3jOTN0NLZwN5hJlDQKEfTgRTmmu5RqnDUSuWz6FKFjC1tGQ=="],
 
