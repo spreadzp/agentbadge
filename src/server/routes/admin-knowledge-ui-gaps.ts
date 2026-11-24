@@ -15,7 +15,6 @@ import type { Hono } from "hono";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import type { OperatorStore } from "../lib/operators/store";
 import { KNOWLEDGE_GAP_STATUSES, listGaps } from "../lib/knowledge";
@@ -68,7 +67,6 @@ export function registerKnowledgeUiGapPages(
     });
     const displayById: Record<string, string> = {};
     for (const o of humans) displayById[o.id] = o.displayName;
-    const me = principalId(c);
     return page(
       c,
       knowledgeGapsPage({
@@ -81,7 +79,9 @@ export function registerKnowledgeUiGapPages(
           displayName: o.displayName,
         })),
         displayById,
-        me: me instanceof Response ? "" : me,
+        // PRG target for the row forms — the filtered view they
+        // were rendered on (mutation lands back here).
+        next: `/admin/knowledge/gaps?status=${status}${assigned === "none" ? "&assigned=none" : ""}${offset > 0 ? `&offset=${offset}` : ""}`,
         assigned: assigned === "none" ? "none" : "",
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
@@ -111,7 +111,6 @@ export function registerKnowledgeUiGapPages(
     ]);
     const displayById: Record<string, string> = {};
     for (const o of humans) displayById[o.id] = o.displayName;
-    const me = principalId(c);
     return page(
       c,
       knowledgeGapDetailPage({
@@ -122,7 +121,6 @@ export function registerKnowledgeUiGapPages(
           displayName: o.displayName,
         })),
         displayById,
-        me: me instanceof Response ? "" : me,
         items,
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),

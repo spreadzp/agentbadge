@@ -51,7 +51,10 @@ export const errBody = (error: string) => ({
 export const statusOf = (error: string) =>
   error === "not_found" || error === "linked_item_missing"
     ? 404
-    : error === "already_assigned" || error === "gap_terminal"
+    : error === "already_assigned" ||
+        error === "gap_terminal" ||
+        error === "due_at_change_needs_reason" ||
+        error === "conflict"
       ? 409
       : 400;
 

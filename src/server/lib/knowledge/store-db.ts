@@ -251,7 +251,7 @@ export class DbKnowledgeStore implements KnowledgeStore {
     return {
       gap: r.gap ? mapGap(r.gap) : null,
       updated: r.updated,
-      reason: r.reason as "missing" | undefined,
+      reason: r.reason as "missing" | "conflict" | undefined,
     };
   }
 

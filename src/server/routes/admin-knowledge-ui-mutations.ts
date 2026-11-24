@@ -32,7 +32,10 @@ import {
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "./admin-knowledge-ui-mutations-shared";
-import { registerKnowledgeUiGapMutations } from "./admin-knowledge-ui-mutations-gaps";
+import {
+  formDest,
+  registerKnowledgeUiGapMutations,
+} from "./admin-knowledge-ui-mutations-gaps";
 
 /** SLICE-264-12: a datetime-local value is UTC-NAIVE — the console
  *  contract is "enter UTC" (the input is labelled so), so the form
@@ -176,13 +179,11 @@ export function registerKnowledgeUiMutations(
     app.post(`/admin/knowledge/gaps/:id/${action}`, async (c) => {
       const id = c.req.param("id") ?? "";
       const b = await c.req.parseBody();
+      const dest = formDest(b);
       const bad7 = rejectCtrl(c, id, formStr(b, "linkedItemId"));
       if (bad7) return bad7;
       if (!tokenConsumed(b)) {
-        return c.redirect(
-          backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
-          303,
-        );
+        return c.redirect(backWith(dest, { err: FORM_TOKEN_ERR }), 303);
       }
       const actor = principalId(c);
       if (actor instanceof Response) return actor;
@@ -192,10 +193,7 @@ export function registerKnowledgeUiMutations(
           ? triageGap(store, id, actor)
           : wontfixGap(store, id, actor));
       return c.redirect(
-        backWith(
-          "/admin/knowledge/gaps",
-          r.ok ? { ok: `gap_${action}d` } : { err: r.error },
-        ),
+        backWith(dest, r.ok ? { ok: `gap_${action}d` } : { err: r.error }),
         303,
       );
     });

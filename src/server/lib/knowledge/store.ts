@@ -271,16 +271,16 @@ export interface KnowledgeStore {
     transitioned: boolean;
     reason?: "missing" | "status_mismatch";
   }>;
-  /** SLICE-264-10: idempotent ownership overwrite — no CAS on the
-   *  values: a lost race is covered by the audit events (input
-   *  `event` rides the same write), not by refusing. */
+  /** SLICE-264-10: idempotent ownership overwrite; 264-12 review —
+   *  `expectedAssignedTo` CAS-guards the write so a lost race can't
+   *  mint an audit row whose previousAssignee lies. */
   assignGap(
     id: string,
     input: KnowledgeGapAssignInput,
   ): Promise<{
     gap: KnowledgeGapRecord | null;
     updated: boolean;
-    reason?: "missing";
+    reason?: "missing" | "conflict";
   }>;
 
   // ─── 264-11: persisted gap audit ──

@@ -314,4 +314,30 @@ describe("gap ownership (SLICE-264-10)", () => {
     if (!term.ok) expect(term.error).toBe("gap_terminal");
     void stamp;
   });
+
+  it("CAS: a claim landing mid-write → honest conflict, no lying event (264-12 review)", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    // Inject a mid-flight owner BETWEEN the domain's pre-read and
+    // the store write — the CAS must refuse rather than overwrite,
+    // and no audit row claiming previousAssignee:null may mint.
+    const inner = store.assignGap.bind(store);
+    store.assignGap = async (id, input) => {
+      const row = await store.getGap(id);
+      if (row && row.assignedTo === null) row.assignedTo = "op_racer";
+      return inner(id, input);
+    };
+    const r = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("conflict");
+    expect(await store.listGapEvents(gap.id)).toEqual([]);
+    // The racer's claim stands — conflict means "re-read + retry",
+    // never a silent dispossession.
+    expect((await store.getGap(gap.id))!.assignedTo).toBe("op_racer");
+  });
 });

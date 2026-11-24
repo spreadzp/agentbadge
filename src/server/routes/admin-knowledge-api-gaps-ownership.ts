@@ -90,7 +90,7 @@ export function registerKnowledgeGapOwnershipRoutes(
           c,
           400,
           ErrorCodes.INVALID_INPUT,
-          "assignedTo required",
+          body.error.issues[0]?.message ?? "invalid assign body",
         );
       }
       return runKnowledgeWrite(
@@ -101,16 +101,9 @@ export function registerKnowledgeGapOwnershipRoutes(
           if (!gap) {
             return { status: 404, body: errBody("NOT_FOUND") };
           }
-          if (
-            gap.assignedTo !== null &&
-            body.data.dueAt !== undefined &&
-            body.data.dueAt !== gap.dueAt
-          ) {
-            return {
-              status: 409,
-              body: errBody("DUE_AT_CHANGE_NEEDS_REASON"),
-            };
-          }
+          // Dispatch only picks the event kind — ALL deadline rules
+          // (C3 incl. due-on-owned) live in the domain so JSON and
+          // form transports can't diverge.
           const r =
             gap.assignedTo === null || gap.assignedTo === body.data.assignedTo
               ? await assignGap(
@@ -129,6 +122,7 @@ export function registerKnowledgeGapOwnershipRoutes(
                     gapId,
                     assignedTo: body.data.assignedTo,
                     assignedBy: actor,
+                    dueAt: body.data.dueAt,
                   },
                   { operators },
                 );
@@ -167,7 +161,7 @@ export function registerKnowledgeGapOwnershipRoutes(
       if (actor instanceof Response) return actor;
       return runKnowledgeWrite(
         c,
-        `POST:/admin/api/knowledge/gaps/:id/unassign`,
+        `POST:/admin/api/knowledge/gaps/${gapId}/unassign`,
         async () => {
           const r = await unassignGap(store, { gapId, actor });
           if (!r.ok) {

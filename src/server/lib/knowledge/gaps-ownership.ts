@@ -1,26 +1,20 @@
 import type { OperatorStore } from "../operators/store";
 import type { KnowledgeResult } from "./items";
-import { gapEventId } from "./gap-events";
+import { gapEventId, gapTsMs } from "./gap-events";
 import type { KnowledgeStore } from "./store";
 import type { KnowledgeGapRecord } from "./types";
 
 /**
  * EPIC-264 (SLICE-264-10/11, D-264-Q8/Q9, C2/C3): gap ownership
  * domain fns. Assignment is ORTHOGONAL to the lifecycle machine —
- * a gap stays OPEN/TRIAGED while it has an owner; RESOLVED/WONTFIX
- * rows refuse new assignment (a closed gap takes no work).
+ * a gap stays OPEN/TRIAGED while it has an owner; terminal rows
+ * refuse new assignment. 264-11: every ownership write lands with
+ * a persisted audit event in the SAME mutation.
  *
- * 264-11: every ownership write lands with a persisted audit event
- * IN THE SAME mutation (store writes both rows atomically).
- *
- * Anti-laundering (C3): dueAt is an absolute UTC stamp that only
- * `setGapDueAt` (with a mandatory reason → audit event) can
- * change. Reassigning hands or dropping the assignee NEVER resets
- * the deadline — otherwise an overdue gap could be laundered into
- * a fresh one by swapping `assignedTo`.
- *
- * Assignee must be an ACTIVE `human` operator (D-264-Q8): service
- * principals and break_glass can act but cannot OWN backlog work.
+ * Anti-laundering (C3): dueAt only moves via `setGapDueAt` with a
+ * mandatory reason — reassign/unassign NEVER reset the deadline,
+ * or an overdue gap could be laundered by swapping `assignedTo`.
+ * Assignee must be an ACTIVE `human` operator (D-264-Q8).
  */
 
 const TERMINAL = new Set(["RESOLVED", "WONTFIX"]);
@@ -34,6 +28,25 @@ const isTimestamp = (s: unknown): s is string =>
   typeof s === "string" &&
   ISO_ABSOLUTE.test(s) &&
   !Number.isNaN(Date.parse(s));
+
+/** Instant compare — string equality refuses same-instant variants. */
+const sameInstant = (a: string | null, b: string | null) =>
+  a === null || b === null ? a === b : gapTsMs(a) === gapTsMs(b);
+const dueChanged = (v: string | null | undefined, cur: string | null) =>
+  v !== undefined && !sameInstant(v, cur);
+
+/** CAS-fail cascade: re-read and report the FRESH state —
+ *  converged rows return ok, a changed owner reports conflict. */
+async function conflictReport(
+  store: KnowledgeStore,
+  gapId: string,
+  converged: (gap: KnowledgeGapRecord) => boolean,
+): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord }>> {
+  const fresh = await store.getGap(gapId);
+  if (!fresh) return { ok: false, error: "not_found" };
+  if (converged(fresh)) return { ok: true, gap: fresh };
+  return { ok: false, error: "conflict" };
+}
 
 /** Shared assign/reassign preflight — gap exists, not terminal,
  *  assignee resolves to an active human operator. */
@@ -64,13 +77,9 @@ async function assignable(
 
 /** Assign a gap to an operator. `assignedBy` is the CALLING
  *  principal's id (the route resolves it from the credential —
- *  never a form field); `dueAt` is an absolute UTC timestamp.
- *
- *  Anti-laundering (C3): assigning to a DIFFERENT owner is refused
- *  (`already_assigned` — that path is reassignGap); and a dueAt the
- *  gap already carries can only move via setGapDueAt (reason →
- *  audit), so assign may set a deadline on a fresh/unassigned gap
- *  but never silently rewrites or clears an existing one. */
+ *  never a form field). A different owner is refused
+ *  (`already_assigned` — that path is reassignGap); a deadline
+ *  moves only via setGapDueAt (C3 — see the dueChanged gate). */
 export async function assignGap(
   store: KnowledgeStore,
   input: {
@@ -90,12 +99,22 @@ export async function assignGap(
   if (gap.assignedTo !== null && gap.assignedTo !== input.assignedTo) {
     return { ok: false, error: "already_assigned", field: "assignedTo" };
   }
+  // C3 (264-12 review): any deadline change on an OWNED or
+  // already-dated gap needs setGapDueAt (reason → audit) — the
+  // only free first-set is assign-with-dueAt on an unassigned,
+  // undated gap.
   if (
-    gap.dueAt !== null &&
-    input.dueAt !== undefined &&
-    input.dueAt !== gap.dueAt
+    dueChanged(input.dueAt, gap.dueAt) &&
+    (gap.assignedTo !== null || gap.dueAt !== null)
   ) {
     return { ok: false, error: "due_at_change_needs_reason", field: "dueAt" };
+  }
+  // Same owner + unchanged deadline → nothing to write or audit.
+  if (
+    gap.assignedTo === input.assignedTo &&
+    !dueChanged(input.dueAt, gap.dueAt)
+  ) {
+    return { ok: true, gap };
   }
   const now = new Date().toISOString();
   const dueAt = input.dueAt ?? gap.dueAt;
@@ -104,9 +123,9 @@ export async function assignGap(
     assignedBy: input.assignedBy,
     assignedAt: now,
     dueAt,
-    // 264-11: audit row rides the same mutation — the event shows
-    // who handed the gap over (actor=assignedBy) and the
-    // previousAssignee chain (null on first assignment).
+    // CAS + audit row in the same write — lands only while the
+    // owner still is what this event claims to replace.
+    expectedAssignedTo: gap.assignedTo,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
@@ -117,35 +136,65 @@ export async function assignGap(
       dueAt,
     },
   });
+  if (res.reason === "conflict") {
+    return conflictReport(
+      store,
+      input.gapId,
+      (g) => g.assignedTo === input.assignedTo && sameInstant(g.dueAt, dueAt),
+    );
+  }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
 }
 
 /** Reassign to a different operator — keeps the existing dueAt
- *  verbatim (C3 anti-laundering). Terminal gaps refuse. */
+ *  verbatim (C3 anti-laundering). Terminal gaps refuse. An
+ *  optional `dueAt` in the input may only CONFIRM the kept
+ *  deadline — any actual change belongs to setGapDueAt. */
 export async function reassignGap(
   store: KnowledgeStore,
-  input: { gapId: string; assignedTo: string; assignedBy: string },
+  input: {
+    gapId: string;
+    assignedTo: string;
+    assignedBy: string;
+    dueAt?: string;
+  },
   deps: { operators: OperatorStore },
 ): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord }>> {
+  if (input.dueAt !== undefined && !isTimestamp(input.dueAt)) {
+    return { ok: false, error: "bad_due_at", field: "dueAt" };
+  }
   const pre = await assignable(store, input.gapId, input.assignedTo, deps);
   if (!pre.ok) return pre;
+  const { gap } = pre;
+  if (dueChanged(input.dueAt, gap.dueAt)) {
+    return { ok: false, error: "due_at_change_needs_reason", field: "dueAt" };
+  }
+  if (gap.assignedTo === input.assignedTo) return { ok: true, gap };
   const now = new Date().toISOString();
   const res = await store.assignGap(input.gapId, {
     assignedTo: input.assignedTo,
     assignedBy: input.assignedBy,
     assignedAt: now,
-    dueAt: pre.gap.dueAt,
+    dueAt: gap.dueAt,
+    expectedAssignedTo: gap.assignedTo,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
       kind: "reassigned",
       actor: input.assignedBy,
-      previousAssignee: pre.gap.assignedTo,
+      previousAssignee: gap.assignedTo,
       assignedTo: input.assignedTo,
-      dueAt: pre.gap.dueAt,
+      dueAt: gap.dueAt,
     },
   });
+  if (res.reason === "conflict") {
+    return conflictReport(
+      store,
+      input.gapId,
+      (g) => g.assignedTo === input.assignedTo,
+    );
+  }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
 }
@@ -167,6 +216,8 @@ export async function unassignGap(
     assignedBy: null,
     assignedAt: null,
     dueAt: gap.dueAt,
+    // CAS: don't drop an owner that landed after our read.
+    expectedAssignedTo: gap.assignedTo,
     // No owner → nothing was dropped: an "unassigned" row for a
     // no-op mutation is audit noise, not a fact.
     ...(gap.assignedTo === null
@@ -183,6 +234,13 @@ export async function unassignGap(
           },
         }),
   });
+  if (res.reason === "conflict") {
+    return conflictReport(
+      store,
+      input.gapId,
+      (g) => g.assignedTo === null,
+    );
+  }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
 }
@@ -216,6 +274,9 @@ export async function setGapDueAt(
     // assignment instant on an unassigned gap.
     assignedAt: gap.assignedAt,
     dueAt: input.dueAt,
+    // CAS: without it a mid-flight claim would be stomped back to
+    // null AND the event's assignedTo snapshot would lie.
+    expectedAssignedTo: gap.assignedTo,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
@@ -226,6 +287,14 @@ export async function setGapDueAt(
       reason,
     },
   });
+  if (res.reason === "conflict") {
+    return conflictReport(
+      store,
+      input.gapId,
+      (g) =>
+        g.assignedTo === gap.assignedTo && sameInstant(g.dueAt, input.dueAt),
+    );
+  }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
 }

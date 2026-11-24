@@ -28,6 +28,16 @@ import {
 } from "./admin-knowledge-ui-mutations-shared";
 import { formDue } from "./admin-knowledge-ui-mutations";
 
+/** PRG target — the form's own page (`next` hidden field, detail
+ *  page keeps its context); confined to /admin/knowledge/ so the
+ *  field can't be tampered into an open redirect. */
+export const formDest = (b: Record<string, unknown>) => {
+  const next = formStr(b, "next");
+  return next.startsWith("/admin/knowledge/")
+    ? next
+    : "/admin/knowledge/gaps";
+};
+
 export function registerKnowledgeUiGapMutations(
   app: Hono,
   store: KnowledgeStore,
@@ -39,23 +49,18 @@ export function registerKnowledgeUiGapMutations(
   app.post("/admin/knowledge/gaps/:id/assign", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const dest = formDest(b);
     const bad = rejectCtrl(c, id, formStr(b, "assignedTo"));
     if (bad) return bad;
     if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
-        303,
-      );
+      return c.redirect(backWith(dest, { err: FORM_TOKEN_ERR }), 303);
     }
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
     const assignedTo =
       formStr(b, "claim") === "1" ? actor : formStr(b, "assignedTo");
     if (assignedTo === "") {
-      return c.redirect(
-        backWith("/admin/knowledge/gaps", { err: "assignee_required" }),
-        303,
-      );
+      return c.redirect(backWith(dest, { err: "assignee_required" }), 303);
     }
     const dueAt = formDue(formStr(b, "dueAt"));
     const gap = await store.getGap(id);
@@ -65,7 +70,9 @@ export function registerKnowledgeUiGapMutations(
       gap.assignedTo !== assignedTo
         ? await reassignGap(
             store,
-            { gapId: id, assignedTo, assignedBy: actor },
+            // dueAt flows here too — the domain refuses a real
+            // change (C3), confirms a matching one.
+            { gapId: id, assignedTo, assignedBy: actor, dueAt },
             { operators },
           )
         : await assignGap(
@@ -74,10 +81,7 @@ export function registerKnowledgeUiGapMutations(
             { operators },
           );
     return c.redirect(
-      backWith(
-        "/admin/knowledge/gaps",
-        r.ok ? { ok: "gap_assigned" } : { err: r.error },
-      ),
+      backWith(dest, r.ok ? { ok: "gap_assigned" } : { err: r.error }),
       303,
     );
   });
@@ -85,22 +89,17 @@ export function registerKnowledgeUiGapMutations(
   app.post("/admin/knowledge/gaps/:id/unassign", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const dest = formDest(b);
     const bad = rejectCtrl(c, id);
     if (bad) return bad;
     if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
-        303,
-      );
+      return c.redirect(backWith(dest, { err: FORM_TOKEN_ERR }), 303);
     }
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
     const r = await unassignGap(store, { gapId: id, actor });
     return c.redirect(
-      backWith(
-        "/admin/knowledge/gaps",
-        r.ok ? { ok: "gap_unassigned" } : { err: r.error },
-      ),
+      backWith(dest, r.ok ? { ok: "gap_unassigned" } : { err: r.error }),
       303,
     );
   });
@@ -108,13 +107,11 @@ export function registerKnowledgeUiGapMutations(
   app.post("/admin/knowledge/gaps/:id/due", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const dest = formDest(b);
     const bad = rejectCtrl(c, id, formStr(b, "dueAt"), formStr(b, "reason"));
     if (bad) return bad;
     if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
-        303,
-      );
+      return c.redirect(backWith(dest, { err: FORM_TOKEN_ERR }), 303);
     }
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
@@ -128,10 +125,7 @@ export function registerKnowledgeUiGapMutations(
       actor,
     });
     return c.redirect(
-      backWith(
-        "/admin/knowledge/gaps",
-        r.ok ? { ok: "gap_due_set" } : { err: r.error },
-      ),
+      backWith(dest, r.ok ? { ok: "gap_due_set" } : { err: r.error }),
       303,
     );
   });

@@ -13,6 +13,7 @@ import type {
   KnowledgeGapRecord,
   KnowledgeItemRecord,
 } from "../../server/lib/knowledge/types";
+import { isGapOverdue } from "../../server/lib/knowledge/gap-events";
 import { tableShell, td } from "../finops/shared";
 import {
   flashBanner,
@@ -21,14 +22,12 @@ import {
   knowledgeShell,
   tokenField,
 } from "./shared";
-import { isGapOverdue } from "./gaps";
 
 export interface GapDetailInput {
   gap: KnowledgeGapRecord;
   events: KnowledgeGapEventRecord[];
   operators: { id: string; displayName: string }[];
   displayById: Record<string, string>;
-  me: string;
   items: KnowledgeItemRecord[];
   flash?: { ok?: string; err?: string };
 }
@@ -50,6 +49,10 @@ const eventRow = (e: KnowledgeGapEventRecord, input: GapDetailInput) => {
   </tr>`;
 };
 
+/** PRG keeps the operator on this detail page (the forms' `next`). */
+const nextField = (id: string) =>
+  html`<input type="hidden" name="next" value="/admin/knowledge/gaps/${id}" />`;
+
 const assignForm = (input: GapDetailInput) => {
   const g = input.gap;
   const live = g.status === "OPEN" || g.status === "TRIAGED";
@@ -61,7 +64,7 @@ const assignForm = (input: GapDetailInput) => {
           action="/admin/knowledge/gaps/${g.id}/assign"
           class="flex flex-wrap items-end gap-2"
         >
-          ${tokenField()}
+          ${tokenField()}${nextField(g.id)}
           <label class="flex flex-col gap-0.5 text-[11px] text-slate-400">
             assignee
             <select
@@ -97,7 +100,7 @@ const assignForm = (input: GapDetailInput) => {
           action="/admin/knowledge/gaps/${g.id}/assign"
           class="inline"
         >
-          ${tokenField()}
+          ${tokenField()}${nextField(g.id)}
           <input type="hidden" name="claim" value="1" />
           <button
             type="submit"
@@ -112,7 +115,7 @@ const assignForm = (input: GapDetailInput) => {
           action="/admin/knowledge/gaps/${g.id}/unassign"
           class="inline"
         >
-          ${tokenField()}
+          ${tokenField()}${nextField(g.id)}
           <button
             type="submit"
             class="rounded bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:text-slate-100"
@@ -128,7 +131,7 @@ const dueForm = (input: GapDetailInput) => html`<form
   action="/admin/knowledge/gaps/${input.gap.id}/due"
   class="flex flex-wrap items-end gap-2"
 >
-  ${tokenField()}
+  ${tokenField()}${nextField(input.gap.id)}
   <label class="flex flex-col gap-0.5 text-[11px] text-slate-400">
     due (UTC — blank clears)
     <input

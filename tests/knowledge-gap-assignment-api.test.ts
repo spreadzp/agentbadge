@@ -221,6 +221,29 @@ describe("264-12: POST …/gaps/:id/assign|unassign|due", () => {
     expect(r.status).toBe(400);
     expect(await store.listGapEvents(gap.id)).toEqual([]);
   });
+
+  it("edge honesty: read-only cred → 403; malformed body → 400; unassign/due → 404 on unknown gap", async () => {
+    const { app, store, operators, admin, alice } = await mkApp();
+    const gap = await mkGap(store);
+    const ro = await seedOperator(operators, "ReadOnly", ["read"]);
+    const denied = await post(app, `/admin/api/knowledge/gaps/${gap.id}/assign`, ro.key, {
+      assignedTo: alice.operatorId,
+    });
+    expect(denied.status).toBe(403);
+
+    const malformed = await post(app, `/admin/api/knowledge/gaps/${gap.id}/assign`, admin.key, {
+      assignedTo: 123,
+    });
+    expect(malformed.status).toBe(400);
+
+    const u = await post(app, "/admin/api/knowledge/gaps/kgap_none/unassign", admin.key, {});
+    expect(u.status).toBe(404);
+    const d = await post(app, "/admin/api/knowledge/gaps/kgap_none/due", admin.key, {
+      dueAt: null,
+      reason: "x",
+    });
+    expect(d.status).toBe(404);
+  });
 });
 
 describe("264-12: GET …/gaps — assigned=none + sort=overdue", () => {
@@ -420,5 +443,33 @@ describe("264-12: gaps console (SSR)", () => {
     });
     expect(noReason.headers.get("location")).toContain("err=");
     expect((await store.getGap(gap.id))?.dueAt).toBeNull();
+  });
+
+  it("C3 bypass shut (264-12 review): assign form can't stamp a deadline on an OWNED gap", async () => {
+    const { app, store, alice, AUTH } = await mkUi();
+    const gap = await mkGap(store);
+    // Alice already owns it — no deadline yet. The JSON API used to
+    // refuse this via a route-local check the form never had.
+    await store.assignGap(gap.id, {
+      assignedTo: alice.operatorId,
+      assignedBy: "seed",
+      assignedAt: "2026-11-24T00:00:00.000Z",
+      dueAt: null,
+    });
+    const token = await uiToken(app, AUTH, `/admin/knowledge/gaps/${gap.id}`);
+    const r = await uiPost(app, AUTH, `/admin/knowledge/gaps/${gap.id}/assign`, {
+      assignedTo: alice.operatorId,
+      dueAt: "2027-01-01T00:00",
+      formToken: token!,
+      next: `/admin/knowledge/gaps/${gap.id}`,
+    });
+    expect(r.status).toBe(303);
+    const loc = r.headers.get("location") ?? "";
+    // `next` honored (detail context kept) + typed refusal, no
+    // write, no audit row — the deadline only moves via /due+reason.
+    expect(loc).toContain(`/admin/knowledge/gaps/${gap.id}?`);
+    expect(loc).toContain("err=due_at_change_needs_reason");
+    expect((await store.getGap(gap.id))?.dueAt).toBeNull();
+    expect(await store.listGapEvents(gap.id)).toEqual([]);
   });
 });

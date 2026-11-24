@@ -3,7 +3,11 @@ import type {
   KnowledgeGapTransitionInput,
   KnowledgeGapUpsert,
 } from "./store";
-import { gapEventId, type KnowledgeGapEventInsert } from "./gap-events";
+import {
+  gapEventId,
+  isGapOverdue,
+  type KnowledgeGapEventInsert,
+} from "./gap-events";
 import type { KnowledgeGapEventRecord } from "./gap-events";
 import type { KnowledgeGapRecord } from "./types";
 import {
@@ -158,12 +162,7 @@ export class MemoryKnowledgeGaps {
     }
     const overdueFirst = (a: KnowledgeGapRecord, b: KnowledgeGapRecord) => {
       const now = nowIso();
-      const flag = (g: KnowledgeGapRecord) =>
-        g.dueAt !== null &&
-        g.dueAt < now &&
-        (g.status === "OPEN" || g.status === "TRIAGED")
-          ? 0
-          : 1;
+      const flag = (g: KnowledgeGapRecord) => (isGapOverdue(g, now) ? 0 : 1);
       return (
         flag(a) - flag(b) ||
         b.count - a.count ||
@@ -217,6 +216,14 @@ export class MemoryKnowledgeGaps {
     const gap = this.data.gaps.get(id);
     if (!gap) {
       return { gap: null, updated: false, reason: "missing" as const };
+    }
+    // CAS (264-12 review): the owner must still equal the caller's
+    // read or the event's previousAssignee would mint a lie.
+    if (
+      input.expectedAssignedTo !== undefined &&
+      gap.assignedTo !== input.expectedAssignedTo
+    ) {
+      return { gap: null, updated: false, reason: "conflict" as const };
     }
     gap.assignedTo = input.assignedTo;
     gap.assignedBy = input.assignedBy;

@@ -12,6 +12,7 @@ import type {
   KnowledgeGapRecord,
   KnowledgeItemRecord,
 } from "../../server/lib/knowledge/types";
+import { isGapOverdue } from "../../server/lib/knowledge/gap-events";
 import { emptyMsg, tableShell, td } from "../finops/shared";
 import {
   flashBanner,
@@ -30,9 +31,9 @@ export interface GapsInput {
   operators: { id: string; displayName: string }[];
   /** operatorId → displayName for the owner column. */
   displayById: Record<string, string>;
-  /** The calling principal — the claim form assigns to them
-   *  server-side (never a form field). */
-  me: string;
+  /** PRG target for the row forms — the current filtered URL so a
+   *  mutation lands back on the same view (status/pool/offset). */
+  next: string;
   /** "none" → the unassigned pick-up pool is filtered in. */
   assigned: string;
   /** Arc R3 M-9: current page offset for the backlog pager. */
@@ -40,16 +41,13 @@ export interface GapsInput {
   flash?: { ok?: string; err?: string };
 }
 
-/** Derived overdue (D-264-Q10): breached only while the gap still
- *  needs work — a RESOLVED row can't be "late" retroactively. */
-export const isGapOverdue = (g: KnowledgeGapRecord, now: string) =>
-  g.dueAt !== null &&
-  g.dueAt < now &&
-  (g.status === "OPEN" || g.status === "TRIAGED");
+/** PRG keeps the operator on the filtered view they came from. */
+const nextField = (v: string) =>
+  html`<input type="hidden" name="next" value="${v}" />`;
 
 const lifecycleActions = (
   g: KnowledgeGapRecord,
-  items: KnowledgeItemRecord[],
+  input: GapsInput,
 ) => {
   if (g.status === "OPEN") {
     return html`<form
@@ -57,7 +55,7 @@ const lifecycleActions = (
       action="/admin/knowledge/gaps/${g.id}/triage"
       class="inline"
     >
-      ${tokenField()}
+      ${tokenField()}${nextField(input.next)}
       <button
         type="submit"
         class="rounded bg-sky-800 px-2 py-0.5 text-[11px] text-sky-100 hover:bg-sky-700"
@@ -72,12 +70,12 @@ const lifecycleActions = (
         action="/admin/knowledge/gaps/${g.id}/resolve"
         class="inline-flex items-center gap-1"
       >
-        ${tokenField()}
+        ${tokenField()}${nextField(input.next)}
         <select
           name="linkedItemId"
           class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
         >
-          ${items.map(
+          ${input.items.map(
             (it) => html`<option value="${it.id}">${it.slug}</option>`,
           )}
         </select>
@@ -92,7 +90,7 @@ const lifecycleActions = (
         action="/admin/knowledge/gaps/${g.id}/wontfix"
         class="inline"
       >
-        ${tokenField()}
+        ${tokenField()}${nextField(input.next)}
         <button
           type="submit"
           class="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"
@@ -131,7 +129,7 @@ const ownershipActions = (
       action="/admin/knowledge/gaps/${g.id}/assign"
       class="inline-flex items-center gap-1"
     >
-      ${tokenField()}
+      ${tokenField()}${nextField(input.next)}
       <select
         name="assignedTo"
         class="max-w-[110px] rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
@@ -161,7 +159,7 @@ const ownershipActions = (
       action="/admin/knowledge/gaps/${g.id}/assign"
       class="inline"
     >
-      ${tokenField()}
+      ${tokenField()}${nextField(input.next)}
       <input type="hidden" name="claim" value="1" />
       <button
         type="submit"
@@ -176,7 +174,7 @@ const ownershipActions = (
           action="/admin/knowledge/gaps/${g.id}/unassign"
           class="inline"
         >
-          ${tokenField()}
+          ${tokenField()}${nextField(input.next)}
           <button
             type="submit"
             title="drop assignee — deadline survives"
@@ -252,7 +250,7 @@ const row = (
   ${td(g.lastSeenAt.slice(0, 19).replace("T", " "))}
   ${td(
     html`<span class="inline-flex flex-col gap-1">
-      ${lifecycleActions(g, input.items)} ${ownershipActions(g, input)}
+      ${lifecycleActions(g, input)} ${ownershipActions(g, input)}
     </span>`,
     false,
   )}
