@@ -205,7 +205,7 @@ export function createAdminKnowledgeRoutes(
   registerKnowledgeTransitionRoutes(app, store);
   registerKnowledgeCapabilityRoutes(app, store);
   registerKnowledgeRelationRoutes(app, store);
-  registerKnowledgeGapRoutes(app, store);
+  registerKnowledgeGapRoutes(app, store, operatorStore);
 
   return app;
 }

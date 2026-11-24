@@ -237,10 +237,9 @@ export interface KnowledgeStore {
   itemsCiting(uri: string): Promise<KnowledgeEvidenceRecord[]>;
 
   // ─── gaps ──
-  /** Arc R2 M-1: OPEN/TRIAGED dedupe hits always bump; RESOLVED hits
-   *  reopen; WONTFIX is final (recorded:false). Only NEW rows consume
-   *  openCap — checked INSIDE the write tx (insert + count + rollback)
-   *  so a full backlog can't be raced past nor block dedupe bumps. */
+  /** Arc R2 M-1: dedupe hits always bump; RESOLVED reopens (cap-
+   *  guarded in-tx); WONTFIX is final. Only NEW rows consume
+   *  openCap — a full backlog can't be raced nor block bumps. */
   recordGap(
     input: KnowledgeGapUpsert,
     opts?: { openCap?: number },
@@ -257,10 +256,11 @@ export interface KnowledgeStore {
   countGaps(status: string): Promise<number>;
   listGaps(opts?: {
     status?: string;
-    orderBy?: "count" | "lastSeen";
+    /** 264-12: overdue = past-due first; unassigned = the pool. */
+    orderBy?: "count" | "lastSeen" | "overdue";
+    unassigned?: boolean;
     limit?: number;
-    /** Arc R2 M-1: bounded pagination so a full backlog never has to
-     *  materialize in one response. */
+    /** Arc R2 M-1: bounded pagination. */
     offset?: number;
   }): Promise<KnowledgeGapRecord[]>;
   transitionGap(

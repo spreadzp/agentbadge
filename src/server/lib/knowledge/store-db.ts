@@ -228,7 +228,8 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   async listGaps(opts?: {
     status?: string;
-    orderBy?: "count" | "lastSeen";
+    orderBy?: "count" | "lastSeen" | "overdue";
+    unassigned?: boolean;
     limit?: number;
     offset?: number;
   }) {

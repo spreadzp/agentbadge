@@ -44,7 +44,7 @@ export function normalizeQuery(q: string): string {
     .normalize("NFKC")
     .toLowerCase()
     // Arc R3 M-7: keep \p{M} — stripping marks destroyed Indic
-    // vowel signs (हिन्दी → हनद) and collapsed distinct words.
+    // vowel signs (हिन्दी → हनद).
     .replace(/\p{Cf}/gu, "")
     .replace(/[\p{P}\p{S}]+/gu, " ")
     .replace(/\s+/g, " ")
@@ -202,16 +202,17 @@ export function listGaps(
   store: KnowledgeStore,
   opts: {
     status?: string;
-    sort?: "count" | "lastSeen";
+    /** 264-12: overdue/pool opts pass straight to the store. */
+    sort?: "count" | "lastSeen" | "overdue";
+    unassigned?: boolean;
     limit?: number;
-    /** Arc R3 M-9: the console must be able to page the backlog it
-     *  creates — limit-200 hid ≥1800 of a capped 2000-row queue. */
     offset?: number;
   } = {},
 ): Promise<KnowledgeGapRecord[]> {
   return store.listGaps({
     status: opts.status,
     orderBy: opts.sort ?? "count",
+    unassigned: opts.unassigned,
     limit: opts.limit ?? 100,
     offset: opts.offset,
   });

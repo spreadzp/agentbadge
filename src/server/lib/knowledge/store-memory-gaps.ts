@@ -144,7 +144,8 @@ export class MemoryKnowledgeGaps {
 
   async listGaps(opts?: {
     status?: string;
-    orderBy?: "count" | "lastSeen";
+    orderBy?: "count" | "lastSeen" | "overdue";
+    unassigned?: boolean;
     limit?: number;
     offset?: number;
   }) {
@@ -152,12 +153,32 @@ export class MemoryKnowledgeGaps {
     if (opts?.status !== undefined) {
       rows = rows.filter((g) => g.status === opts.status);
     }
+    if (opts?.unassigned === true) {
+      rows = rows.filter((g) => g.assignedTo === null);
+    }
+    const overdueFirst = (a: KnowledgeGapRecord, b: KnowledgeGapRecord) => {
+      const now = nowIso();
+      const flag = (g: KnowledgeGapRecord) =>
+        g.dueAt !== null &&
+        g.dueAt < now &&
+        (g.status === "OPEN" || g.status === "TRIAGED")
+          ? 0
+          : 1;
+      return (
+        flag(a) - flag(b) ||
+        b.count - a.count ||
+        b.lastSeenAt.localeCompare(a.lastSeenAt) ||
+        a.id.localeCompare(b.id)
+      );
+    };
     rows.sort(
       opts?.orderBy === "lastSeen"
         ? (a, b) =>
             b.lastSeenAt.localeCompare(a.lastSeenAt) ||
             a.id.localeCompare(b.id)
-        : (a, b) => b.count - a.count || a.id.localeCompare(b.id),
+        : opts?.orderBy === "overdue"
+          ? overdueFirst
+          : (a, b) => b.count - a.count || a.id.localeCompare(b.id),
     );
     const offset = opts?.offset ?? 0;
     return rows.slice(offset, offset + (opts?.limit ?? 500));

@@ -11,6 +11,7 @@
 import type { Hono } from "hono";
 
 import type { KnowledgeStore } from "../lib/knowledge/store";
+import type { OperatorStore } from "../lib/operators/store";
 import {
   createKnowledgeItem,
   resolveGap,
@@ -31,10 +32,19 @@ import {
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "./admin-knowledge-ui-mutations-shared";
+import { registerKnowledgeUiGapMutations } from "./admin-knowledge-ui-mutations-gaps";
+
+/** SLICE-264-12: a datetime-local value is UTC-NAIVE — the console
+ *  contract is "enter UTC" (the input is labelled so), so the form
+ *  stamps the zone the domain demands rather than letting a silent
+ *  local parse shift the deadline. Empty → undefined (keep). */
+export const formDue = (raw: string): string | undefined =>
+  raw === "" ? undefined : `${raw.length === 16 ? `${raw}:00` : raw}Z`;
 
 export function registerKnowledgeUiMutations(
   app: Hono,
   store: KnowledgeStore,
+  operators: OperatorStore,
 ): void {
   app.post("/admin/knowledge/create", async (c) => {
     const b = await c.req.parseBody();
@@ -190,4 +200,8 @@ export function registerKnowledgeUiMutations(
       );
     });
   }
+
+  // SLICE-264-12: assign/unassign/due ownership forms — sibling
+  // file (300-line cap).
+  registerKnowledgeUiGapMutations(app, store, operators);
 }

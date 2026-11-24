@@ -1,7 +1,9 @@
 /**
  * EPIC-229 (SLICE-229-9): gaps screen — the "repeated unanswered"
- * backlog (§17.2). OPEN gaps sortable by count, with
- * triage/resolve(link item)/wontfix form actions.
+ * backlog (§17.2). SLICE-264-12: the queue is managed from here —
+ * owner + due/OVERDUE badge (derived: dueAt<now && the gap still
+ * needs work), per-row assign/claim/unassign forms, the
+ * unassigned-pool filter; the audit feed lives on gap detail.
  */
 
 import { html } from "hono/html";
@@ -23,12 +25,32 @@ export interface GapsInput {
   gaps: KnowledgeGapRecord[];
   status: string;
   items: KnowledgeItemRecord[];
+  /** Active human operators for the assignee select (D-264-Q8 —
+   *  service/break_glass principals can't own backlog work). */
+  operators: { id: string; displayName: string }[];
+  /** operatorId → displayName for the owner column. */
+  displayById: Record<string, string>;
+  /** The calling principal — the claim form assigns to them
+   *  server-side (never a form field). */
+  me: string;
+  /** "none" → the unassigned pick-up pool is filtered in. */
+  assigned: string;
   /** Arc R3 M-9: current page offset for the backlog pager. */
   offset?: number;
   flash?: { ok?: string; err?: string };
 }
 
-const actions = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => {
+/** Derived overdue (D-264-Q10): breached only while the gap still
+ *  needs work — a RESOLVED row can't be "late" retroactively. */
+export const isGapOverdue = (g: KnowledgeGapRecord, now: string) =>
+  g.dueAt !== null &&
+  g.dueAt < now &&
+  (g.status === "OPEN" || g.status === "TRIAGED");
+
+const lifecycleActions = (
+  g: KnowledgeGapRecord,
+  items: KnowledgeItemRecord[],
+) => {
   if (g.status === "OPEN") {
     return html`<form
       method="post"
@@ -88,66 +110,177 @@ const actions = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => {
     : "—";
 };
 
-const gapFilterBar = (active: string) => {
+/** Assignee select + claim/unassign — OPEN/TRIAGED only (terminal
+ *  rows take no new owner; their unassign lives on the detail
+ *  page). dueAt is optional on assign; once set it moves only via
+ *  the detail form WITH a reason (C3 — "dueAt не сбрасывается"). */
+const ownershipActions = (
+  g: KnowledgeGapRecord,
+  input: GapsInput,
+) => {
+  if (g.status !== "OPEN" && g.status !== "TRIAGED") {
+    return html`<a
+      href="/admin/knowledge/gaps/${g.id}"
+      class="text-[11px] text-sky-400 hover:underline"
+      >detail</a
+    >`;
+  }
+  return html`<span class="inline-flex flex-wrap items-center gap-1">
+    <form
+      method="post"
+      action="/admin/knowledge/gaps/${g.id}/assign"
+      class="inline-flex items-center gap-1"
+    >
+      ${tokenField()}
+      <select
+        name="assignedTo"
+        class="max-w-[110px] rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
+      >
+        <option value="">— assignee —</option>
+        ${input.operators.map(
+          (o) =>
+            html`<option value="${o.id}" ${o.id === g.assignedTo ? "selected" : ""}
+              >${o.displayName}</option
+            >`,
+        )}
+      </select>
+      <input
+        type="datetime-local"
+        name="dueAt"
+        title="due (UTC)"
+        class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
+      />
+      <button
+        type="submit"
+        class="rounded bg-violet-800 px-2 py-0.5 text-[11px] text-violet-100 hover:bg-violet-700"
+        >${g.assignedTo === null ? "assign" : "reassign"}</button
+      >
+    </form>
+    <form
+      method="post"
+      action="/admin/knowledge/gaps/${g.id}/assign"
+      class="inline"
+    >
+      ${tokenField()}
+      <input type="hidden" name="claim" value="1" />
+      <button
+        type="submit"
+        title="assign to me"
+        class="rounded bg-violet-900/60 px-2 py-0.5 text-[11px] text-violet-200 hover:bg-violet-800"
+        >claim</button
+      >
+    </form>
+    ${g.assignedTo !== null
+      ? html`<form
+          method="post"
+          action="/admin/knowledge/gaps/${g.id}/unassign"
+          class="inline"
+        >
+          ${tokenField()}
+          <button
+            type="submit"
+            title="drop assignee — deadline survives"
+            class="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:text-slate-100"
+            >unassign</button
+          >
+        </form>`
+      : ""}
+    <a
+      href="/admin/knowledge/gaps/${g.id}"
+      class="text-[11px] text-sky-400 hover:underline"
+      >detail</a
+    >
+  </span>`;
+};
+
+const ownerCell = (g: KnowledgeGapRecord, input: GapsInput) =>
+  g.assignedTo === null
+    ? td(html`<span class="text-slate-500">—</span>`, false)
+    : td(input.displayById[g.assignedTo] ?? g.assignedTo);
+
+const dueCell = (g: KnowledgeGapRecord, now: string) => {
+  if (g.dueAt === null) return td("—");
+  const stamp = g.dueAt.slice(0, 16).replace("T", " ");
+  return td(
+    isGapOverdue(g, now)
+      ? html`<span class="text-red-300">${stamp}</span>
+          <span
+            class="ml-1 rounded bg-red-900/60 px-1.5 py-0.5 text-[10px] font-semibold text-red-200"
+            >OVERDUE</span
+          >`
+      : stamp,
+    false,
+  );
+};
+
+const gapFilterBar = (input: GapsInput) => {
   const items = ["OPEN", "TRIAGED", "RESOLVED", "WONTFIX", "all"];
-  return html`<div class="mb-3 flex flex-wrap gap-1.5">
+  const qs = (s: string) =>
+    `/admin/knowledge/gaps?status=${s}${input.assigned === "none" ? "&assigned=none" : ""}`;
+  return html`<div class="mb-3 flex flex-wrap items-center gap-1.5">
     ${items.map(
       (s) =>
         html`<a
-          href="/admin/knowledge/gaps?status=${s}"
-          class="rounded px-2.5 py-1 text-xs ${s === active
+          href="${qs(s)}"
+          class="rounded px-2.5 py-1 text-xs ${s === input.status
             ? "bg-emerald-900/60 text-emerald-300"
             : "bg-slate-800 text-slate-400 hover:text-slate-200"}"
           >${s}</a
         >`,
     )}
+    <a
+      href="/admin/knowledge/gaps?status=${input.status}${input.assigned === "none" ? "" : "&assigned=none"}"
+      class="rounded px-2.5 py-1 text-xs ${input.assigned === "none"
+        ? "bg-violet-900/60 text-violet-300"
+        : "bg-slate-800 text-slate-400 hover:text-slate-200"}"
+      >unassigned pool</a
+    >
   </div>`;
 };
 
-const row = (g: KnowledgeGapRecord, items: KnowledgeItemRecord[]) => html`<tr>
+const row = (
+  g: KnowledgeGapRecord,
+  input: GapsInput,
+  now: string,
+) => html`<tr>
   ${td(g.normalizedQuery, false)}
   ${td(String(g.count))}
   ${td(gapPill(g.status), false)}
+  ${ownerCell(g, input)}
+  ${dueCell(g, now)}
   ${td(g.source)}
   ${td(g.lastSeenAt.slice(0, 19).replace("T", " "))}
   ${td(
-    g.sampleQueries.length > 0
-      ? html`<details class="text-[11px]">
-          <summary class="cursor-pointer text-slate-400"
-            >${g.sampleQueries.length} samples</summary
-          >
-          <ul class="mt-1 list-disc pl-4 text-slate-500">
-            ${g.sampleQueries.map((s) => html`<li>${s}</li>`)}
-          </ul>
-        </details>`
-      : "—",
+    html`<span class="inline-flex flex-col gap-1">
+      ${lifecycleActions(g, input.items)} ${ownershipActions(g, input)}
+    </span>`,
     false,
   )}
-  ${td(actions(g, items), false)}
 </tr>`;
 
 export function knowledgeGapsPage(input: GapsInput): string {
+  const now = new Date().toISOString();
   const body = html`
     ${knowledgeNav("gaps")} ${flashBanner(input.flash ?? {})}
-    ${gapFilterBar(input.status)}
+    ${gapFilterBar(input)}
     ${input.gaps.length === 0
       ? emptyMsg("No gaps at this status.")
       : tableShell(
-          ["normalized query", "count", "status", "source", "last seen", "samples", "actions"],
-          html`${input.gaps.map((g) => row(g, input.items))}`,
+          ["normalized query", "count", "status", "owner", "due (UTC)", "source", "last seen", "actions"],
+          html`${input.gaps.map((g) => row(g, input, now))}`,
         )}
     ${(input.offset ?? 0) > 0 || input.gaps.length === 200
       ? html`<p class="mt-2 text-[11px]">
           ${(input.offset ?? 0) > 0
             ? html`<a
-                href="/admin/knowledge/gaps?status=${input.status}&offset=${Math.max(0, (input.offset ?? 0) - 200)}"
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${Math.max(0, (input.offset ?? 0) - 200)}${input.assigned === "none" ? "&assigned=none" : ""}"
                 class="text-sky-400 hover:underline"
                 >← prev page</a
               >`
             : ""}
           ${input.gaps.length === 200
             ? html`<a
-                href="/admin/knowledge/gaps?status=${input.status}&offset=${(input.offset ?? 0) + 200}"
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${(input.offset ?? 0) + 200}${input.assigned === "none" ? "&assigned=none" : ""}"
                 class="ml-3 text-sky-400 hover:underline"
                 >next page →</a
               >`
@@ -157,7 +290,9 @@ export function knowledgeGapsPage(input: GapsInput): string {
     <p class="mt-3 text-[11px] text-slate-500">
       Repeated unanswered agent queries land here (COMPOSER_REFUSAL
       from /ask, INTERACTION_SIGNAL from 228 classify, MANUAL).
-      Resolving links the gap to the item that now covers it.
+      Sorted overdue-first — a deadline counts only while the gap
+      still needs work. Reassign/unassign never reset the deadline;
+      it moves only on the detail page, with a reason.
     </p>
   `;
   return knowledgeShell("Gaps", body).toString();

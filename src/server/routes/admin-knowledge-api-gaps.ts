@@ -1,14 +1,17 @@
 /**
  * EPIC-229 (SLICE-229-8): admin knowledge-gap endpoints —
- *   GET  /admin/api/knowledge/gaps?status=&sort=
+ *   GET  /admin/api/knowledge/gaps?status=&sort=&assigned=
  *   GET  /admin/api/knowledge/gaps/:id/events   (264-11 audit trail)
  *   POST /admin/api/knowledge/gaps/:id/triage
  *   POST /admin/api/knowledge/gaps/:id/resolve  {linkedItemId}
  *   POST /admin/api/knowledge/gaps/:id/wontfix
+ *   POST /admin/api/knowledge/gaps/:id/assign   {assignedTo, dueAt?}    (264-12)
+ *   POST /admin/api/knowledge/gaps/:id/unassign                        (264-12)
+ *   POST /admin/api/knowledge/gaps/:id/due      {dueAt|null, reason}   (264-12)
  *
  * Split out of admin-knowledge-api.ts (300-line guard). Writes need
  * idempotency-key; lifecycle CAS lives in lib/knowledge/gaps.ts —
- * the route maps honest {ok:false} to 400/404.
+ * the route maps honest {ok:false} to 400/404/409.
  */
 
 import type { Hono } from "hono";
@@ -19,6 +22,7 @@ import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
+import type { OperatorStore } from "../lib/operators/store";
 import {
   KNOWLEDGE_GAP_STATUSES,
   listGaps,
@@ -32,6 +36,7 @@ import {
   requestFingerprint,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
+import { registerKnowledgeGapOwnershipRoutes } from "./admin-knowledge-api-gaps-ownership";
 
 const resolveBodySchema = z.object({
   linkedItemId: z
@@ -40,13 +45,20 @@ const resolveBodySchema = z.object({
     .refine(noCtrlStrict, { message: "control characters not allowed" }),
 });
 
-const errBody = (error: string) => ({ error: { code: error, message: error } });
-const statusOf = (error: string) =>
-  error === "not_found" || error === "linked_item_missing" ? 404 : 400;
+export const errBody = (error: string) => ({
+  error: { code: error, message: error },
+});
+export const statusOf = (error: string) =>
+  error === "not_found" || error === "linked_item_missing"
+    ? 404
+    : error === "already_assigned" || error === "gap_terminal"
+      ? 409
+      : 400;
 
 export function registerKnowledgeGapRoutes(
   app: Hono,
   store: KnowledgeStore,
+  operators: OperatorStore,
 ): void {
   app.get(
     "/admin/api/knowledge/gaps",
@@ -76,7 +88,10 @@ export function registerKnowledgeGapRoutes(
       const offset = int(c.req.query("offset"), 0, 1_000_000);
       const rows = await listGaps(store, {
         status: status === "all" ? undefined : status,
-        sort: sort === "lastSeen" ? "lastSeen" : "count",
+        sort:
+          sort === "lastSeen" || sort === "overdue" ? sort : "count",
+        // 264-12: ?assigned=none — the unassigned pick-up pool.
+        unassigned: c.req.query("assigned") === "none",
         limit,
         offset,
       });
@@ -187,4 +202,8 @@ export function registerKnowledgeGapRoutes(
       },
     );
   }
+
+  // 264-12: /assign + /unassign + /due — ownership write path lives
+  // in the sibling file (300-line cap).
+  registerKnowledgeGapOwnershipRoutes(app, store, operators);
 }

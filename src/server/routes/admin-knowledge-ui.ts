@@ -30,23 +30,21 @@ import { wrapFragment } from "./ui/helpers";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
-  listGaps,
   listKnowledgeCapabilities,
   relationsFor,
   listEvidence,
   evidenceFingerprint,
   supersededBy,
-  KNOWLEDGE_GAP_STATUSES,
   KNOWLEDGE_STATUSES,
 } from "../lib/knowledge";
 import { knowledgeListPage } from "../../views/admin-knowledge/list";
 import { knowledgeDetailPage } from "../../views/admin-knowledge/detail";
 import { taxonomyFragment } from "../../views/admin-knowledge/detail-taxonomy";
-import { knowledgeGapsPage } from "../../views/admin-knowledge/gaps";
 import { registerKnowledgeUiMutations } from "./admin-knowledge-ui-mutations";
 import { registerKnowledgeUiTaxonomyMutations } from "./admin-knowledge-ui-mutations-taxonomy";
+import { registerKnowledgeUiGapPages } from "./admin-knowledge-ui-gaps";
 
-const page = (c: Context, frag: string, title: string): Response =>
+export const page = (c: Context, frag: string, title: string): Response =>
   c.html(
     wrapFragment(c, frag, title, {
       path: c.req.path,
@@ -161,43 +159,9 @@ export function createAdminKnowledgeUi(
     );
   });
 
-  app.get("/admin/knowledge/gaps", async (c) => {
-    const status = c.req.query("status") ?? "OPEN";
-    // Arc R1 M8: unvalidated ?status= reached the PG driver → 500
-    // on %00 etc. Same enum + "all" contract as the JSON API.
-    if (
-      status !== "all" &&
-      !KNOWLEDGE_GAP_STATUSES.includes(status as never)
-    ) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
-    }
-    // Arc R3 M-9: ?offset= paging — a fixed limit-200 hid the tail
-    // of a capped 2000-row backlog from triage entirely.
-    // Arc R4 M-9: floor — ?offset=1.5 otherwise binds a non-integer
-    // to the int4 param and 500s on PG.
-    const offset = Math.max(
-      0,
-      Math.min(100000, Math.floor(Number(c.req.query("offset") ?? 0)) || 0),
-    );
-    const gaps = await listGaps(store, {
-      status: status === "all" ? undefined : status,
-      sort: "count",
-      limit: 200,
-      offset,
-    });
-    const items = await store.listItems({ limit: 200 });
-    return page(
-      c,
-      knowledgeGapsPage({
-        gaps,
-        status,
-        items,
-        offset,
-        flash: { ok: c.req.query("ok"), err: c.req.query("err") },
-      }),
-      "Gaps",
-    );
-  });
+  // SLICE-264-12: the gaps backlog + gap detail pages live in
+  // admin-knowledge-ui-gaps.ts (300-line cap).
+  registerKnowledgeUiGapPages(app, store, operatorStore);
 
   app.get("/admin/knowledge/:id", async (c) => {
     const id = c.req.param("id") ?? "";
@@ -254,7 +218,7 @@ export function createAdminKnowledgeUi(
     );
   });
 
-  registerKnowledgeUiMutations(app, store);
+  registerKnowledgeUiMutations(app, store, operatorStore);
   registerKnowledgeUiTaxonomyMutations(app, store);
   return app;
 }
