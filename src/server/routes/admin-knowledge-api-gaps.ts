@@ -14,9 +14,9 @@ import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { getPrincipal } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_GAP_STATUSES,
@@ -29,7 +29,6 @@ import {
 import {
   rejectCtrl,
   requestFingerprint,
-  requireOperatorRef,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
@@ -50,7 +49,6 @@ export function registerKnowledgeGapRoutes(
 ): void {
   app.get(
     "/admin/api/knowledge/gaps",
-    adminAuth,
     describeRoute({
       summary: "List knowledge gaps — deduped agent-signal backlog",
       tags: ["Admin Knowledge"],
@@ -88,8 +86,7 @@ export function registerKnowledgeGapRoutes(
   for (const action of ["triage", "resolve", "wontfix"] as const) {
     app.post(
       `/admin/api/knowledge/gaps/:id/${action}`,
-      adminAuth,
-      describeRoute({
+        describeRoute({
         summary: `Gap lifecycle: ${action}`,
         tags: ["Admin Knowledge"],
         responses: {
@@ -102,8 +99,7 @@ export function registerKnowledgeGapRoutes(
         const gapId = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, gapId);
         if (ctrlBad) return ctrlBad;
-        const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+        const actorRef = getPrincipal(c)!.id;
         // Body is parsed OUTSIDE the produce closure (Arc R1 H1):
         // the fingerprint must cover it before the key binds.
         const raw = action === "resolve"

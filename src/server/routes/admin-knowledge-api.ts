@@ -5,22 +5,31 @@
  *   POST /admin/api/knowledge/items      (create DRAFT — idempotent)
  *   POST /admin/api/knowledge/items/:id/transition — mutations file
  *
- * All behind adminAuth. operatorRef = X-Operator-Id header claim
- * (228 precedent — self-declared inside the shared-key boundary,
- * never from the body). Admin reads DO see draft/pending content —
- * the published-only hard filter is the AGENT surface's contract.
+ * SLICE-264-6: operatorAuth now mounts once on the whole
+ * /admin/api/knowledge/* tree — the credential resolves the
+ * Principal; x-operator-id is dead at that boundary (typed 400).
+ * Actor attribution = principal.id (D-264-Q4/Q16). Capability
+ * gating rides capabilityForSurface: GET/HEAD→read, mutations→
+ * workflow (C7). Admin reads DO see draft/pending content — the
+ * published-only hard filter is the AGENT surface's contract.
  * Write endpoints require idempotency-key (contract-guards).
  */
 
 import { Hono } from "hono";
-import type { Context } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
+import {
+  capabilityForSurface,
+  getPrincipal,
+  operatorAuth,
+  requireCapability,
+} from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import type { KnowledgeStore } from "../lib/knowledge/store";
+import type { OperatorStore } from "../lib/operators";
 import {
   createKnowledgeItem,
   KNOWLEDGE_KINDS,
@@ -30,7 +39,6 @@ import {
 import {
   rejectCtrl,
   requestFingerprint,
-  requireOperatorRef,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 import { registerKnowledgeTransitionRoutes } from "./admin-knowledge-api-mutations";
@@ -51,19 +59,38 @@ const createBodySchema = z.object({
 const notFound = (c: Context) =>
   errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such knowledge item");
 
+/** actor = the credential-resolved principal — never request data. */
+const actorId = (c: Context): string => getPrincipal(c)!.id;
+
 export interface AdminKnowledgeDeps {
   store: KnowledgeStore;
+  operatorStore: OperatorStore;
 }
 
 export function createAdminKnowledgeRoutes(
   deps: AdminKnowledgeDeps,
 ): Hono {
   const app = new Hono();
-  const { store } = deps;
+  const { store, operatorStore } = deps;
+
+  // SLICE-264-6: one auth mount for the whole family. operatorAuth
+  // resolves principal+operator, rejects x-operator-id (typed 400),
+  // and the capability gate classifies by capabilityForSurface —
+  // GET/HEAD → "read", mutations → "workflow".
+  const auth = operatorAuth(operatorStore);
+  const capGate: MiddlewareHandler = async (c, next) => {
+    const deny = requireCapability(
+      c,
+      capabilityForSurface(c.req.path, c.req.method),
+    );
+    if (deny) return deny;
+    await next();
+  };
+  app.use("/admin/api/knowledge", auth, capGate);
+  app.use("/admin/api/knowledge/*", auth, capGate);
 
   app.get(
     "/admin/api/knowledge/items",
-    adminAuth,
     describeRoute({
       summary: "Knowledge items list — operator console backing",
       tags: ["Admin Knowledge"],
@@ -100,7 +127,6 @@ export function createAdminKnowledgeRoutes(
 
   app.get(
     "/admin/api/knowledge/items/:id",
-    adminAuth,
     describeRoute({
       summary: "Knowledge item detail — versions + status audit",
       tags: ["Admin Knowledge"],
@@ -126,7 +152,6 @@ export function createAdminKnowledgeRoutes(
 
   app.post(
     "/admin/api/knowledge/items",
-    adminAuth,
     describeRoute({
       summary: "Create a knowledge item (DRAFT + version 1)",
       tags: ["Admin Knowledge"],
@@ -137,8 +162,7 @@ export function createAdminKnowledgeRoutes(
       },
     }),
     async (c) => {
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actor = actorId(c);
       const raw = await c.req.json().catch(() => null);
       const body = createBodySchema.safeParse(raw);
       if (!body.success) {
@@ -154,7 +178,7 @@ export function createAdminKnowledgeRoutes(
           const r = await createKnowledgeItem(
             store,
             body.data as CreateKnowledgeItemInput,
-            actorRef,
+            actor,
           );
           if (!r.ok) {
             const status = r.error === "slug_taken" ? 409 : 400;
@@ -165,9 +189,12 @@ export function createAdminKnowledgeRoutes(
               },
             };
           }
-          return { status: 201, body: { item: r.item, version: r.version } };
+          return {
+            status: 201,
+            body: { item: r.item, version: r.version },
+          };
         },
-        { owner: actorRef, fingerprint: requestFingerprint(body.data) },
+        { owner: actor, fingerprint: requestFingerprint(body.data) },
       );
     },
   );
@@ -176,5 +203,6 @@ export function createAdminKnowledgeRoutes(
   registerKnowledgeCapabilityRoutes(app, store);
   registerKnowledgeRelationRoutes(app, store);
   registerKnowledgeGapRoutes(app, store);
+
   return app;
 }

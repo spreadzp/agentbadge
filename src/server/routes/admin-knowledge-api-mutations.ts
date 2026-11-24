@@ -14,9 +14,9 @@ import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { getPrincipal } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
@@ -27,7 +27,6 @@ import {
 import {
   rejectCtrl,
   requestFingerprint,
-  requireOperatorRef,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
@@ -60,7 +59,6 @@ export function registerKnowledgeTransitionRoutes(
 ): void {
   app.post(
     "/admin/api/knowledge/items/:id/transition",
-    adminAuth,
     describeRoute({
       summary: "Transition a knowledge item through the approval machine",
       tags: ["Admin Knowledge"],
@@ -76,8 +74,7 @@ export function registerKnowledgeTransitionRoutes(
       const itemId = c.req.param("id");
       const ctrlBad = rejectCtrl(c, itemId);
       if (ctrlBad) return ctrlBad;
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const raw = await c.req.json().catch(() => null);
       const body = transitionBodySchema.safeParse(raw);
       if (!body.success) {
@@ -138,7 +135,6 @@ export function registerKnowledgeTransitionRoutes(
   // current status (drives the SSR button set — SSR renders only these).
   app.get(
     "/admin/api/knowledge/items/:id/transitions",
-    adminAuth,
     describeRoute({
       summary: "Legal transitions for an item's current status",
       tags: ["Admin Knowledge"],

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import {
@@ -7,27 +7,33 @@ import {
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeRoutes } from "../src/server/routes/admin-knowledge-api";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 
 /**
- * SLICE-229-11 regression — hermes verify r1 findings:
- * - H-1: every mutating /admin/api/knowledge/* POST requires
- *   x-operator-id → typed 400, actor attribution never "admin".
+ * SLICE-229-11 regression — hermes verify r1 findings (SLICE-264-6
+ * re-expression):
+ * - H-1 then: x-operator-id was REQUIRED for attribution.
+ * - H-1 now: the header is a typed 400 at the operatorAuth boundary
+ *   (D-264-Q16) — actor attribution is the credential's principal.id
+ *   and can never be self-asserted again.
  * - M-1: NUL/control chars in stored text fields → typed 400,
  *   never a 500 (PG driver can't encode NUL).
  */
 
-const ADMIN = { "x-admin-key": "test-admin-key" };
-const OPH = { ...ADMIN, "x-operator-id": "ops_test" };
 let idem = 0;
 const key = () => `kn-fix-${Date.now()}-${++idem}`;
 
-function mkApp() {
-  process.env.ADMIN_API_KEY = "test-admin-key";
+async function mkApp() {
   resetIdempotencyStore();
   const store = createMemoryKnowledgeStores();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
   const app = new Hono();
-  app.route("/", createAdminKnowledgeRoutes({ store }));
-  return { app, store };
+  app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+  return { app, store, alice, AUTH: { "x-admin-key": alice.key } };
 }
 
 const post = (
@@ -42,20 +48,17 @@ const post = (
     body: JSON.stringify(body ?? {}),
   });
 
-beforeAll(() => {
-  process.env.ADMIN_API_KEY = "test-admin-key";
-});
-
-describe("229-11: x-operator-id required on mutations", () => {
-  it("create/transition/capability/relation/evidence/gap → 400 without header", async () => {
-    const { app, store } = mkApp();
+describe("264-6: x-operator-id dies at the boundary", () => {
+  it("create/transition/capability/relation/evidence/gap → 400 on header presence", async () => {
+    const { app, store, AUTH } = await mkApp();
     const create = await post(
       app,
       "/admin/api/knowledge/items",
-      { ...ADMIN, "idempotency-key": key() },
+      { ...AUTH, "x-operator-id": "ops_test", "idempotency-key": key() },
       { kind: "FAQ", title: "t", body: "b" },
     );
     expect(create.status).toBe(400);
+    expect((await create.json()).code).toBe("OPERATOR_HEADER_REJECTED");
     expect(await store.listItems({})).toHaveLength(0);
 
     const item = await createKnowledgeItem(
@@ -66,7 +69,7 @@ describe("229-11: x-operator-id required on mutations", () => {
     if (!item.ok) throw new Error("seed failed");
     const vid = item.item.latestVersionId ?? "";
 
-    const noOp = { ...ADMIN };
+    const withHeader = { ...AUTH, "x-operator-id": "ops_test" };
     const cases: [string, unknown][] = [
       [`/admin/api/knowledge/items/${item.item.id}/transition`, { to: "PENDING" }],
       ["/admin/api/knowledge/relations", { fromItemId: item.item.id, toItemId: item.item.id, type: "RELATED_TO" }],
@@ -76,28 +79,37 @@ describe("229-11: x-operator-id required on mutations", () => {
       ["/admin/api/knowledge/gaps/kg_x/triage", {}],
     ];
     for (const [path, body] of cases) {
-      const r = await post(app, path, { ...noOp, "idempotency-key": key() }, body);
+      const r = await post(
+        app,
+        path,
+        { ...withHeader, "idempotency-key": key() },
+        body,
+      );
       expect(r.status).toBe(400);
-      expect((await r.json()).code).toBe("MISSING_FIELDS");
+      expect((await r.json()).code).toBe("OPERATOR_HEADER_REJECTED");
     }
     expect((await store.getItem(item.item.id))?.status).toBe("DRAFT");
   });
 
-  it("same mutations succeed WITH x-operator-id", async () => {
-    const { app } = mkApp();
+  it("mutations succeed on the credential alone — actor = operator id", async () => {
+    const { app, alice, AUTH } = await mkApp();
     const r = await post(
       app,
       "/admin/api/knowledge/items",
-      { ...OPH, "idempotency-key": key() },
+      { ...AUTH, "idempotency-key": key() },
       { kind: "FAQ", title: "op ok", body: "b" },
     );
     expect(r.status).toBe(201);
+    const created = await r.json();
+    const events = created.item;
+    expect(events.createdBy ?? "").not.toBe("admin");
+    expect(created.item.createdBy).toBe(alice.operatorId);
   });
 });
 
 describe("229-11: NUL/control chars rejected, never 500", () => {
   it("title/body/summary with NUL → 400 at the route", async () => {
-    const { app, store } = mkApp();
+    const { app, store, AUTH } = await mkApp();
     for (const field of ["title", "body", "summary"] as const) {
       const payload: Record<string, string> = {
         kind: "GUIDE", slug: `nul-${field}`, title: "t", body: "b", summary: "s",
@@ -106,7 +118,7 @@ describe("229-11: NUL/control chars rejected, never 500", () => {
       const r = await post(
         app,
         "/admin/api/knowledge/items",
-        { ...OPH, "idempotency-key": key() },
+        { ...AUTH, "idempotency-key": key() },
         payload,
       );
       expect(r.status).toBe(400);
@@ -132,7 +144,7 @@ describe("229-11: NUL/control chars rejected, never 500", () => {
  */
 describe("229-12: read-path NUL/control chars → 400", () => {
   it("path params :id/:vid/:gapId → 400", async () => {
-    const { app } = mkApp();
+    const { app, AUTH } = await mkApp();
     const gets = [
       "/admin/api/knowledge/items/%00",
       "/admin/api/knowledge/items/abc%00def",
@@ -142,15 +154,15 @@ describe("229-12: read-path NUL/control chars → 400", () => {
       "/admin/api/knowledge/evidence/citing?uri=%00",
     ];
     for (const path of gets) {
-      const r = await app.request(path, { headers: ADMIN });
+      const r = await app.request(path, { headers: AUTH });
       expect(r.status).toBe(400);
       expect((await r.json()).code).toBe("INVALID_INPUT");
     }
   });
 
   it("mutation path params + id body fields → 400", async () => {
-    const { app } = mkApp();
-    const h = { ...OPH, "idempotency-key": key() };
+    const { app, AUTH } = await mkApp();
+    const h = { ...AUTH, "idempotency-key": key() };
     const cases: [string, unknown][] = [
       ["/admin/api/knowledge/items/pre\u0000post/transition", { to: "PENDING" }],
       ["/admin/api/knowledge/items/pre\u0000post/capabilities", { capabilityId: "kc_x" }],
@@ -167,14 +179,14 @@ describe("229-12: read-path NUL/control chars → 400", () => {
   });
 
   it("transition reason with NUL → 400, item untouched", async () => {
-    const { app, store } = mkApp();
+    const { app, store, AUTH } = await mkApp();
     const item = await createKnowledgeItem(
       store,
       { kind: "GUIDE", slug: "ctrl-op", title: "t", body: "b" },
       "ops",
     );
     if (!item.ok) throw new Error("seed failed");
-    const h = { ...OPH, "idempotency-key": key() };
+    const h = { ...AUTH, "idempotency-key": key() };
     const r = await post(
       app,
       `/admin/api/knowledge/items/${item.item.id}/transition`,

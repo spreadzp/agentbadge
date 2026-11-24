@@ -15,6 +15,10 @@ import {
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
 import { approveTransition } from "./helpers/knowledge";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 
 /**
  * Arc Studio R2 regression pack — one test per finding class:
@@ -30,19 +34,23 @@ import { approveTransition } from "./helpers/knowledge";
 
 const OP = "ops_test";
 const OP2 = "ops_review";
-const KEY = "test-admin-key";
-const AUTH = `Basic ${Buffer.from(`x:${KEY}`).toString("base64")}`;
 
-function mkUi(store: ReturnType<typeof createMemoryKnowledgeStores>) {
-  process.env.ADMIN_API_KEY = KEY;
+// SLICE-264-6: the console rides operatorBrowserAuth — Basic with an
+// opk_ credential; the actor is the credential's operator id.
+async function mkUi(store: ReturnType<typeof createMemoryKnowledgeStores>) {
   resetIdempotencyStore();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
   const app = new Hono();
-  app.route("/", createAdminKnowledgeUi(store));
-  return app;
+  app.route("/", createAdminKnowledgeUi(store, operatorStore));
+  return {
+    app,
+    AUTH: `Basic ${Buffer.from(`x:${alice.key}`).toString("base64")}`,
+  };
 }
-const get = (app: Hono, p: string) =>
+const get = (app: Hono, AUTH: string, p: string) =>
   app.request(p, { headers: { authorization: AUTH } });
-const post = (app: Hono, p: string, b: Record<string, string>) =>
+const post = (app: Hono, AUTH: string, p: string, b: Record<string, string>) =>
   app.request(p, {
     method: "POST",
     headers: {
@@ -51,14 +59,15 @@ const post = (app: Hono, p: string, b: Record<string, string>) =>
     },
     body: new URLSearchParams(b).toString(),
   });
-const token = async (app: Hono, page: string) =>
-  /name="formToken" value="([^"]+)"/.exec(await (await get(app, page)).text())
-    ?.[1];
+const token = async (app: Hono, AUTH: string, page: string) =>
+  /name="formToken" value="([^"]+)"/.exec(
+    await (await get(app, AUTH, page)).text(),
+  )?.[1];
 
 describe("Arc R2 — H-1 single-use form tokens", () => {
   it("missing token refuses; forged token refuses; minted works once", async () => {
     const store = createMemoryKnowledgeStores();
-    const app = mkUi(store);
+    const { app, AUTH } = await mkUi(store);
     const c = await createKnowledgeItem(
       store, { kind: "GUIDE", title: "t", body: "b" }, OP,
     );
@@ -67,24 +76,24 @@ describe("Arc R2 — H-1 single-use form tokens", () => {
     const path = `/admin/knowledge/${id}/transition`;
 
     // No token at all → refused, item untouched.
-    const noTok = await post(app, path, { to: "PENDING", operator: "op" });
+    const noTok = await post(app, AUTH, path, { to: "PENDING" });
     expect(noTok.headers.get("location")).toContain("err=");
     // Forged token shape → same refusal.
-    const forged = await post(app, path, {
-      to: "PENDING", operator: "op", formToken: "ft_forged",
+    const forged = await post(app, AUTH, path, {
+      to: "PENDING", formToken: "ft_forged",
     });
     expect(forged.headers.get("location")).toContain("err=");
     expect((await store.getItem(id))?.status).toBe("DRAFT");
 
-    const t = await token(app, `/admin/knowledge/${id}`);
+    const t = await token(app, AUTH, `/admin/knowledge/${id}`);
     expect(t).toBeTruthy();
-    const ok1 = await post(app, path, {
-      to: "PENDING", operator: "op", formToken: t!,
+    const ok1 = await post(app, AUTH, path, {
+      to: "PENDING", formToken: t!,
     });
     expect(ok1.headers.get("location")).not.toContain("err=");
     // Spend-replay: same token, same body → refused (no silent dedupe).
-    const replay = await post(app, path, {
-      to: "PENDING", operator: "op", formToken: t!,
+    const replay = await post(app, AUTH, path, {
+      to: "PENDING", formToken: t!,
     });
     expect(replay.headers.get("location")).toContain("err=");
     const events = await store.listStatusEvents(id);

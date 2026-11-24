@@ -18,10 +18,9 @@ import {
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
 import { rejectCtrl } from "./admin-operator-guard";
+import { getPrincipal } from "../middleware/operatorAuth";
 import {
   formStr,
-  opOf,
-  opBad,
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "./admin-knowledge-ui-mutations-shared";
@@ -38,13 +37,6 @@ export function registerKnowledgeUiTaxonomyMutations(
         const b = await c.req.parseBody();
         const bad4 = rejectCtrl(c, id, formStr(b, "capabilityId"));
         if (bad4) return bad4;
-        // Arc R2 M-5: capability link/unlink skipped opBad entirely.
-        if (opBad(b)) {
-          return c.redirect(
-            backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-            303,
-          );
-        }
         if (!tokenConsumed(b)) {
           return c.redirect(
             backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -74,15 +66,8 @@ export function registerKnowledgeUiTaxonomyMutations(
         const b = await c.req.parseBody();
         const bad5 = rejectCtrl(
           c, id, formStr(b, "relationId"), formStr(b, "toItemId"),
-          formStr(b, "operator"),
-        );
+                  );
         if (bad5) return bad5;
-        if (opBad(b)) {
-          return c.redirect(
-            backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-            303,
-          );
-        }
         if (!tokenConsumed(b)) {
           return c.redirect(
             backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -90,12 +75,12 @@ export function registerKnowledgeUiTaxonomyMutations(
           );
         }
         const r = remove
-          ? await removeRelation(store, formStr(b, "relationId"), opOf(b))
+          ? await removeRelation(store, formStr(b, "relationId"), getPrincipal(c)!.id)
           : await addRelation(store, {
               fromItemId: id,
               toItemId: formStr(b, "toItemId"),
               type: formStr(b, "type") as never,
-              actorRef: opOf(b),
+              actorRef: getPrincipal(c)!.id,
             });
         return c.redirect(
           backWith(
@@ -112,15 +97,8 @@ export function registerKnowledgeUiTaxonomyMutations(
         const id = c.req.param("id") ?? "";
         const b = await c.req.parseBody();
         const bad6 = rejectCtrl(
-          c, id, formStr(b, "evidenceId"), formStr(b, "operator"),
-        );
+          c, id, formStr(b, "evidenceId"),         );
         if (bad6) return bad6;
-        if (opBad(b)) {
-          return c.redirect(
-            backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-            303,
-          );
-        }
         if (!tokenConsumed(b)) {
           return c.redirect(
             backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -132,12 +110,12 @@ export function registerKnowledgeUiTaxonomyMutations(
         // Arc R1 H4 / R2 M-11: domain guard refuses evidence writes
         // outside DRAFT; removals carry the operator for the event.
         const r = remove
-          ? await removeEvidence(store, formStr(b, "evidenceId"), opOf(b))
+          ? await removeEvidence(store, formStr(b, "evidenceId"), getPrincipal(c)!.id)
           : await addEvidence(store, vid, {
               type: formStr(b, "type") as never,
               uri: formStr(b, "uri"),
               label: formStr(b, "label") || null,
-              addedBy: opOf(b),
+              addedBy: getPrincipal(c)!.id,
             });
         return c.redirect(
           backWith(

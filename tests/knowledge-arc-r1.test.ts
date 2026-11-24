@@ -19,6 +19,10 @@ import { createAdminKnowledgeRoutes } from "../src/server/routes/admin-knowledge
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
 import { approveTransition } from "./helpers/knowledge";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 
 /**
  * Arc Studio R1 regression pack — one test per finding class so a
@@ -36,24 +40,38 @@ import { approveTransition } from "./helpers/knowledge";
  * - M10: SSR double-submit dedupes
  */
 
-const ADMIN = { authorization: "Bearer test-admin-key" };
+// SLICE-264-6: route tests authenticate with seeded opk_ creds —
+// the actor is the credential's operator id, not a header.
 const OP = "ops_test";
 const OP2 = "ops_review";
 let idem = 0;
-const writeHeaders = (op = OP) => ({
-  ...ADMIN,
-  "x-operator-id": op,
+const writeHeaders = (key: string) => ({
+  "x-admin-key": key,
   "content-type": "application/json",
   "idempotency-key": `arc-${Date.now()}-${++idem}`,
 });
 
-function mkApp() {
-  process.env.ADMIN_API_KEY = "test-admin-key";
+async function mkApp() {
   resetIdempotencyStore();
   const store = createMemoryKnowledgeStores();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
+  const bob = await seedOperator(operatorStore, "Bob");
   const app = new Hono();
-  app.route("/", createAdminKnowledgeRoutes({ store }));
-  return { app, store };
+  app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+  return { app, store, alice, bob };
+}
+
+/** SSR console helper — operatorBrowserAuth + seeded cred. */
+async function mkUi() {
+  resetIdempotencyStore();
+  const store = createMemoryKnowledgeStores();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
+  const app = new Hono();
+  app.route("/", createAdminKnowledgeUi(store, operatorStore));
+  const AUTH = `Basic ${Buffer.from(`x:${alice.key}`).toString("base64")}`;
+  return { app, store, alice, AUTH };
 }
 
 async function publishItem(
@@ -87,7 +105,7 @@ async function publishItem(
 
 describe("Arc R1 — H1 idempotency payload binding", () => {
   it("same key + different body → 409; same body → replay", async () => {
-    const { app, store } = mkApp();
+    const { app, store, alice } = await mkApp();
     const c0 = await createKnowledgeItem(
       store, { kind: "GUIDE", title: "idem", body: "b" }, OP,
     );
@@ -97,7 +115,7 @@ describe("Arc R1 — H1 idempotency payload binding", () => {
     const mk = (to: string) =>
       app.request(`/admin/api/knowledge/items/${item.id}/transition`, {
         method: "POST",
-        headers: { ...writeHeaders(), "idempotency-key": key },
+        headers: { ...writeHeaders(alice.key), "idempotency-key": key },
         body: JSON.stringify({ to }),
       });
     const first = await mk("PENDING");
@@ -115,34 +133,30 @@ describe("Arc R1 — H1 idempotency payload binding", () => {
   });
 });
 
-describe("Arc R1 — H2 operator identity", () => {
-  it("bypass shapes → 400 at the route edge", async () => {
-    const { app, store } = mkApp();
+describe("Arc R1 — H2 operator identity (SLICE-264-6 boundary)", () => {
+  it("x-operator-id presence → typed 400 OPERATOR_HEADER_REJECTED", async () => {
+    const { app, store, alice } = await mkApp();
     const c0 = await createKnowledgeItem(
       store, { kind: "GUIDE", title: "op", body: "b" }, OP,
     );
     if (!c0.ok) throw new Error("create failed");
     const item = c0.item;
-    // Zero-width/fullwidth refs can't travel inside an HTTP header
-    // (>255 bytes) — the NFKC+shape checks cover them at the lib
-    // layer (see the §16.5 workflow test).
-    for (const bad of [
-      "agent-7",
-      "agt-1",
-      "did:hedera:testnet:0.0.1",
-      "key:abc",
-      "bot:x",
-      "x".repeat(81),
-    ]) {
+    // The header is dead at the operatorAuth boundary — any shape,
+    // even a previously-valid one, is a typed 400 (D-264-Q16).
+    for (const op of ["ops_test", "agent-7", "did:hedera:testnet:0.0.1"]) {
       const r = await app.request(
         `/admin/api/knowledge/items/${item.id}/transition`,
         {
           method: "POST",
-          headers: { ...writeHeaders(bad) },
+          headers: {
+            ...writeHeaders(alice.key),
+            "x-operator-id": op,
+          },
           body: JSON.stringify({ to: "PENDING" }),
         },
       );
       expect(r.status).toBe(400);
+      expect((await r.json()).code).toBe("OPERATOR_HEADER_REJECTED");
     }
   });
 
@@ -310,18 +324,18 @@ describe("Arc R1 — M5/M6 determinism + unicode", () => {
 
 describe("Arc R1 — M8/M9 input edges", () => {
   it("percent-encoded control chars in :id → 400, never 500", async () => {
-    const { app } = mkApp();
+    const { app, alice } = await mkApp();
     const r = await app.request(
       "/admin/api/knowledge/items/ki_%0A/transition",
       {
         method: "POST",
-        headers: writeHeaders(),
+        headers: writeHeaders(alice.key),
         body: JSON.stringify({ to: "PENDING" }),
       },
     );
     expect(r.status).toBe(400);
     const g = await app.request("/admin/api/knowledge/items/ki_%00", {
-      headers: ADMIN,
+      headers: { "x-admin-key": alice.key },
     });
     expect(g.status).toBe(400);
   });
@@ -343,12 +357,7 @@ describe("Arc R1 — M8/M9 input edges", () => {
 
 describe("Arc R2 — single-use form tokens + resolve published-only", () => {
   it("token double-submit refused: one minted token, one transition", async () => {
-    process.env.ADMIN_API_KEY = "test-admin-key";
-    resetIdempotencyStore();
-    const store = createMemoryKnowledgeStores();
-    const app = new Hono();
-    app.route("/", createAdminKnowledgeUi(store));
-    const AUTH = `Basic ${Buffer.from("x:test-admin-key").toString("base64")}`;
+    const { app, store, AUTH } = await mkUi();
     const get = (path: string) =>
       app.request(path, { headers: { authorization: AUTH } });
     const post = (path: string, body: Record<string, string>) =>

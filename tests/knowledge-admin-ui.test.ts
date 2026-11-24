@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import {
@@ -9,33 +9,47 @@ import {
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 import { approveTransition } from "./helpers/knowledge";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 
 /**
- * SLICE-229-9 DoD — operator SSR console:
+ * SLICE-229-9 DoD — operator SSR console (SLICE-264-6 auth model):
  * - items list renders, status filter works
  * - detail page renders only LEGAL transition buttons per status
  * - publish flow end-to-end through UI POSTs (draft→pending→verified
- *   →published), statuses visible in pages
+ *   →published) — SoD enforced by real credentials: submit/verify
+ *   must ride DIFFERENT operator keys, not different self-asserted
+ *   "operator" form fields
  * - gaps screen lists gaps + resolve-with-link works via form posts
  * - XSS: operator/agent-supplied text is escaped in pages
  * - 401 without credentials; cross-origin POST refused (B-3)
  */
 
-const KEY = "test-admin-key";
-const AUTH = `Basic ${Buffer.from(`x:${KEY}`).toString("base64")}`;
+const basic = (key: string) =>
+  `Basic ${Buffer.from(`x:${key}`).toString("base64")}`;
 const OP = "ops_test";
 
-function mkApp() {
+async function mkApp() {
   const store = createMemoryKnowledgeStores();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
+  const bob = await seedOperator(operatorStore, "Bob");
   const app = new Hono();
-  app.route("/", createAdminKnowledgeUi(store));
-  return { app, store };
+  app.route("/", createAdminKnowledgeUi(store, operatorStore));
+  return { app, store, alice, bob, A: basic(alice.key), B: basic(bob.key) };
 }
 
-const get = (app: Hono, path: string) =>
+const get = (app: Hono, AUTH: string, path: string) =>
   app.request(path, { headers: { authorization: AUTH } });
 
-const post = (app: Hono, path: string, body: Record<string, string>) =>
+const post = (
+  app: Hono,
+  AUTH: string,
+  path: string,
+  body: Record<string, string>,
+) =>
   app.request(path, {
     method: "POST",
     headers: {
@@ -63,11 +77,12 @@ const hiddenFields = (formHtml: string) => {
 };
 const postForm = async (
   app: Hono,
+  AUTH: string,
   pagePath: string,
   postPath: string,
   body: Record<string, string>,
 ) => {
-  const html = await (await get(app, pagePath)).text();
+  const html = await (await get(app, AUTH, pagePath)).text();
   const forms = [
     ...html.matchAll(
       new RegExp(
@@ -81,24 +96,17 @@ const postForm = async (
     form = forms.find((f) => f.includes(`value="${body.to}"`)) ?? forms[0];
   }
   if (!form) throw new Error(`no form posting to ${postPath} on ${pagePath}`);
-  return post(app, postPath, { ...hiddenFields(form), ...body });
+  return post(app, AUTH, postPath, { ...hiddenFields(form), ...body });
 };
-
-beforeAll(() => {
-  process.env.ADMIN_API_KEY = KEY;
-});
-afterAll(() => {
-  delete process.env.ADMIN_API_KEY;
-});
 
 describe("admin knowledge UI (SLICE-229-9)", () => {
   it("401 without credentials; cross-origin POST refused", async () => {
-    const { app } = mkApp();
+    const { app, A } = await mkApp();
     expect((await app.request("/admin/knowledge")).status).toBe(401);
     const xpost = await app.request("/admin/knowledge/create", {
       method: "POST",
       headers: {
-        authorization: AUTH,
+        authorization: A,
         origin: "https://evil.example",
         "content-type": "application/x-www-form-urlencoded",
       },
@@ -108,9 +116,9 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
   });
 
   it("create → publish flow via UI; only legal buttons render", async () => {
-    const { app } = mkApp();
+    const { app, A, B } = await mkApp();
     const create = await postForm(
-      app, "/admin/knowledge", "/admin/knowledge/create", {
+      app, A, "/admin/knowledge", "/admin/knowledge/create", {
         title: "UI flow doc",
         body: "ui flow body",
         kind: "GUIDE",
@@ -123,7 +131,7 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     expect(id).toMatch(/^ki_/);
 
     // DRAFT detail: submit+withdraw buttons, NO publish/verify.
-    let page = await (await get(app, loc.split("?")[0]!)).text();
+    let page = await (await get(app, A, loc.split("?")[0]!)).text();
     expect(page).toContain("Submit for review");
     expect(page).toContain("Withdraw");
     expect(page).not.toContain("Publish");
@@ -133,43 +141,41 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     // submitter declares freezes when the item enters PENDING, so a
     // verifier always reviews exactly what was submitted.
     const ev = await postForm(
-      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/evidence/add`, {
+      app, A, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/evidence/add`, {
         type: "INTERNAL_DOC",
         uri: "internal://runbook/ui-flow",
-        operator: "ui-op",
       },
     );
     expect(ev.status).toBe(303);
 
     const sub = await postForm(
-      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+      app, A, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
         to: "PENDING",
-        operator: "ui-op",
       },
     );
     expect(sub.status).toBe(303);
-    page = await (await get(app, `/admin/knowledge/${id}`)).text();
+    page = await (await get(app, A, `/admin/knowledge/${id}`)).text();
     expect(page).toContain("Verify");
     // PENDING detail must NOT offer the evidence form any more.
     expect(page).not.toContain("evidence/add");
+    // SoD is real now: verify rides a DIFFERENT credential than
+    // the submitter's — self-asserted "operator" fields are gone.
     const ver = await postForm(
-      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+      app, B, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
         to: "VERIFIED",
-        operator: "ui-review",
       },
     );
     expect(ver.status).toBe(303);
-    page = await (await get(app, `/admin/knowledge/${id}`)).text();
+    page = await (await get(app, A, `/admin/knowledge/${id}`)).text();
     expect(page).toContain("Publish");
 
     const pub = await postForm(
-      app, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
+      app, A, `/admin/knowledge/${id}`, `/admin/knowledge/${id}/transition`, {
         to: "PUBLISHED",
-        operator: "ui-op",
       },
     );
     expect(pub.status).toBe(303);
-    page = await (await get(app, `/admin/knowledge/${id}`)).text();
+    page = await (await get(app, A, `/admin/knowledge/${id}`)).text();
     expect(page).toContain(">PUBLISHED<");
     // PUBLISHED → only Withdraw remains.
     expect(page).toContain("Withdraw");
@@ -177,23 +183,24 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
 
     // List page shows the item under PUBLISHED filter.
     const list = await (
-      await get(app, "/admin/knowledge?status=PUBLISHED")
+      await get(app, A, "/admin/knowledge?status=PUBLISHED")
     ).text();
     expect(list).toContain("ui-flow");
     expect(list).toContain("UI flow doc");
   });
 
   it("illegal transition via UI → flash error, status unchanged", async () => {
-    const { app, store } = mkApp();
+    const { app, store, A } = await mkApp();
     const c = await createKnowledgeItem(
       store, { kind: "GUIDE", slug: "bad-trans", title: "t", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
     const r = await postForm(
       app,
+      A,
       `/admin/knowledge/${c.item.id}`,
       `/admin/knowledge/${c.item.id}/transition`,
-      { to: "PUBLISHED", operator: "ui-op" }, // DRAFT→PUBLISHED illegal
+      { to: "PUBLISHED" }, // DRAFT→PUBLISHED illegal
     );
     expect(r.status).toBe(303);
     expect(r.headers.get("location")).toContain("err=");
@@ -202,7 +209,7 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
   });
 
   it("gaps screen: gap listed, triage + resolve-with-link via posts", async () => {
-    const { app, store } = mkApp();
+    const { app, store, A } = await mkApp();
     const g = await recordGap(store, {
       query: "what is the fee schedule", source: "COMPOSER_REFUSAL",
     });
@@ -221,24 +228,26 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
       await approveTransition(store, c.item.id, to, actor);
     }
 
-    let page = await (await get(app, "/admin/knowledge/gaps")).text();
+    let page = await (await get(app, A, "/admin/knowledge/gaps")).text();
     expect(page).toContain("what is the fee schedule");
     expect(page).toContain("triage");
 
     await postForm(
       app,
+      A,
       "/admin/knowledge/gaps",
       `/admin/knowledge/gaps/${g.gap!.id}/triage`,
-      { operator: "ui-op" },
+      {},
     );
-    page = await (await get(app, "/admin/knowledge/gaps?status=TRIAGED")).text();
+    page = await (await get(app, A, "/admin/knowledge/gaps?status=TRIAGED")).text();
     expect(page).toContain("resolve");
 
     const r = await postForm(
       app,
+      A,
       "/admin/knowledge/gaps?status=TRIAGED",
       `/admin/knowledge/gaps/${g.gap!.id}/resolve`,
-      { linkedItemId: c.item.id, operator: "ui-op" },
+      { linkedItemId: c.item.id },
     );
     expect(r.status).toBe(303);
     const gap = await store.getGap(g.gap!.id);
@@ -247,14 +256,14 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
   });
 
   it("XSS: injected markup in title is escaped in list+detail", async () => {
-    const { app, store } = mkApp();
+    const { app, store, A } = await mkApp();
     const evil = `<img src=x onerror=alert(1)>`;
     const c = await createKnowledgeItem(
       store, { kind: "GUIDE", slug: "xss-item", title: evil, body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
     for (const path of ["/admin/knowledge", `/admin/knowledge/${c.item.id}`]) {
-      const page = await (await get(app, path)).text();
+      const page = await (await get(app, A, path)).text();
       expect(page).not.toContain(evil);
       expect(page).toContain("&lt;img");
     }

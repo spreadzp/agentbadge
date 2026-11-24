@@ -80,12 +80,6 @@ const transitionButtons = (
           name="expectedEvidence"
           value="${evidenceFp}"
         />
-        <input
-          type="text"
-          name="operator"
-          placeholder="operator"
-          class="w-24 rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] text-slate-300"
-        />
         <button
           type="submit"
           class="rounded px-3 py-1 text-xs ${to === "WITHDRAWN" || to === "DRAFT"

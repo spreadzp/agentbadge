@@ -5,20 +5,26 @@
  *   GET  /admin/knowledge/:id       → item detail + taxonomy forms
  *   POST /admin/knowledge/{create,:id/*,gaps/:id/*} → PRG mutations
  *
- * Browser auth: `adminBrowserAuth` Basic (ADMIN_API_KEY) — same as
- * /admin/interactions. POSTs require same-host Origin when present
- * (B-3 lesson); mutations call the domain lib directly and redirect
- * 303 — the /admin/api/knowledge/* JSON API stays the programmatic
- * surface. Mutations live in admin-knowledge-ui-mutations.ts
- * (300-line guard).
+ * Browser auth: `operatorBrowserAuth` Basic — an opk_ credential
+ * resolves the Principal (SLICE-264-6); the dual-auth window still
+ * accepts the shared key as break_glass during migration. POSTs
+ * require same-host Origin when present (B-3 lesson); mutations
+ * call the domain lib directly and redirect 303 — the
+ * /admin/api/knowledge/* JSON API stays the programmatic surface.
+ * Mutations live in admin-knowledge-ui-mutations.ts (300-line guard).
  */
 
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { adminBrowserAuth } from "../middleware/adminAuth";
+import {
+  capabilityForSurface,
+  operatorBrowserAuth,
+  requireCapability,
+} from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import type { OperatorStore } from "../lib/operators";
 import { rejectCtrl } from "./admin-operator-guard";
 import { wrapFragment } from "./ui/helpers";
 import type { KnowledgeStore } from "../lib/knowledge/store";
@@ -71,10 +77,24 @@ export const backWith = (
   return `${base}${qs ? `?${qs}` : ""}`;
 };
 
-export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
+export function createAdminKnowledgeUi(
+  store: KnowledgeStore,
+  operatorStore: OperatorStore,
+): Hono {
   const app = new Hono();
-  app.use("/admin/knowledge", adminBrowserAuth);
-  app.use("/admin/knowledge/*", adminBrowserAuth);
+  const browserAuth = operatorBrowserAuth(operatorStore);
+  app.use("/admin/knowledge", browserAuth);
+  app.use("/admin/knowledge/*", browserAuth);
+  // SLICE-264-6: capability gate — GET pages need "read", form
+  // POSTs need "workflow" (capabilityForSurface method fallback).
+  app.use("/admin/knowledge/*", async (c, next) => {
+    const deny = requireCapability(
+      c,
+      capabilityForSurface(c.req.path, c.req.method),
+    );
+    if (deny) return deny;
+    await next();
+  });
   // B-3: browsers auto-attach cached Basic creds to cross-site form
   // POSTs — same-host Origin required when the header is present.
   app.use("/admin/knowledge/*", async (c, next) => {

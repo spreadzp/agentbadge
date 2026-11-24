@@ -1,9 +1,9 @@
 /**
  * EPIC-229 (SLICE-229-9): browser-form mutations for the knowledge
  * console — PRG (303 → flash) back to the page. Calls the domain
- * lib directly (228 precedent); operator label is an optional
- * `operator` field, default "admin-browser" — the JSON API remains
- * the surface with X-Operator-Id + idempotency-key.
+ * lib directly (228 precedent); SLICE-264-6: the actor is the
+ * credential-resolved principal.id — the optional `operator` form
+ * field is gone; audit attribution can no longer be self-asserted.
  * Taxonomy mutations (capability/relation/evidence) live in
  * admin-knowledge-ui-mutations-taxonomy.ts (300-line file cap).
  */
@@ -23,11 +23,10 @@ import {
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
 import { rejectCtrl } from "./admin-operator-guard";
+import { getPrincipal } from "../middleware/operatorAuth";
 import {
   formStr,
   formRaw,
-  opOf,
-  opBad,
   readSeq,
   tokenConsumed,
   FORM_TOKEN_ERR,
@@ -39,14 +38,8 @@ export function registerKnowledgeUiMutations(
 ): void {
   app.post("/admin/knowledge/create", async (c) => {
     const b = await c.req.parseBody();
-    const bad0 = rejectCtrl(c, formStr(b, "operator"));
+    const bad0 = rejectCtrl(c);
     if (bad0) return bad0;
-    if (opBad(b)) {
-      return c.redirect(
-        backWith("/admin/knowledge", { err: "bad_operator_ref" }),
-        303,
-      );
-    }
     if (!tokenConsumed(b)) {
       return c.redirect(
         backWith("/admin/knowledge", { err: FORM_TOKEN_ERR }),
@@ -60,7 +53,7 @@ export function registerKnowledgeUiMutations(
       summary: formStr(b, "summary") || undefined,
       slug: formStr(b, "slug") || undefined,
     };
-    const r = await createKnowledgeItem(store, input, opOf(b));
+    const r = await createKnowledgeItem(store, input, getPrincipal(c)!.id);
     if (!r.ok) {
       return c.redirect(backWith("/admin/knowledge", { err: r.error }), 303);
     }
@@ -73,14 +66,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/update", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad1 = rejectCtrl(c, id, formStr(b, "operator"));
+    const bad1 = rejectCtrl(c, id);
     if (bad1) return bad1;
-    if (opBad(b)) {
-      return c.redirect(
-        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-        303,
-      );
-    }
     if (!tokenConsumed(b)) {
       return c.redirect(
         backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -98,7 +85,7 @@ export function registerKnowledgeUiMutations(
       summary: formStr(b, "summary") || null,
       expectedSeq: expectedSeq ?? undefined,
     };
-    const r = await updateKnowledgeDraft(store, id, input, opOf(b));
+    const r = await updateKnowledgeDraft(store, id, input, getPrincipal(c)!.id);
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -111,14 +98,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/transition", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad2 = rejectCtrl(c, id, formStr(b, "operator"));
+    const bad2 = rejectCtrl(c, id);
     if (bad2) return bad2;
-    if (opBad(b)) {
-      return c.redirect(
-        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-        303,
-      );
-    }
     if (!tokenConsumed(b)) {
       return c.redirect(
         backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -134,7 +115,7 @@ export function registerKnowledgeUiMutations(
     // re-evidenced items refuse rather than approving unseen state.
     const expectedVersionId = formStr(b, "expectedVersionId") || undefined;
     const expectedEvidence = formStr(b, "expectedEvidence") || undefined;
-    const r = await transitionKnowledgeItem(store, id, to, opOf(b), null, {
+    const r = await transitionKnowledgeItem(store, id, to, getPrincipal(c)!.id, null, {
       expectedVersionId,
       expectedEvidence,
     });
@@ -150,14 +131,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/restore", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad3 = rejectCtrl(c, id, formStr(b, "operator"));
+    const bad3 = rejectCtrl(c, id);
     if (bad3) return bad3;
-    if (opBad(b)) {
-      return c.redirect(
-        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
-        303,
-      );
-    }
     if (!tokenConsumed(b)) {
       return c.redirect(
         backWith(`/admin/knowledge/${id}`, { err: FORM_TOKEN_ERR }),
@@ -171,7 +146,7 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
-    const r = await restoreKnowledgeVersion(store, id, seq, opOf(b));
+    const r = await restoreKnowledgeVersion(store, id, seq, getPrincipal(c)!.id);
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -187,21 +162,13 @@ export function registerKnowledgeUiMutations(
       const b = await c.req.parseBody();
       const bad7 = rejectCtrl(c, id, formStr(b, "linkedItemId"));
       if (bad7) return bad7;
-      // Arc R2 M-5: gap routes skipped opBad — an agent-shaped ref
-      // could triage/resolve/wontfix through the browser surface.
-      if (opBad(b)) {
-        return c.redirect(
-          backWith("/admin/knowledge/gaps", { err: "bad_operator_ref" }),
-          303,
-        );
-      }
       if (!tokenConsumed(b)) {
         return c.redirect(
           backWith("/admin/knowledge/gaps", { err: FORM_TOKEN_ERR }),
           303,
         );
       }
-      const actor = opOf(b);
+      const actor = getPrincipal(c)!.id;
       const r = await (action === "resolve"
         ? resolveGap(store, id, formStr(b, "linkedItemId"), actor)
         : action === "triage"

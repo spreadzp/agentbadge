@@ -15,6 +15,10 @@ import {
 import { createAdminKnowledgeRoutes } from "../src/server/routes/admin-knowledge-api";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
 import { approveTransition } from "./helpers/knowledge";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 
 /**
  * SLICE-229-3 DoD — approval machine: every legal transition walks,
@@ -177,31 +181,34 @@ describe("knowledge workflow (SLICE-229-3)", () => {
 });
 
 // ─── Route level ────────────────────────────────────────────────
+// SLICE-264-6: the surface rides operatorAuth — tests authenticate
+// with seeded opk_ credentials; actor attribution = operator id
+// (normalized), x-operator-id is a typed 400 at the boundary.
 
-const ADMIN = { "x-admin-key": "test-admin-key" };
-const OPH = { ...ADMIN, "x-operator-id": "ops_test" };
 let idem = 0;
-const writeHeaders = (op = OPH) => ({
-  ...op,
+const writeHeaders = (key: string) => ({
+  "x-admin-key": key,
   "content-type": "application/json",
   "idempotency-key": `kn-${Date.now()}-${++idem}`,
 });
 
-function mkApp() {
-  process.env.ADMIN_API_KEY = "test-admin-key";
+async function mkApp() {
   resetIdempotencyStore();
   const store = createMemoryKnowledgeStores();
+  const operatorStore = createMemoryOperatorStore();
+  const alice = await seedOperator(operatorStore, "Alice");
+  const bob = await seedOperator(operatorStore, "Bob");
   const app = new Hono();
-  app.route("/", createAdminKnowledgeRoutes({ store }));
-  return { app, store };
+  app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+  return { app, store, alice, bob };
 }
 
 describe("admin knowledge API (SLICE-229-3)", () => {
   it("create draft: 201 + idempotent replay; missing key → 400", async () => {
-    const { app } = mkApp();
+    const { app, alice } = await mkApp();
     const noKey = await app.request("/admin/api/knowledge/items", {
       method: "POST",
-      headers: { ...OPH, "content-type": "application/json" },
+      headers: { "x-admin-key": alice.key, "content-type": "application/json" },
       body: JSON.stringify({ kind: "FAQ", title: "t", body: "b" }),
     });
     expect(noKey.status).toBe(400);
@@ -209,7 +216,7 @@ describe("admin knowledge API (SLICE-229-3)", () => {
     const mk = () =>
       app.request("/admin/api/knowledge/items", {
         method: "POST",
-        headers: { ...OPH, "content-type": "application/json", "idempotency-key": key },
+        headers: { "x-admin-key": alice.key, "content-type": "application/json", "idempotency-key": key },
         body: JSON.stringify({ kind: "FAQ", title: "pay faq", body: "b" }),
       });
     const first = await mk();
@@ -220,18 +227,18 @@ describe("admin knowledge API (SLICE-229-3)", () => {
   });
 
   it("transition: missing key → 400; invalid → 409 INVALID_TRANSITION", async () => {
-    const { app, store } = mkApp();
+    const { app, store, alice } = await mkApp();
     const item = await mkItem(store);
     const noKey = await app.request(
       `/admin/api/knowledge/items/${item.id}/transition`,
-      { method: "POST", headers: OPH, body: JSON.stringify({ to: "PENDING" }) },
+      { method: "POST", headers: { "x-admin-key": alice.key }, body: JSON.stringify({ to: "PENDING" }) },
     );
     expect(noKey.status).toBe(400);
     const invalid = await app.request(
       `/admin/api/knowledge/items/${item.id}/transition`,
       {
         method: "POST",
-        headers: writeHeaders(),
+        headers: writeHeaders(alice.key),
         body: JSON.stringify({ to: "PUBLISHED" }),
       },
     );
@@ -241,7 +248,7 @@ describe("admin knowledge API (SLICE-229-3)", () => {
       `/admin/api/knowledge/items/ki_ghost/transition`,
       {
         method: "POST",
-        headers: writeHeaders(),
+        headers: writeHeaders(alice.key),
         body: JSON.stringify({ to: "PENDING" }),
       },
     );
@@ -249,10 +256,10 @@ describe("admin knowledge API (SLICE-229-3)", () => {
   });
 
   it("full operator path: create → submit → verify → publish via API", async () => {
-    const { app, store } = mkApp();
+    const { app, store, alice, bob } = await mkApp();
     const created = await app.request("/admin/api/knowledge/items", {
       method: "POST",
-      headers: writeHeaders(),
+      headers: writeHeaders(alice.key),
       body: JSON.stringify({
         kind: "GUIDE", slug: "api-guide", title: "api", body: "b",
       }),
@@ -263,7 +270,7 @@ describe("admin knowledge API (SLICE-229-3)", () => {
       `/admin/api/knowledge/versions/${version.id}/evidence`,
       {
         method: "POST",
-        headers: writeHeaders(),
+        headers: writeHeaders(alice.key),
         body: JSON.stringify({
           type: "INTERNAL_DOC",
           uri: "internal://runbook/api-guide",
@@ -271,11 +278,12 @@ describe("admin knowledge API (SLICE-229-3)", () => {
       },
     );
     expect(ev.status).toBe(200);
-    // Separation of duties: verifier differs from submitter.
+    // Separation of duties: verifier differs from submitter — under
+    // 264-6 the actors are the seeded operators' ids, not a header.
     for (const [to, op] of [
-      ["PENDING", "ops_test"],
-      ["VERIFIED", "ops_review"],
-      ["PUBLISHED", "ops_test"],
+      ["PENDING", alice],
+      ["VERIFIED", bob],
+      ["PUBLISHED", alice],
     ] as const) {
       // Arc R3: VERIFIED/PUBLISHED require the stale-page preconditions —
       // pin the current version + evidence fingerprint like the UI does.
@@ -287,10 +295,7 @@ describe("admin knowledge API (SLICE-229-3)", () => {
         `/admin/api/knowledge/items/${item.id}/transition`,
         {
           method: "POST",
-          headers: writeHeaders({
-            ...ADMIN,
-            "x-operator-id": op,
-          }),
+          headers: writeHeaders(op.key),
           body: JSON.stringify({
             to,
             expectedVersionId: cur?.latestVersionId ?? undefined,
@@ -303,27 +308,58 @@ describe("admin knowledge API (SLICE-229-3)", () => {
     const final = await store.getItem(item.id);
     expect(final?.status).toBe("PUBLISHED");
     expect(final?.publishedVersionId).toBe(final?.latestVersionId);
-    // Detail endpoint exposes versions + audit.
+    // Detail endpoint exposes versions + audit — actors are the
+    // normalized op_* ids of the credentials that acted.
     const detail = await app.request(
-      `/admin/api/knowledge/items/${item.id}`, { headers: ADMIN },
+      `/admin/api/knowledge/items/${item.id}`, {
+        headers: { "x-admin-key": alice.key },
+      },
     );
     const d = await detail.json();
     expect(d.versions).toHaveLength(1);
     expect(d.events).toHaveLength(4);
+    // create stores the ref verbatim; transitions store the canon
+    // (NFKC+lowercase) form — both are the seeded operators' ids.
+    expect(d.events.map((e: { actor: string }) => e.actor)).toEqual([
+      alice.operatorId,
+      alice.operatorId.toLowerCase(),
+      bob.operatorId.toLowerCase(),
+      alice.operatorId.toLowerCase(),
+    ]);
     // Legal transitions endpoint.
     const tr = await app.request(
-      `/admin/api/knowledge/items/${item.id}/transitions`, { headers: ADMIN },
+      `/admin/api/knowledge/items/${item.id}/transitions`, {
+        headers: { "x-admin-key": alice.key },
+      },
     );
     expect((await tr.json()).allowed).toEqual(["WITHDRAWN"]);
   });
 
+  it("x-operator-id is a typed 400 — it dies at the operatorAuth boundary", async () => {
+    const { app, alice } = await mkApp();
+    const res = await app.request("/admin/api/knowledge/items", {
+      method: "POST",
+      headers: {
+        "x-admin-key": alice.key,
+        "x-operator-id": "ops_test",
+        "content-type": "application/json",
+        "idempotency-key": `kn-${Date.now()}-x`,
+      },
+      body: JSON.stringify({ kind: "FAQ", title: "t", body: "b" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("OPERATOR_HEADER_REJECTED");
+  });
+
   it("unauthenticated → 401; list filter validation", async () => {
-    const { app } = mkApp();
+    const { app, alice } = await mkApp();
     expect(
       (await app.request("/admin/api/knowledge/items")).status,
     ).toBe(401);
     const bad = await app.request(
-      "/admin/api/knowledge/items?status=BOGUS", { headers: ADMIN },
+      "/admin/api/knowledge/items?status=BOGUS", {
+        headers: { "x-admin-key": alice.key },
+      },
     );
     expect(bad.status).toBe(400);
   });

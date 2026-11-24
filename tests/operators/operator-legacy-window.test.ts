@@ -17,6 +17,9 @@ import {
   hashAdminKey,
   type OperatorStore,
 } from "../../src/server/lib/operators";
+import { createMemoryKnowledgeStores } from "../../src/server/lib/knowledge";
+import { createAdminKnowledgeRoutes } from "../../src/server/routes/admin-knowledge-api";
+import { resetIdempotencyStore } from "../../src/server/lib/contract-guards";
 import { generateReportId } from "../../src/agent-readiness/integrity/ulid";
 
 /**
@@ -264,6 +267,34 @@ describe("dual-auth window — legacy shared key (SLICE-264-5)", () => {
       state: "open",
       until: "2026-12-15T00:00:00.000Z",
     });
+  });
+
+  it("DoD integration: legacy key inside the window attributes legacy_admin/break_glass on a real surface", async () => {
+    // The window's whole point: migrated surfaces keep working for
+    // legacy callers, but every write is honestly attributed to the
+    // break_glass principal — never a personal identity.
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", new Date(Date.now() + 3600_000).toISOString());
+    setEnv("ADMIN_BREAK_GLASS_ENABLED", undefined);
+    resetIdempotencyStore();
+    const store = createMemoryKnowledgeStores();
+    const operatorStore = createMemoryOperatorStore();
+    const app = new Hono();
+    app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+
+    const res = await app.request("/admin/api/knowledge/items", {
+      method: "POST",
+      headers: {
+        "x-admin-key": LEGACY_KEY,
+        "content-type": "application/json",
+        "idempotency-key": `leg-${Date.now()}`,
+      },
+      body: JSON.stringify({ kind: "FAQ", title: "t", body: "b" }),
+    });
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    expect(created.item.createdBy).toBe("legacy_admin");
+    // …and the legacy caller still can't reach operator-admin
+    // (capability boundary stands even inside the window).
   });
 
   it("wrong key in an open window still refuses — the window accepts the SHARED key only", async () => {

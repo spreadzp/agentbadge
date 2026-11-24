@@ -12,16 +12,21 @@ import {
   knowledgeGapRecorder,
   pickKnowledgeStores,
 } from "../lib/knowledge";
+import { pickOperatorStores } from "../lib/operators";
 import { createAdminKnowledgeRoutes } from "../routes/admin-knowledge-api";
 import { createAdminKnowledgeUi } from "../routes/admin-knowledge-ui";
 import { createAgentKnowledgeRoutes } from "../routes/agent-knowledge-api";
 
 export function wireKnowledge(app: Hono): void {
   const store = pickKnowledgeStores(getDatabase());
-  // 229-3: operator JSON — /admin/api/knowledge/* (adminAuth).
-  app.route("/", createAdminKnowledgeRoutes({ store }));
-  // 229-9: operator SSR — /admin/knowledge* (adminBrowserAuth + Origin).
-  app.route("/", createAdminKnowledgeUi(store));
+  // 264-6: knowledge is the first domain on the new identity model —
+  // credential → principal attribution, the shared key rides only
+  // through the dual-auth window as break_glass.
+  const operatorStore = pickOperatorStores(getDatabase());
+  // 229-3: operator JSON — /admin/api/knowledge/* (operatorAuth).
+  app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+  // 229-9: operator SSR — /admin/knowledge* (operatorBrowserAuth + Origin).
+  app.route("/", createAdminKnowledgeUi(store, operatorStore));
   // 229-5/7/8: public — search + ask (PUBLISHED only), refusals
   // record gaps through the real seam now.
   app.route(

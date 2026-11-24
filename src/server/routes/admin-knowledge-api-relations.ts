@@ -20,9 +20,9 @@ import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { getPrincipal } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   addEvidence,
@@ -38,7 +38,6 @@ import {
 import {
   rejectCtrl,
   requestFingerprint,
-  requireOperatorRef,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
@@ -68,7 +67,6 @@ export function registerKnowledgeRelationRoutes(
 ): void {
   app.post(
     "/admin/api/knowledge/relations",
-    adminAuth,
     describeRoute({
       summary: "Add a typed relation edge (dedup, no self-loop/cycle)",
       tags: ["Admin Knowledge"],
@@ -79,8 +77,7 @@ export function registerKnowledgeRelationRoutes(
       },
     }),
     async (c) => {
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const body = relationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -111,15 +108,13 @@ export function registerKnowledgeRelationRoutes(
 
   app.post(
     "/admin/api/knowledge/relations/remove",
-    adminAuth,
     describeRoute({
       summary: "Remove a relation edge by id",
       tags: ["Admin Knowledge"],
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const body = removeRelationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -145,7 +140,6 @@ export function registerKnowledgeRelationRoutes(
 
   app.get(
     "/admin/api/knowledge/items/:id/relations",
-    adminAuth,
     describeRoute({
       summary: "Relation edges for an item — both directions",
       tags: ["Admin Knowledge"],
@@ -162,7 +156,6 @@ export function registerKnowledgeRelationRoutes(
 
   app.post(
     "/admin/api/knowledge/versions/:vid/evidence",
-    adminAuth,
     describeRoute({
       summary: "Attach an evidence ref to a version (cap 50)",
       tags: ["Admin Knowledge"],
@@ -176,8 +169,7 @@ export function registerKnowledgeRelationRoutes(
       const versionId = c.req.param("vid") ?? "";
       const ctrlBad = rejectCtrl(c, versionId);
       if (ctrlBad) return ctrlBad;
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const body = evidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -214,7 +206,6 @@ export function registerKnowledgeRelationRoutes(
 
   app.get(
     "/admin/api/knowledge/versions/:vid/evidence",
-    adminAuth,
     describeRoute({
       summary: "Evidence refs on a version",
       tags: ["Admin Knowledge"],
@@ -235,15 +226,13 @@ export function registerKnowledgeRelationRoutes(
 
   app.post(
     "/admin/api/knowledge/evidence/remove",
-    adminAuth,
     describeRoute({
       summary: "Remove an evidence ref by id",
       tags: ["Admin Knowledge"],
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const body = removeEvidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -274,7 +263,6 @@ export function registerKnowledgeRelationRoutes(
 
   app.get(
     "/admin/api/knowledge/evidence/citing",
-    adminAuth,
     describeRoute({
       summary: "Versions citing a uri — staleness/withdrawal lookup",
       tags: ["Admin Knowledge"],

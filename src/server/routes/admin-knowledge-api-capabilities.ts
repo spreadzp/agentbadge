@@ -13,9 +13,9 @@ import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { getPrincipal } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   linkItemCapability,
@@ -28,7 +28,6 @@ import {
 import {
   rejectCtrl,
   requestFingerprint,
-  requireOperatorRef,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
@@ -63,7 +62,6 @@ export function registerKnowledgeCapabilityRoutes(
 ): void {
   app.get(
     "/admin/api/knowledge/capabilities",
-    adminAuth,
     describeRoute({
       summary: "List capability registry entries",
       tags: ["Admin Knowledge"],
@@ -88,7 +86,6 @@ export function registerKnowledgeCapabilityRoutes(
 
   app.post(
     "/admin/api/knowledge/capabilities",
-    adminAuth,
     describeRoute({
       summary: "Register a MANUAL capability (verified:false)",
       tags: ["Admin Knowledge"],
@@ -98,8 +95,7 @@ export function registerKnowledgeCapabilityRoutes(
       },
     }),
     async (c) => {
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+      const actorRef = getPrincipal(c)!.id;
       const body = capBodySchema.safeParse(await c.req.json().catch(() => null));
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad capability body");
@@ -132,8 +128,7 @@ export function registerKnowledgeCapabilityRoutes(
   for (const unlink of [false, true] as const) {
     app.post(
       `/admin/api/knowledge/items/:id/capabilities${unlink ? "/unlink" : ""}`,
-      adminAuth,
-      describeRoute({
+        describeRoute({
         summary: unlink ? "Unlink a capability from an item" : "Link a capability to an item",
         tags: ["Admin Knowledge"],
         responses: {
@@ -146,8 +141,7 @@ export function registerKnowledgeCapabilityRoutes(
         const itemId = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, itemId);
         if (ctrlBad) return ctrlBad;
-        const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
+        const actorRef = getPrincipal(c)!.id;
         const body = linkBodySchema.safeParse(
           await c.req.json().catch(() => null),
         );
