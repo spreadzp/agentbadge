@@ -1,7 +1,7 @@
 import { html } from "hono/html";
 import { APP_VERSION, GIT_COMMIT } from "../../server/lib/build-info";
 import { explorerName, explorerNftUrl } from "../../server/lib/chain-ui.js";
-import { DISCORD_PATH, TELEGRAM_PATH, GITHUB_PATH } from "./footer-icons";
+import { DISCORD_PATH, TELEGRAM_PATH, GITHUB_PATH, LINKEDIN_PATH, FACEBOOK_PATH } from "./footer-icons";
 
 /**
  * Shared Footer component — used by both Layout() and LandingLayout().
@@ -39,6 +39,16 @@ export function Footer(): ReturnType<typeof html> {
           <a href="https://agentbadge.gitbook.io/agentbadge-docs" target="_blank" rel="noopener" class="footer-pop inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400" aria-label="GitBook Documentation">
             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H6V5h6v12zm7 0h-5V5h5v12z" />
+            </svg>
+          </a>
+          <a href="https://www.linkedin.com/company/agentbadge" target="_blank" rel="noopener" class="footer-pop inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400" aria-label="LinkedIn">
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="${LINKEDIN_PATH}" />
+            </svg>
+          </a>
+          <a href="https://www.facebook.com/people/AgentBadge/61596490934718/" target="_blank" rel="noopener" class="footer-pop inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400" aria-label="Facebook">
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="${FACEBOOK_PATH}" />
             </svg>
           </a>
         </div>
@@ -174,6 +184,12 @@ export function Footer(): ReturnType<typeof html> {
         </a>
         <a href="https://viberank.dev/apps/AgentBadge" target="_blank" rel="noopener" title="AgentBadge on VibeRank — community leaderboard">
           <img src="https://viberank.dev/badge?app=AgentBadge&amp;theme=dark" alt="AgentBadge on VibeRank" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+        <a href="https://builtbyindies.com/products/agentbadge?utm_source=badge&amp;utm_medium=embed&amp;utm_campaign=live" target="_blank" rel="noopener" title="AgentBadge on BuiltByIndies — weekly launch board">
+          <img src="https://builtbyindies.com/badge/b59b8330-ffab-4447-b2ba-64e4b42ad847.svg" alt="BuiltByIndies" height="60" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+        <a href="https://foundrlist.com/product/agentbadge?utm_source=badge&amp;utm_medium=embed" target="_blank" rel="noopener" title="AgentBadge on FoundrList — launch board">
+          <img src="https://foundrlist.com/api/badge/agentbadge" alt="Featured on FoundrList" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
         <a href="/.well-known/x402-payto.json" target="_blank" rel="noopener" title="x402 payout proof: payTo wallet signs EIP-191; DNS TXT _x402-payto.agentbadge.xyz">
           <img src="https://img.shields.io/badge/x402%20payto-proof%20signed-334155?style=flat-square" alt="x402 payout proof signed" loading="lazy" decoding="async" class="h-5 w-auto" />
