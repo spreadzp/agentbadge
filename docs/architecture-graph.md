@@ -32,6 +32,7 @@ flowchart LR
   agent_readiness_gap_engine["agent-readiness/gap-engine"] --> agent_readiness_scoring["agent-readiness/scoring"]
   agent_readiness_integrity["agent-readiness/integrity"] --> agent_readiness_gap_engine["agent-readiness/gap-engine"]
   agent_readiness_monitoring["agent-readiness/monitoring"] --> agent_readiness["agent-readiness"]
+  agent_readiness_payto_recheck["agent-readiness/payto-recheck"] --> pkg_x402_payto_proof["pkg: x402-payto-proof"]
   agent_readiness_profile["agent-readiness/profile"] --> agent_readiness["agent-readiness"]
   agent_readiness_profile["agent-readiness/profile"] --> agent_readiness_rule_engine["agent-readiness/rule-engine"]
   agent_readiness_profile["agent-readiness/profile"] --> agent_readiness_scoring["agent-readiness/scoring"]
@@ -209,4 +210,4 @@ flowchart LR
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).
 - `pkg:*` nodes are `@agentbadge/*` packages — dependency direction is
   always server → package, never the reverse.
-- 34 modules import across boundaries; 18 packages consumed.
+- 35 modules import across boundaries; 18 packages consumed.

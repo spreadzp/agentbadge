@@ -7,6 +7,10 @@
 // evidence_tier "live_mpp" — authoritative like live402.
 import type { SemanticChecker, SemanticCheckResult } from "./helpers";
 import { evaluatePaytoProofs } from "@agentbadge/x402-payto-proof";
+import {
+  proofSnapshotFromInputs,
+  type ProofSetSnapshot,
+} from "../../payto-recheck";
 import { collectMppInputs } from "./mpp-recipient-inputs";
 import {
   liveRows,
@@ -46,6 +50,8 @@ interface Detail {
   anomalies: string[];
   freshness: "computed" | "not_computed";
   notes?: string[];
+  /** SLICE-258-18: observed proof set for cross-scan diffing. */
+  proof_set?: ProofSetSnapshot;
   fix?: string;
 }
 
@@ -124,6 +130,16 @@ export const checkerMppRecipientProof: SemanticChecker = (sources): SemanticChec
     anomalies: result.anomalies,
     freshness: result.freshness,
     ...(notes.length ? { notes } : {}),
+    proof_set: proofSnapshotFromInputs({
+      domain: inputs.domain,
+      dnsEntries: inputs.dnsEntries,
+      siteEntries: inputs.siteEntries,
+      dnsState: inputs.dnsState,
+      siteState: inputs.siteState,
+      dnsHitName: inputs.dnsHitName,
+      liveRecheckDone: inputs.liveRecheckDone,
+      observedAt: inputs.observedAt,
+    }),
     ...(mapped.fix ? { fix: mapped.fix } : {}),
   };
   return { outcome: mapped.outcome, detail: JSON.stringify(detail) };

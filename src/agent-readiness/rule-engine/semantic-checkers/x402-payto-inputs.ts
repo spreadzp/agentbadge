@@ -63,6 +63,8 @@ export interface PaytoInputs {
   liveRecheckDone: boolean;
   /** DNS walk was truncated by a shared-hosting suffix (D-258-Q19). */
   pslStopped: boolean;
+  /** Name the DNS proof record resolved at — child vs parent scope (258-18). */
+  dnsHitName?: string | null;
   observedAt: string;
   /** Endpoints actually double-probed. */
   probed: number;
@@ -108,6 +110,8 @@ export interface ProofInputs {
   liveRecheckDone: boolean;
   /** DNS walk was truncated by a shared-hosting suffix (D-258-Q19). */
   pslStopped: boolean;
+  /** Name the DNS proof record resolved at — child vs parent scope (258-18). */
+  dnsHitName?: string | null;
 }
 
 /**
@@ -132,11 +136,13 @@ export function collectProofInputs(
   let malformedCount = 0;
 
   let pslStopped = false;
+  let dnsHitName: string | null = null;
   const dnsResult = tryParse(dnsSnap?.body) as PayToDnsFetchResult | null;
   if (dnsResult && typeof dnsResult === "object") {
     domain = dnsResult.domain ?? "";
     dnsState = dnsResult.status === "unchecked" ? "unchecked" : "ok";
     pslStopped = dnsResult.pslStopped === true;
+    dnsHitName = dnsResult.hitName ?? null;
     // A fresh lookup in this scan IS the live re-check (dogfood parity);
     // a cache hit cannot prove substitution.
     liveRecheckDone = dnsResult.fromCache === false;
@@ -179,6 +185,7 @@ export function collectProofInputs(
     siteState,
     liveRecheckDone,
     pslStopped,
+    dnsHitName,
   };
 }
 

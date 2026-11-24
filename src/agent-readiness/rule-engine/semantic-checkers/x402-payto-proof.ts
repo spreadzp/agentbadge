@@ -14,6 +14,10 @@ import {
   evaluatePaytoProofs,
   observationKey,
 } from "@agentbadge/x402-payto-proof";
+import {
+  proofSnapshotFromInputs,
+  type ProofSetSnapshot,
+} from "../../payto-recheck";
 import { collectPaytoInputs } from "./x402-payto-inputs";
 import {
   liveRows,
@@ -56,6 +60,11 @@ interface Detail {
   freshness: "computed" | "not_computed";
   /** Informational stale-proof notes, e.g. "proof issued 40 days ago". */
   notes?: string[];
+  /**
+   * SLICE-258-18: the full observed proof SET — the comparable unit
+   * `diffPaytoReports` consumes across scans (history = input).
+   */
+  proof_set?: ProofSetSnapshot;
   fix?: string;
 }
 
@@ -139,6 +148,16 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     anomalies: result.anomalies,
     freshness: result.freshness,
     ...(notes.length ? { notes } : {}),
+    proof_set: proofSnapshotFromInputs({
+      domain: inputs.domain,
+      dnsEntries: inputs.dnsEntries,
+      siteEntries: inputs.siteEntries,
+      dnsState: inputs.dnsState,
+      siteState: inputs.siteState,
+      dnsHitName: inputs.dnsHitName,
+      liveRecheckDone: inputs.liveRecheckDone,
+      observedAt: inputs.observedAt,
+    }),
     ...(mapped.fix ? { fix: mapped.fix } : {}),
   };
   return { outcome: mapped.outcome, detail: JSON.stringify(detail) };
