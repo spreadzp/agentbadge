@@ -167,15 +167,21 @@ export async function unassignGap(
     assignedBy: null,
     assignedAt: null,
     dueAt: gap.dueAt,
-    event: {
-      id: gapEventId(),
-      gapId: input.gapId,
-      kind: "unassigned",
-      actor: input.actor,
-      previousAssignee: gap.assignedTo,
-      assignedTo: null,
-      dueAt: gap.dueAt,
-    },
+    // No owner → nothing was dropped: an "unassigned" row for a
+    // no-op mutation is audit noise, not a fact.
+    ...(gap.assignedTo === null
+      ? {}
+      : {
+          event: {
+            id: gapEventId(),
+            gapId: input.gapId,
+            kind: "unassigned" as const,
+            actor: input.actor,
+            previousAssignee: gap.assignedTo,
+            assignedTo: null,
+            dueAt: gap.dueAt,
+          },
+        }),
   });
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };

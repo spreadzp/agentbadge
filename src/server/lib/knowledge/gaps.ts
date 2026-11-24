@@ -23,7 +23,6 @@ import {
  * `knowledge.gap_detected` emits ONLY on first sighting — count++ on
  * a known gap is not news. */
 
-
 const VALID_TRANSITIONS: Record<string, string[]> = {
   OPEN: ["TRIAGED"],
   TRIAGED: ["RESOLVED", "WONTFIX"],
@@ -173,9 +172,9 @@ export async function recordGap(
 /** Arc R1 M8: the 228 hook's fields are validated inside recordGap
  *  (ireq_* sourceRef shape, bounded single-line intent/capabilityRef). */
 
-/** 229-7 composer seam — reports whether the write actually LANDED
- *  (a WONTFIX-hit or cap-blocked row isn't a recording) so the
- *  refusal hint stays honest. */
+/** 229-7 composer seam (Arc R1 H3 + R2 M-1) — reports whether the
+ *  write actually LANDED (a WONTFIX-hit or cap-blocked row isn't a
+ *  recording) so the refusal hint stays honest. */
 export function knowledgeGapRecorder(
   store: KnowledgeStore,
   deps?: { demand?: DemandStore },

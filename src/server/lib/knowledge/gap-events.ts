@@ -45,7 +45,13 @@ export interface KnowledgeGapEventRecord {
 /** Audit-row write shape — `occurredAt` omitted → the WRITER stamps
  *  it (PG now() is µs-precise; memory keeps insertion order on
  *  ties). A caller-supplied ms stamp would tie same-ms writes into
- *  an arbitrary order — the store is the honest clock. */
+ *  an arbitrary order — the store is the honest clock.
+ *
+ *  `assignedTo`/`dueAt` snapshot the writer's INTENT (the values it
+ *  read pre-write), not a CAS-verified row — two operators racing
+ *  the same gap can each log their own read. Owner mutations are
+ *  low-contention admin calls; a row-lock contract is a future
+ *  slice's problem, not C2's. */
 export interface KnowledgeGapEventInsert {
   id: string;
   gapId: string;
@@ -74,14 +80,18 @@ export interface KnowledgeGapAssignment {
 }
 
 /** assignGap write shape — the four columns + the audit row that
- *  lands in the same write. */
+ *  lands in the same write. `event` stays optional for non-domain
+ *  callers (seeds, migrations, test plumbing) — the DOMAIN writers
+ *  always pass one; skipping it is a caller-discipline contract,
+ *  not a gap in the schema. */
 export interface KnowledgeGapAssignInput extends KnowledgeGapAssignment {
   event?: KnowledgeGapEventInsert;
 }
 
 /** transitionGap write shape — `resolvedAt` REQUIRED (SLICE-264-10:
  *  an omission must not silently wipe the stamp); `event` is the
- *  audit row written atomically with the mutation. */
+ *  audit row written atomically with the mutation — same optional-
+ *  for-non-domain-callers contract as assignGap. */
 export interface KnowledgeGapTransitionInput {
   from: string;
   to: string;

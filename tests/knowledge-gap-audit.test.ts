@@ -6,6 +6,7 @@ import {
   assignGap,
   createMemoryKnowledgeStores,
   DbKnowledgeStore,
+  normalizeQuery,
   recordGap,
   reassignGap,
   resolveGap,
@@ -128,6 +129,30 @@ describe("gap audit (SLICE-264-11)", () => {
       "reopened",
     ]);
     expect(events[2].actor).toBe("system");
+
+    // Cap-blocked reopen: resolve again, then a dedupe hit under
+    // openCap 0 — the refused flip must not mint a reopened row.
+    await triageGap(store, gap.id, "op_admin");
+    await resolveGap(store, gap.id, itemId, "op_admin2");
+    const blocked = await store.recordGap(
+      {
+        id: `kgap_blocked_${gap.id}`,
+        normalizedQuery: gap.normalizedQuery,
+        sampleQuery: "how DOES escrow settlement WORK",
+        source: "MANUAL",
+      },
+      { openCap: 0 },
+    );
+    expect(blocked.recorded).toBe(true);
+    expect(blocked.reopened).toBe(false);
+    events = await store.listGapEvents(gap.id);
+    expect(events.map((e) => e.kind)).toEqual([
+      "triaged",
+      "resolved",
+      "reopened",
+      "triaged",
+      "resolved",
+    ]);
   });
 });
 
@@ -274,8 +299,47 @@ describe.skipIf(!PG_URL)("gap ownership — PG backend", () => {
     expect(events[2].previousAssignee).toBe(b.operatorId);
     expect(events[2].assignedTo).toBeNull();
     expect(events[3].actor).toBe("system");
+    // reopened carries the post-write snapshot — owner cleared by
+    // unassign, deadline still held (memory parity).
+    expect(events[3].assignedTo).toBeNull();
+    expect(new Date(events[3].dueAt!).toISOString()).toBe(due);
     for (const e of events) {
       expect(Number.isNaN(Date.parse(e.occurredAt))).toBe(false);
     }
+  });
+
+  it("cap-blocked reopen writes no reopened event", async () => {
+    database = createDatabase({ url: PG_URL, enabled: true });
+    const k = database.knowledge;
+    if (!k) throw new Error("knowledge repos missing");
+    const store = new DbKnowledgeStore(k.core, k.taxonomy);
+
+    const nq = `pg-cap-${Date.now().toString(36)}`;
+    const g = await recordGap(store, { query: nq, source: "MANUAL" });
+    if (!g.ok || !g.gap) throw new Error("gap seed failed");
+    await store.transitionGap(g.gap.id, {
+      from: "OPEN", to: "TRIAGED", resolvedAt: null,
+    });
+    await store.transitionGap(g.gap.id, {
+      from: "TRIAGED", to: "RESOLVED", linkedItemId: "item_cap",
+      resolvedAt: "2026-11-24T12:00:00.000Z",
+    });
+
+    // openCap 0 refuses the flip back to OPEN — bump lands, no event.
+    // Store-level call (the domain fn owns openCap policy; the
+    // no-event-on-refused-flip invariant lives in the store write).
+    const blocked = await store.recordGap(
+      {
+        id: `kgap_${Date.now().toString(36)}x`,
+        normalizedQuery: normalizeQuery(nq),
+        sampleQuery: nq.toUpperCase(),
+        source: "MANUAL",
+      },
+      { openCap: 0 },
+    );
+    expect(blocked.recorded).toBe(true);
+    expect(blocked.reopened).toBe(false);
+    expect(blocked.row?.status).toBe("RESOLVED");
+    expect(await store.listGapEvents(g.gap.id)).toEqual([]);
   });
 });
