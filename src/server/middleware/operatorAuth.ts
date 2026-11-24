@@ -29,9 +29,10 @@
  * X-Admin-Key > Bearer > Basic first-match — a bogus secondary
  * transport can no longer veto a valid primary credential.
  *
- * ADMIN_API_KEY is deliberately NOT consulted: the shared key is the
- * dual-auth window's business (SLICE-264-5) and break-glass after
- * (SLICE-264-9).
+ * ADMIN_API_KEY gets exactly one verdict — only on a credential MISS
+ * and only through the time-boxed window policy in operator-legacy
+ * (SLICE-264-5): inside the window a marked break_glass principal,
+ * after it a break-glass-only fallback (SLICE-264-9 retire).
  */
 
 import { timingSafeEqual } from "node:crypto";
@@ -46,6 +47,7 @@ import {
   type OperatorStore,
   type Principal,
 } from "../lib/operators";
+import { tryLegacySharedKey } from "./operator-legacy";
 
 /** Minimum gap between lastUsedAt writes (D-264-Q6 — diagnostics, not auth). */
 const LAST_USED_MIN_INTERVAL_MS = 5 * 60 * 1000;
@@ -121,7 +123,17 @@ export function operatorAuth(store: OperatorStore) {
     const stored = pair?.credential.keyHash;
     if (pair === null || stored === undefined) {
       timingSafeEqual(Buffer.from(keyHash, "hex"), DUMMY_DIGEST);
-      return unauthorized(c);
+      // SLICE-264-5 dual-auth window: no credential row → the shared
+      // ADMIN_API_KEY gets exactly one more verdict — inside the
+      // window it yields a MARKED break_glass principal (never a
+      // personal identity); after it, only under
+      // ADMIN_BREAK_GLASS_ENABLED. Refusal keeps the 401 envelope.
+      const legacy = tryLegacySharedKey(provided, c.req.path);
+      if (!legacy.accepted) return unauthorized(c);
+      c.set("principal", legacy.principal);
+      c.set("operator", legacy.operator);
+      await next();
+      return;
     }
     // A store that hands back a non-sha256 row is a data-integrity
     // failure — loud 500, never an uncaught RangeError on the compare.
