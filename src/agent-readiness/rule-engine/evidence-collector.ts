@@ -12,49 +12,49 @@ import { collectCrossEvidence } from "./cross-evidence";
 /**
  * Map a target path to a snapshot key by checking if any snapshot URL contains the target.
  */
+/** Substring → snapshot-key map; longest keys first so specific paths beat generic prefixes. */
+const TARGET_MAP_ENTRIES: [string, string][] = Object.entries({
+  "oauth-authorization-server": "oauth_authorization_server",
+  "http-message-signatures": "bot_auth",
+  "content_negotiation": "content_negotiation",
+  "error_catalog": "error_catalog",
+  "agent_feeds": "agent_feeds",
+  "infrastructure": "infrastructure",
+  "passport/request": "l402",
+  "nonexistent": "content_negotiation",
+  "agent-guide": "guide",
+  "agents.txt": "agents_txt",
+  "homepage": "homepage_meta",
+  "favicon.svg": "favicon",
+  "pricing.json": "pricing",
+  "agent-card": "a2a",
+  "heartbeat": "heartbeat",
+  "skill_json": "skill_json",
+  "llms-full": "llms_full",
+  "did.json": "identity",
+  "webfinger": "identity",
+  "og-image": "content_negotiation",
+  "openapi": "openapi",
+  "pricing": "pricing",
+  "favicon": "favicon",
+  "sitemap": "sitemap",
+  "robots": "robots",
+  "webmcp": "webmcp",
+  "oauth": "bot_auth",
+  "skill": "skill",
+  "llms": "llms",
+  "x402": "x402",
+  "feed": "rss_feed",
+  "rss": "rss_feed",
+  "mcp": "mcp",
+  "passport": "l402",
+}).sort((a, b) => b[0].length - a[0].length);
+
 export function targetToSnapshotKey(target: string, snapshots: Record<string, ResponseSnapshot | null>): string | null {
   // Direct key match
   if (snapshots[target]) return target;
 
-  // Substring matching for common targets
-  const targetMap: Record<string, string> = {
-    "robots": "robots",
-    "sitemap": "sitemap",
-    "agent-guide": "guide",
-    "openapi": "openapi",
-    "mcp": "mcp",
-    "llms-full": "llms_full",
-    "llms": "llms",
-    "skill": "skill",
-    "agents.txt": "agents_txt",
-    "webmcp": "webmcp",
-    "x402": "x402",
-    "content_negotiation": "content_negotiation",
-    "rss": "rss_feed",
-    "feed": "rss_feed",
-    "did.json": "identity",
-    "webfinger": "identity",
-    "oauth": "bot_auth",
-    "oauth-authorization-server": "identity",
-    "http-message-signatures": "bot_auth",
-    "infrastructure": "infrastructure",
-    "agent-card": "a2a",
-    "homepage": "homepage_meta",
-    "heartbeat": "heartbeat",
-    "skill_json": "skill_json",
-    "error_catalog": "error_catalog",
-    "agent_feeds": "agent_feeds",
-    "favicon": "favicon",
-    "favicon.svg": "favicon",
-    "og-image": "content_negotiation",
-    "nonexistent": "content_negotiation",
-    "pricing": "pricing",
-    "pricing.json": "pricing",
-    "passport": "l402",
-    "passport/request": "l402",
-  };
-
-  for (const [substr, key] of Object.entries(targetMap)) {
+  for (const [substr, key] of TARGET_MAP_ENTRIES) {
     if (target.includes(substr) && snapshots[key]) return key;
   }
 
