@@ -224,6 +224,15 @@ export interface DemandStore {
     event: DemandEventInput,
   ): Promise<DemandTransitionResult<DemandOpportunityRecord>>;
 
+  /** Operator field edit WITHOUT a status move — CAS on the status
+   *  the caller read; the transition table is not consulted. */
+  updateOpportunity(
+    id: string,
+    patch: DemandOpportunityPatch,
+    expected: { status: string },
+    event: DemandEventInput,
+  ): Promise<DemandTransitionResult<DemandOpportunityRecord>>;
+
   /**
    * «→ Backlog task» operator gesture — CAS-guarded: the caller
    * passes the status it read when it decided to link; drifted or

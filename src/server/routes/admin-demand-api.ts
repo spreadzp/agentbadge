@@ -35,11 +35,13 @@ import {
   DEMAND_CLUSTER_STATUSES,
   DEMAND_LEVELS,
   DEMAND_LEVEL_RANK,
+  DEMAND_OPPORTUNITY_STATUSES,
   DEMAND_SOURCES,
 } from "../lib/demand/types";
 import type { OperatorStore } from "../lib/operators";
 import { rejectCtrl } from "./admin-operator-guard";
 import { registerDemandAdminMutations } from "./admin-demand-api-mutations";
+import { registerDemandOpportunityMutations } from "./admin-demand-api-mutations-opportunities";
 
 const LIST_LIMIT_MAX = 200;
 const METRICS_LIMIT = 5000;
@@ -166,6 +168,30 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
   );
 
   app.get(
+    "/api/admin/demand/opportunities",
+    describeRoute({
+      summary: "Opportunities — lifecycle board (status/clusterId filters)",
+      tags: ["Admin Demand"],
+      responses: { 200: { description: "Filtered opportunity list" } },
+    }),
+    async (c) => {
+      const status = c.req.query("status");
+      if (
+        status !== undefined &&
+        !DEMAND_OPPORTUNITY_STATUSES.includes(status as never)
+      )
+        return badEnum(c, "status");
+      const items = await store.listOpportunities({
+        status,
+        clusterId: c.req.query("clusterId"),
+        limit: listLimit(c),
+        offset: listOffset(c),
+      });
+      return c.json({ items, count: items.length });
+    },
+  );
+
+  app.get(
     "/api/admin/demand/metrics",
     describeRoute({
       summary: "§17.4 demand digest — top asks, repeat demand, intent, conversion",
@@ -236,6 +262,7 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
   );
 
   registerDemandAdminMutations(app, store);
+  registerDemandOpportunityMutations(app, store);
 
   return app;
 }

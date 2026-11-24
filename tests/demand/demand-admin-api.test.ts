@@ -245,6 +245,86 @@ describe("retag + triage mutations", () => {
   });
 });
 
+describe("opportunity lifecycle (231-7)", () => {
+  const mkOpp = async (
+    app: Hono,
+    key: string,
+    store: ReturnType<typeof createMemoryDemandStores>,
+  ) => {
+    const a = await ingestDemand(
+      store,
+      { text: "can you escrow my payout", source: "DEMAND_API", declaredLevel: "INTENT" },
+      { resolution: "API_KEY", actorRef: "agent:agb_1" },
+    );
+    if (!a.ok) throw new Error("seed failed");
+    const r = await admin(app, key, `/api/admin/demand/clusters/${a.cluster.id}/opportunity`, {
+      method: "POST", body: {}, idem: `idem-opp-${a.cluster.id}`,
+    });
+    expect(r.status).toBe(201);
+    return (await r.json()).opportunity as { id: string; status: string };
+  };
+
+  it("create → snapshot frozen; transition validates lifecycle", async () => {
+    const { app, store, opStore } = mkApp();
+    const { key } = await seedOperator(opStore);
+    const opp = await mkOpp(app, key, store);
+    expect(opp.status).toBe("PROPOSED");
+    const full = await store.getOpportunity(opp.id);
+    expect(full?.metricsSnapshot?.count).toBe(1);
+    // PROPOSED→SHIPPED illegal (no direct hop)
+    const bad = await admin(app, key, `/api/admin/demand/opportunities/${opp.id}/transition`, {
+      method: "POST", body: { to: "SHIPPED" }, idem: "idem-tr-bad",
+    });
+    expect(bad.status).toBe(409);
+    // PROPOSED→EVALUATING→ACCEPTED legal
+    for (const [to, idem] of [["EVALUATING", "idem-tr-ok1"], ["ACCEPTED", "idem-tr-ok2"]] as const) {
+      const r = await admin(app, key, `/api/admin/demand/opportunities/${opp.id}/transition`, {
+        method: "POST", body: { to }, idem,
+      });
+      expect(r.status).toBe(200);
+    }
+    // LINKED refused at the ops layer — the link gesture owns it
+    const linked = await admin(app, key, `/api/admin/demand/opportunities/${opp.id}/transition`, {
+      method: "POST", body: { to: "LINKED" }, idem: "idem-tr-ok3",
+    });
+    expect(linked.status).toBe(409);
+    const events = await store.listEvents("opportunity", opp.id);
+    expect(events.filter((e) => e.kind === "demand.opportunity.updated").length).toBe(2);
+  });
+
+  it("edit updates fields without a status move; empty patch → 400", async () => {
+    const { app, store, opStore } = mkApp();
+    const { key } = await seedOperator(opStore);
+    const opp = await mkOpp(app, key, store);
+    const r = await admin(app, key, `/api/admin/demand/opportunities/${opp.id}/edit`, {
+      method: "POST",
+      body: { title: "Escrow payouts", hypothesis: "agents want escrow", expectedValue: "high" },
+      idem: "idem-edit-1",
+    });
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.opportunity.title).toBe("Escrow payouts");
+    expect(j.opportunity.status).toBe("PROPOSED"); // unchanged
+    const empty = await admin(app, key, `/api/admin/demand/opportunities/${opp.id}/edit`, {
+      method: "POST", body: {}, idem: "idem-edit-2",
+    });
+    expect(empty.status).toBe(400);
+    const events = await store.listEvents("opportunity", opp.id);
+    expect(events.map((e) => e.kind)).toContain("demand.opportunity.updated");
+  });
+
+  it("GET /opportunities lists with status filter", async () => {
+    const { app, store, opStore } = mkApp();
+    const { key } = await seedOperator(opStore);
+    await mkOpp(app, key, store);
+    const r = await admin(app, key, "/api/admin/demand/opportunities?status=PROPOSED");
+    expect(r.status).toBe(200);
+    expect((await r.json()).count).toBe(1);
+    const closed = await admin(app, key, "/api/admin/demand/opportunities?status=SHIPPED");
+    expect((await closed.json()).count).toBe(0);
+  });
+});
+
 describe("metrics", () => {
   it("returns the §17.4 digest", async () => {
     const { app, store, opStore } = mkApp();

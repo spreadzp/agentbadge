@@ -16,6 +16,7 @@ type OpportunityOps = Pick<
   | "listOpportunities"
   | "createOpportunity"
   | "transitionOpportunity"
+  | "updateOpportunity"
   | "linkBacklogTask"
 >;
 
@@ -114,6 +115,26 @@ export function memoryOpportunityOps(
       const appended = appendEventsMem("opportunity", id, [event]);
       return {
         record: cloneOpportunity(out.record),
+        event: cloneEvent(appended[0]!),
+        transitioned: true,
+      };
+    },
+
+    async updateOpportunity(id, patch, expected, event) {
+      const cur = opportunities.get(id) ?? null;
+      if (!cur) return { record: null, event: null, transitioned: false, reason: "missing" };
+      if (cur.status !== expected.status) {
+        return { record: cloneOpportunity(cur), event: null, transitioned: false, reason: "status_mismatch" };
+      }
+      const next: DemandOpportunityRecord = { ...cur, updatedAt: now() };
+      if (patch.title !== undefined) next.title = patch.title;
+      if (patch.hypothesis !== undefined) next.hypothesis = patch.hypothesis;
+      if (patch.expectedValue !== undefined) next.expectedValue = patch.expectedValue;
+      if (patch.declineReason !== undefined) next.declineReason = patch.declineReason;
+      opportunities.set(id, next);
+      const appended = appendEventsMem("opportunity", id, [event]);
+      return {
+        record: cloneOpportunity(next),
         event: cloneEvent(appended[0]!),
         transitioned: true,
       };

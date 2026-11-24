@@ -1,24 +1,18 @@
-import type {
-  DemandRepository,
-  DemandEventInput as RepoEventInput,
-} from "@agentbadge/database";
+import type { DemandRepository } from "@agentbadge/database";
 
 import type {
   DemandStore,
   DemandTransitionResult,
 } from "./store";
-import type {
-  DemandClusterRecord,
-  DemandOpportunityRecord,
-} from "./types";
+import type { DemandClusterRecord } from "./types";
 import {
   repoEvent,
   repoEvents,
   toCluster,
   toEvent,
-  toOpportunity,
   toSignal,
 } from "./store-db-mappers";
+import { dbOpportunityOps } from "./store-db-opportunity";
 
 /**
  * EPIC-231 (SLICE-231-1): Postgres adapter — DemandRepository rows
@@ -190,81 +184,9 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
       };
     },
 
-    // ─── opportunities ────────────────────────────────────────
+    // ─── opportunities (store-db-opportunity.ts — max-lines) ────
 
-    async getOpportunity(id) {
-      const row = await repo.getOpportunity(id);
-      return row ? toOpportunity(row) : null;
-    },
-
-    async listOpportunities(opts) {
-      const rows = await repo.listOpportunities({
-        status: opts?.status,
-        clusterId: opts?.clusterId,
-        limit: opts?.limit,
-        offset: opts?.offset,
-      });
-      return rows.map(toOpportunity);
-    },
-
-    async createOpportunity(input, events) {
-      const out = await repo.createOpportunity(
-        {
-          id: input.id,
-          clusterId: input.clusterId,
-          title: input.title,
-          hypothesis: input.hypothesis ?? null,
-          expectedValue: input.expectedValue ?? null,
-          metricsSnapshot: (input.metricsSnapshot ?? null) as RepoEventInput["payload"] | null,
-          createdBy: input.createdBy,
-        },
-        repoEvents(events),
-      );
-      return {
-        record: out.row ? toOpportunity(out.row) : null,
-        created: out.created,
-      };
-    },
-
-    async transitionOpportunity(id, input, event): Promise<DemandTransitionResult<DemandOpportunityRecord>> {
-      const out = await repo.transitionOpportunity(
-        id,
-        {
-          from: input.from,
-          to: input.to,
-          actor: input.actor,
-          reason: input.reason ?? null,
-          patch: input.patch,
-          now: input.now,
-        },
-        repoEvent(event),
-      );
-      if (out.transitioned) {
-        return {
-          record: toOpportunity(out.row),
-          event: toEvent(out.event),
-          transitioned: true,
-        };
-      }
-      return {
-        record: out.row ? toOpportunity(out.row) : null,
-        event: null,
-        transitioned: false,
-        reason: out.reason,
-      };
-    },
-
-    async linkBacklogTask(id, backlogTaskId, expected, event) {
-      const res = await repo.linkBacklogTask(
-        id,
-        backlogTaskId,
-        expected,
-        repoEvent(event),
-      );
-      return res.linked
-        ? { linked: true, record: toOpportunity(res.row) }
-        : res;
-    },
+    ...dbOpportunityOps(repo),
 
     // ─── events ───────────────────────────────────────────────
 

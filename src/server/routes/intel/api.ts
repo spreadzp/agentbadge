@@ -16,6 +16,7 @@ import { registerPullJobRoutes } from "./jobs";
 import { registerAttestationRoutes } from "./attestations";
 import { registerAlertRoutes } from "./alerts";
 import { registerReportDiffRoute } from "./report-diff";
+import { registerEntitlementAdminRoutes } from "./entitlement-admin";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
 const DAY_MS = 86_400_000;
@@ -216,6 +217,7 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
   registerAttestationRoutes(app, deps);
   registerAlertRoutes(app, deps);
   registerReportDiffRoute(app, deps);
+  registerEntitlementAdminRoutes(app, deps);
 
   return app;
 }

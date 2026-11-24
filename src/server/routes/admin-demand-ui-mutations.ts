@@ -12,10 +12,15 @@ import { principalId } from "../middleware/operatorAuth";
 import {
   createDemandOpportunity,
   retagDemandSignal,
+  transitionDemandOpportunity,
   triageDemandCluster,
+  updateDemandOpportunity,
 } from "../lib/demand/operator-ops";
 import type { DemandStore } from "../lib/demand/store";
-import { DEMAND_CLUSTER_STATUSES } from "../lib/demand/types";
+import {
+  DEMAND_CLUSTER_STATUSES,
+  DEMAND_OPPORTUNITY_STATUSES,
+} from "../lib/demand/types";
 import { rejectCtrl } from "./admin-operator-guard";
 import {
   formStr,
@@ -74,6 +79,80 @@ export function registerDemandUiMutations(
       backWithDemand(
         "/admin/demand/opportunities",
         r.ok ? { ok: "opportunity_created" } : { err: r.reason },
+      ),
+      303,
+    );
+  });
+
+  app.post("/admin/demand/opportunities/:id/transition", async (c) => {
+    const id = c.req.param("id") ?? "";
+    const b = await c.req.parseBody();
+    const bad = rejectCtrl(c, id, formStr(b, "declineReason"));
+    if (bad) return bad;
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
+    const to = formStr(b, "to");
+    if (!DEMAND_OPPORTUNITY_STATUSES.includes(to as never)) {
+      return c.redirect(
+        backWithDemand("/admin/demand/opportunities", { err: "bad_target" }),
+        303,
+      );
+    }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const declineReason = formStr(b, "declineReason") || null;
+    const r = await transitionDemandOpportunity(
+      store,
+      id,
+      to,
+      {
+        reason: formStr(b, "reason") || declineReason,
+        patch: declineReason ? { declineReason } : undefined,
+      },
+      actor,
+    );
+    return c.redirect(
+      backWithDemand(
+        "/admin/demand/opportunities",
+        r.ok ? { ok: `transitioned_${to}` } : { err: r.reason },
+      ),
+      303,
+    );
+  });
+
+  app.post("/admin/demand/opportunities/:id/edit", async (c) => {
+    const id = c.req.param("id") ?? "";
+    const b = await c.req.parseBody();
+    const bad = rejectCtrl(c, id);
+    if (bad) return bad;
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    // The edit form always renders all three fields — empty = clear
+    // (null), parity with the knowledge update convention.
+    const r = await updateDemandOpportunity(
+      store,
+      id,
+      {
+        title: formStr(b, "title") || undefined,
+        hypothesis: formStr(b, "hypothesis") || null,
+        expectedValue: formStr(b, "expectedValue") || null,
+      },
+      actor,
+    );
+    return c.redirect(
+      backWithDemand(
+        "/admin/demand/opportunities",
+        r.ok ? { ok: "saved" } : { err: r.reason },
       ),
       303,
     );

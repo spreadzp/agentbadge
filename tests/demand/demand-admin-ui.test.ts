@@ -128,6 +128,27 @@ describe("UI mutations (PRG)", () => {
     expect(events.map((e) => e.kind)).toContain("demand.opportunity.created");
   });
 
+  it("opportunity transition + edit forms drive the lifecycle (231-7)", async () => {
+    const { app, store, opStore } = mkApp();
+    const { key } = await seedOperator(opStore, "Op", ["read", "workflow"]);
+    const a = await seedDemand(store);
+    await post(app, key, `/admin/demand/clusters/${a.cluster.id}/opportunity`, {});
+    const [opp] = await store.listOpportunities({});
+    const tr = await post(
+      app, key, `/admin/demand/opportunities/${opp.id}/transition`, { to: "EVALUATING" },
+    );
+    expect(tr.status).toBe(303);
+    expect((await store.getOpportunity(opp.id))?.status).toBe("EVALUATING");
+    const ed = await post(
+      app, key, `/admin/demand/opportunities/${opp.id}/edit`,
+      { title: "Escrow payouts", hypothesis: "agents want it", expectedValue: "high" },
+    );
+    expect(ed.status).toBe(303);
+    const fresh = await store.getOpportunity(opp.id);
+    expect(fresh?.title).toBe("Escrow payouts");
+    expect(fresh?.status).toBe("EVALUATING");
+  });
+
   it("missing formToken → flash err, no write", async () => {
     const { app, store, opStore } = mkApp();
     const { key } = await seedOperator(opStore, "Op", ["read", "workflow"]);

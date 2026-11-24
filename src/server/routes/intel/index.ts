@@ -69,6 +69,8 @@ export interface IntelRouteDeps {
    * CI scan+diff pair. Absent → no cooldown (tests/dev).
    */
   scanCooldownSeconds?: number;
+  /** SLICE-262-19b — append-only entitlement transition log. */
+  entitlementEvents?: import("../../lib/intel/entitlement").IntelEntitlementEventStore;
 }
 
 export const INTEL_KEY_MISSING = {

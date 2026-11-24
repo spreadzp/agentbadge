@@ -118,6 +118,110 @@ export async function triageDemandCluster(
   return { ok: true, cluster: r.record!, event: r.event! };
 }
 
+export type OpportunityOpResult =
+  | {
+      ok: true;
+      opportunity: DemandOpportunityRecord;
+      event: DemandEventRecord;
+    }
+  | { ok: false; reason: "missing" | "status_mismatch" | "illegal" | "no_patch" };
+
+/**
+ * Opportunity lifecycle transition (231-7) — the store's from→to
+ * table owns legality (effects: closedAt on terminal, patch fields
+ * applied). `to=LINKED` refuses here: LINKED is reachable only
+ * through the «→ Backlog task» gesture (linkBacklogTask, 231-8) so
+ * a LINKED row always carries backlogTaskId.
+ */
+export async function transitionDemandOpportunity(
+  store: DemandStore,
+  opportunityId: string,
+  to: string,
+  input: {
+    reason?: string | null;
+    patch?: {
+      title?: string;
+      hypothesis?: string | null;
+      expectedValue?: string | null;
+      declineReason?: string | null;
+    };
+  },
+  actor: string,
+): Promise<OpportunityOpResult> {
+  if (to === "LINKED") return { ok: false, reason: "illegal" };
+  const cur = await store.getOpportunity(opportunityId);
+  if (!cur) return { ok: false, reason: "missing" };
+  const event = buildDemandEvent(
+    "demand.opportunity.updated",
+    "INTERNAL",
+    {
+      opportunityId: cur.id,
+      from: cur.status,
+      to,
+      actor,
+      reason: input.reason ?? null,
+      patch: input.patch ?? null,
+    },
+    `opp-transition:${cur.id}:${cur.status}:${to}`,
+  );
+  const r = await store.transitionOpportunity(
+    cur.id,
+    {
+      from: cur.status,
+      to,
+      actor,
+      reason: input.reason ?? null,
+      patch: input.patch,
+    },
+    event,
+  );
+  if (!r.transitioned) return { ok: false, reason: r.reason };
+  emitDemandHooks("opportunity", cur.id, [event]);
+  return { ok: true, opportunity: r.record!, event: r.event! };
+}
+
+/**
+ * Operator field edit without a status move (231-7) — CAS on the
+ * read status; requires at least one field in the patch.
+ */
+export async function updateDemandOpportunity(
+  store: DemandStore,
+  opportunityId: string,
+  patch: {
+    title?: string;
+    hypothesis?: string | null;
+    expectedValue?: string | null;
+    declineReason?: string | null;
+  },
+  actor: string,
+): Promise<OpportunityOpResult> {
+  if (Object.values(patch).every((v) => v === undefined)) {
+    return { ok: false, reason: "no_patch" };
+  }
+  const cur = await store.getOpportunity(opportunityId);
+  if (!cur) return { ok: false, reason: "missing" };
+  const event = buildDemandEvent(
+    "demand.opportunity.updated",
+    "INTERNAL",
+    {
+      opportunityId: cur.id,
+      action: "edit",
+      actor,
+      patch,
+    },
+    `opp-edit:${cur.id}:${cur.status}:${JSON.stringify(patch)}`,
+  );
+  const r = await store.updateOpportunity(
+    cur.id,
+    patch,
+    { status: cur.status },
+    event,
+  );
+  if (!r.transitioned) return { ok: false, reason: r.reason };
+  emitDemandHooks("opportunity", cur.id, [event]);
+  return { ok: true, opportunity: r.record!, event: r.event! };
+}
+
 export type CreateOpportunityResult =
   | { ok: true; opportunity: DemandOpportunityRecord }
   | { ok: false; reason: "missing" };
