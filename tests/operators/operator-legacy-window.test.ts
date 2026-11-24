@@ -17,7 +17,10 @@ import {
   hashAdminKey,
   type OperatorStore,
 } from "../../src/server/lib/operators";
-import { createMemoryKnowledgeStores } from "../../src/server/lib/knowledge";
+import {
+  createMemoryKnowledgeStores,
+  evidenceFingerprint,
+} from "../../src/server/lib/knowledge";
 import { createAdminKnowledgeRoutes } from "../../src/server/routes/admin-knowledge-api";
 import { resetIdempotencyStore } from "../../src/server/lib/contract-guards";
 import { generateReportId } from "../../src/agent-readiness/integrity/ulid";
@@ -295,6 +298,94 @@ describe("dual-auth window — legacy shared key (SLICE-264-5)", () => {
     expect(created.item.createdBy).toBe("legacy_admin");
     // …and the legacy caller still can't reach operator-admin
     // (capability boundary stands even inside the window).
+  });
+
+  it("DoD: one shared principal can't self-approve — the collapse makes SoD REAL, not cosmetic", async () => {
+    // 264-6 review: inside the window every legacy caller IS
+    // legacy_admin — create/submit work, but verify of its own submit
+    // is a hard SEPARATION_OF_DUTIES. Approval needs a personal
+    // credential. The old self-asserted x-operator-id "SoD" was
+    // unauthenticated strings; this lock is the honest trade-off.
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", new Date(Date.now() + 3600_000).toISOString());
+    setEnv("ADMIN_BREAK_GLASS_ENABLED", undefined);
+    resetIdempotencyStore();
+    const store = createMemoryKnowledgeStores();
+    const operatorStore = createMemoryOperatorStore();
+    const app = new Hono();
+    app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+    let seq = 0;
+    const headers = () => ({
+      "x-admin-key": LEGACY_KEY,
+      "content-type": "application/json",
+      "idempotency-key": `leg-sod-${Date.now()}-${++seq}`,
+    });
+
+    const created = await app.request("/admin/api/knowledge/items", {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ kind: "FAQ", title: "t", body: "b" }),
+    });
+    expect(created.status).toBe(201);
+    const { item, version } = await created.json();
+    // Evidence gate (Arc R1 H4) must be satisfied before verify.
+    const ev = await app.request(
+      `/admin/api/knowledge/versions/${version.id}/evidence`,
+      {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+          type: "INTERNAL_DOC",
+          uri: "internal://runbook/legacy-sod",
+        }),
+      },
+    );
+    expect(ev.status).toBe(200);
+    const submit = await app.request(
+      `/admin/api/knowledge/items/${item.id}/transition`,
+      {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ to: "PENDING" }),
+      },
+    );
+    expect(submit.status).toBe(200);
+    const cur = await store.getItem(item.id);
+    const evRows = cur?.latestVersionId
+      ? await store.listEvidence(cur.latestVersionId)
+      : [];
+    const verify = await app.request(
+      `/admin/api/knowledge/items/${item.id}/transition`,
+      {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+          to: "VERIFIED",
+          expectedVersionId: cur?.latestVersionId ?? undefined,
+          expectedEvidence: evidenceFingerprint(evRows),
+        }),
+      },
+    );
+    expect(verify.status).toBe(403);
+    expect((await verify.json()).error.code).toBe("SEPARATION_OF_DUTIES");
+    // …but a personal credential CAN approve the legacy-submitted item.
+    const { key } = await seedOperator(operatorStore);
+    const approve = await app.request(
+      `/admin/api/knowledge/items/${item.id}/transition`,
+      {
+        method: "POST",
+        headers: {
+          "x-admin-key": key,
+          "content-type": "application/json",
+          "idempotency-key": `leg-sod-${Date.now()}-op`,
+        },
+        body: JSON.stringify({
+          to: "VERIFIED",
+          expectedVersionId: cur?.latestVersionId ?? undefined,
+          expectedEvidence: evidenceFingerprint(evRows),
+        }),
+      },
+    );
+    expect(approve.status).toBe(200);
   });
 
   it("wrong key in an open window still refuses — the window accepts the SHARED key only", async () => {

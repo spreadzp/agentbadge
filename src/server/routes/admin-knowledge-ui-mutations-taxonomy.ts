@@ -18,7 +18,7 @@ import {
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
 import { rejectCtrl } from "./admin-operator-guard";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import {
   formStr,
   tokenConsumed,
@@ -66,7 +66,7 @@ export function registerKnowledgeUiTaxonomyMutations(
         const b = await c.req.parseBody();
         const bad5 = rejectCtrl(
           c, id, formStr(b, "relationId"), formStr(b, "toItemId"),
-                  );
+        );
         if (bad5) return bad5;
         if (!tokenConsumed(b)) {
           return c.redirect(
@@ -74,13 +74,15 @@ export function registerKnowledgeUiTaxonomyMutations(
             303,
           );
         }
+        const actor = principalId(c);
+        if (actor instanceof Response) return actor;
         const r = remove
-          ? await removeRelation(store, formStr(b, "relationId"), getPrincipal(c)!.id)
+          ? await removeRelation(store, formStr(b, "relationId"), actor)
           : await addRelation(store, {
               fromItemId: id,
               toItemId: formStr(b, "toItemId"),
               type: formStr(b, "type") as never,
-              actorRef: getPrincipal(c)!.id,
+              actorRef: actor,
             });
         return c.redirect(
           backWith(
@@ -96,8 +98,7 @@ export function registerKnowledgeUiTaxonomyMutations(
       async (c) => {
         const id = c.req.param("id") ?? "";
         const b = await c.req.parseBody();
-        const bad6 = rejectCtrl(
-          c, id, formStr(b, "evidenceId"),         );
+        const bad6 = rejectCtrl(c, id, formStr(b, "evidenceId"));
         if (bad6) return bad6;
         if (!tokenConsumed(b)) {
           return c.redirect(
@@ -105,17 +106,19 @@ export function registerKnowledgeUiTaxonomyMutations(
             303,
           );
         }
+        const actor = principalId(c);
+        if (actor instanceof Response) return actor;
         const item = await store.getItem(id);
         const vid = item?.latestVersionId ?? "";
         // Arc R1 H4 / R2 M-11: domain guard refuses evidence writes
         // outside DRAFT; removals carry the operator for the event.
         const r = remove
-          ? await removeEvidence(store, formStr(b, "evidenceId"), getPrincipal(c)!.id)
+          ? await removeEvidence(store, formStr(b, "evidenceId"), actor)
           : await addEvidence(store, vid, {
               type: formStr(b, "type") as never,
               uri: formStr(b, "uri"),
               label: formStr(b, "label") || null,
-              addedBy: getPrincipal(c)!.id,
+              addedBy: actor,
             });
         return c.redirect(
           backWith(

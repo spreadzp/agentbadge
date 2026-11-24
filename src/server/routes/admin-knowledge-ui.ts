@@ -83,7 +83,8 @@ export function createAdminKnowledgeUi(
 ): Hono {
   const app = new Hono();
   const browserAuth = operatorBrowserAuth(operatorStore);
-  app.use("/admin/knowledge", browserAuth);
+  // `path/*` covers the bare `path` in Hono 4 — a second bare mount
+  // would run the auth middleware twice per request.
   app.use("/admin/knowledge/*", browserAuth);
   // SLICE-264-6: capability gate — GET pages need "read", form
   // POSTs need "workflow" (capabilityForSurface method fallback).

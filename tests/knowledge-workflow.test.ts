@@ -363,4 +363,31 @@ describe("admin knowledge API (SLICE-229-3)", () => {
     );
     expect(bad.status).toBe(400);
   });
+
+  it("capability gate (C7): read-only credential reads but can't mutate", async () => {
+    // The method-fallback classifier (GET→read, POST→workflow) is the
+    // only thing between a read-scoped cred and the write path — pin it.
+    resetIdempotencyStore();
+    const store = createMemoryKnowledgeStores();
+    const operatorStore = createMemoryOperatorStore();
+    const reader = await seedOperator(operatorStore, "Reader", ["read"]);
+    const app = new Hono();
+    app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));
+
+    const list = await app.request("/admin/api/knowledge/items", {
+      headers: { "x-admin-key": reader.key },
+    });
+    expect(list.status).toBe(200);
+    const write = await app.request("/admin/api/knowledge/items", {
+      method: "POST",
+      headers: {
+        "x-admin-key": reader.key,
+        "content-type": "application/json",
+        "idempotency-key": `kn-ro-${Date.now()}`,
+      },
+      body: JSON.stringify({ kind: "FAQ", title: "t", body: "b" }),
+    });
+    expect(write.status).toBe(403);
+    expect((await write.json()).code).toBe("INSUFFICIENT_CAPABILITY");
+  });
 });

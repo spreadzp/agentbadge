@@ -16,18 +16,16 @@
  *    401 envelope byte-for-byte; the refusal never leaks which leg
  *    failed.
  *  - x-operator-id is REJECTED at this boundary with a typed 400
- *    (D-264-Q16 — it dies here, not silently): a drop-in mount on an
- *    unmigrated mutation surface fails LOUD instead of letting the
- *    self-asserted header keep spoofing attribution until 264-6..8
- *    rewrite the call sites to getPrincipal(c).
+ *    (D-264-Q16 — it dies here): a drop-in mount on an unmigrated
+ *    surface fails LOUD instead of spoofing attribution until
+ *    264-6..8 rewrite the call sites to getPrincipal(c).
  *  - success → c.set("principal", Principal) for audit attribution +
  *    c.set("operator", full record) for requireCapability.
  *  - lastUsedAt is a throttled (>=5min) fire-and-forget write — the
  *    diagnostics column never blocks or fails the request.
  *
- * Transport precedence differs from adminBrowserAuth deliberately:
- * X-Admin-Key > Bearer > Basic first-match — a bogus secondary
- * transport can no longer veto a valid primary credential.
+ * Transport precedence: X-Admin-Key > Bearer > Basic first-match — a
+ * bogus secondary can no longer veto a valid primary credential.
  *
  * ADMIN_API_KEY gets exactly one verdict — only on a credential MISS
  * and only through the time-boxed window policy in operator-legacy
@@ -78,10 +76,8 @@ function unauthorized(c: Context): Response {
 }
 
 // Constant-work pad for the unknown-key path: the digest compare runs
-// even when the lookup missed. (Residual asymmetry is the extra
-// operator fetch on a hit — lookup-then-check is inherent; the
-// envelope stays byte-identical and keys are 192-bit, so the oracle
-// buys nothing.)
+// even when the lookup missed — the oracle buys nothing against
+// 192-bit keys behind a byte-identical envelope.
 const DUMMY_DIGEST = Buffer.alloc(32);
 const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
 
@@ -90,9 +86,8 @@ export function operatorAuth(store: OperatorStore) {
     c: Context,
     next: Next,
   ): Promise<Response | void> {
-    // x-operator-id dies HERE (D-264-Q16) — presence is a typed 400 on
-    // every verb, so an unmigrated surface can't keep attributing
-    // writes to a self-asserted string.
+    // x-operator-id dies HERE (D-264-Q16) — presence is a typed 400,
+    // so an unmigrated surface can't keep spoofing attribution.
     if (c.req.header("x-operator-id") !== undefined) {
       return errorResponse(
         c,
@@ -110,8 +105,7 @@ export function operatorAuth(store: OperatorStore) {
     try {
       pair = await store.getOperatorByKeyHash(keyHash);
     } catch {
-      // store failure is an infrastructure 500 in the typed envelope —
-      // never folded into a 401 (adminAuth misconfig precedent).
+      // store failure is a typed 500 — never folded into a 401.
       return errorResponse(
         c,
         500,
@@ -124,10 +118,8 @@ export function operatorAuth(store: OperatorStore) {
     if (pair === null || stored === undefined) {
       timingSafeEqual(Buffer.from(keyHash, "hex"), DUMMY_DIGEST);
       // SLICE-264-5 dual-auth window: no credential row → the shared
-      // ADMIN_API_KEY gets exactly one more verdict — inside the
-      // window it yields a MARKED break_glass principal (never a
-      // personal identity); after it, only under
-      // ADMIN_BREAK_GLASS_ENABLED. Refusal keeps the 401 envelope.
+      // ADMIN_API_KEY gets exactly one more verdict — a MARKED
+      // break_glass principal, never a personal identity.
       const legacy = tryLegacySharedKey(provided, c.req.path);
       if (!legacy.accepted) return unauthorized(c);
       c.set("principal", legacy.principal);
@@ -135,8 +127,7 @@ export function operatorAuth(store: OperatorStore) {
       await next();
       return;
     }
-    // A store that hands back a non-sha256 row is a data-integrity
-    // failure — loud 500, never an uncaught RangeError on the compare.
+    // A non-sha256 stored row is a data-integrity failure — loud 500.
     if (!SHA256_HEX_RE.test(stored)) {
       return errorResponse(
         c,
@@ -161,8 +152,7 @@ export function operatorAuth(store: OperatorStore) {
       return unauthorized(c);
     }
 
-    // Throttled diagnostics touch — fire-and-forget. NaN/future-dated
-    // lastUsedAt counts as stale so a malformed row self-heals.
+    // Throttled fire-and-forget touch; NaN/future lastUsedAt self-heals.
     const nowMs = Date.now();
     const lastMs =
       pair.credential.lastUsedAt === null
@@ -209,10 +199,9 @@ export function operatorBrowserAuth(store: OperatorStore) {
   ): Promise<Response | void> {
     const res = await inner(c, next);
     if (res instanceof Response && res.status === 401) {
-      // DISTINCT realm (adminBrowserAuth owns "admin"): browsers key
-      // the Basic credential cache on (origin, realm) — during the
-      // dual-auth window cached ADMIN_API_KEY and opk_ creds must not
-      // transpose across old/new surfaces into 401 ping-pong.
+      // DISTINCT realm (adminBrowserAuth owns "admin") — the Basic
+      // credential cache keys on (origin, realm); during the window
+      // ADMIN_API_KEY and opk_ creds must not transpose into 401s.
       res.headers.set("WWW-Authenticate", 'Basic realm="operators"');
     }
     return res;
@@ -222,6 +211,21 @@ export function operatorBrowserAuth(store: OperatorStore) {
 /** The audit-facing actor resolved FROM the credential (D-264-Q20). */
 export function getPrincipal(c: Context): Principal | undefined {
   return c.get("principal") as Principal | undefined;
+}
+
+// Actor for write-path attribution (SLICE-264-6 review): operatorAuth
+// guarantees the principal on every mounted route — an UNSET one means
+// the handler sits outside the auth mount (registration bug). Refuse
+// up-front instead of a `getPrincipal(c)!` TypeError mid-write.
+// `instanceof Response` is the refusal (requireOperatorRef shape).
+export function principalId(c: Context): string | Response {
+  const p = requirePrincipal(c);
+  return p instanceof Response ? p : p.id;
+}
+
+/** Same contract as principalId, returning the full Principal record. */
+export function requirePrincipal(c: Context): Principal | Response {
+  return getPrincipal(c) ?? unauthorized(c);
 }
 
 /** The full operator record (capabilities) resolved by operatorAuth. */

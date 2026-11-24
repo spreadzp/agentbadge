@@ -16,7 +16,7 @@ import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
@@ -74,7 +74,8 @@ export function registerKnowledgeTransitionRoutes(
       const itemId = c.req.param("id");
       const ctrlBad = rejectCtrl(c, itemId);
       if (ctrlBad) return ctrlBad;
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const raw = await c.req.json().catch(() => null);
       const body = transitionBodySchema.safeParse(raw);
       if (!body.success) {

@@ -12,7 +12,7 @@
 import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { getPrincipal } from "../middleware/operatorAuth";
+import { requirePrincipal } from "../middleware/operatorAuth";
 import { rejectCtrl } from "./admin-operator-guard";
 import {
   auditOperatorAdmin,
@@ -42,7 +42,8 @@ export function registerOperatorCredentialRoutes(
       },
     }),
     async (c) => {
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+      if (actor instanceof Response) return actor;
       const id = c.req.param("id") ?? "";
       const ctrlBad = rejectCtrl(c, id);
       if (ctrlBad) return ctrlBad;
@@ -83,7 +84,8 @@ export function registerOperatorCredentialRoutes(
       },
     }),
     async (c) => {
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+      if (actor instanceof Response) return actor;
       const id = c.req.param("id") ?? "";
       const cid = c.req.param("cid") ?? "";
       const ctrlBad = rejectCtrl(c, id, cid);
@@ -135,7 +137,8 @@ export function registerOperatorCredentialRoutes(
       },
     }),
     async (c) => {
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+      if (actor instanceof Response) return actor;
       const id = c.req.param("id") ?? "";
       const cid = c.req.param("cid") ?? "";
       const ctrlBad = rejectCtrl(c, id, cid);

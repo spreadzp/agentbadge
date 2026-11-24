@@ -21,7 +21,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { operatorAuth, getPrincipal } from "../middleware/operatorAuth";
+import { operatorAuth, requirePrincipal } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { rejectCtrl } from "./admin-operator-guard";
@@ -93,7 +93,8 @@ export function createAdminOperatorsApi(store: OperatorStore): Hono {
       },
     }),
     async (c) => {
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+      if (actor instanceof Response) return actor;
       const raw = await c.req.json().catch(() => null);
       const body = createBodySchema.safeParse(raw);
       if (!body.success) {
@@ -153,7 +154,8 @@ export function createAdminOperatorsApi(store: OperatorStore): Hono {
         },
       }),
       async (c) => {
-        const actor = getPrincipal(c)!;
+        const actor = requirePrincipal(c);
+      if (actor instanceof Response) return actor;
         const id = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, id);
         if (ctrlBad) return ctrlBad;

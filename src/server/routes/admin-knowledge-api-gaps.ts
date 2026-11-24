@@ -16,7 +16,7 @@ import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_GAP_STATUSES,
@@ -86,7 +86,7 @@ export function registerKnowledgeGapRoutes(
   for (const action of ["triage", "resolve", "wontfix"] as const) {
     app.post(
       `/admin/api/knowledge/gaps/:id/${action}`,
-        describeRoute({
+      describeRoute({
         summary: `Gap lifecycle: ${action}`,
         tags: ["Admin Knowledge"],
         responses: {
@@ -99,7 +99,8 @@ export function registerKnowledgeGapRoutes(
         const gapId = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, gapId);
         if (ctrlBad) return ctrlBad;
-        const actorRef = getPrincipal(c)!.id;
+        const actorRef = principalId(c);
+        if (actorRef instanceof Response) return actorRef;
         // Body is parsed OUTSIDE the produce closure (Arc R1 H1):
         // the fingerprint must cover it before the key binds.
         const raw = action === "resolve"

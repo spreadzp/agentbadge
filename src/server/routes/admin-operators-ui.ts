@@ -20,9 +20,9 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 
 import {
-  getPrincipal,
   operatorBrowserAuth,
   requireCapability,
+  requirePrincipal,
 } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
@@ -99,7 +99,8 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
   app.get("/admin/operators", async (c) => {
     const deny = requireCapability(c, "operator-admin");
     if (deny) return deny;
-    const actor = getPrincipal(c)!;
+    const actor = requirePrincipal(c);
+    if (actor instanceof Response) return actor;
     const operators = await store.listOperators();
     const rows: OperatorRow[] = await Promise.all(
       operators.map(async (o) => ({
@@ -128,7 +129,8 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
   app.post("/admin/operators/create", async (c) => {
     const deny = requireCapability(c, "operator-admin");
     if (deny) return deny;
-    const actor = getPrincipal(c)!;
+    const actor = requirePrincipal(c);
+    if (actor instanceof Response) return actor;
     const b = await c.req.parseBody();
     const str = (k: string) =>
       typeof b[k] === "string" ? (b[k] as string).trim() : "";
@@ -163,7 +165,8 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
   app.post("/admin/operators/:id/credentials", async (c) => {
     const deny = requireCapability(c, "operator-admin");
     if (deny) return deny;
-    const actor = getPrincipal(c)!;
+    const actor = requirePrincipal(c);
+    if (actor instanceof Response) return actor;
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
     const bad = rejectCtrl(c, id);
@@ -186,7 +189,8 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
     app.post(`/admin/operators/:id/credentials/:cid/${verb}`, async (c) => {
       const deny = requireCapability(c, "operator-admin");
       if (deny) return deny;
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+    if (actor instanceof Response) return actor;
       const id = c.req.param("id") ?? "";
       const cid = c.req.param("cid") ?? "";
       const b = await c.req.parseBody();
@@ -239,7 +243,8 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
     app.post(`/admin/operators/:id/${verb}`, async (c) => {
       const deny = requireCapability(c, "operator-admin");
       if (deny) return deny;
-      const actor = getPrincipal(c)!;
+      const actor = requirePrincipal(c);
+    if (actor instanceof Response) return actor;
       const id = c.req.param("id") ?? "";
       const b = await c.req.parseBody();
       const bad = rejectCtrl(c, id);

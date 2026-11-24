@@ -23,7 +23,7 @@ import {
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
 import { rejectCtrl } from "./admin-operator-guard";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import {
   formStr,
   formRaw,
@@ -38,14 +38,14 @@ export function registerKnowledgeUiMutations(
 ): void {
   app.post("/admin/knowledge/create", async (c) => {
     const b = await c.req.parseBody();
-    const bad0 = rejectCtrl(c);
-    if (bad0) return bad0;
     if (!tokenConsumed(b)) {
       return c.redirect(
         backWith("/admin/knowledge", { err: FORM_TOKEN_ERR }),
         303,
       );
     }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
     const input = {
       kind: formStr(b, "kind") as never,
       title: formStr(b, "title"),
@@ -53,7 +53,7 @@ export function registerKnowledgeUiMutations(
       summary: formStr(b, "summary") || undefined,
       slug: formStr(b, "slug") || undefined,
     };
-    const r = await createKnowledgeItem(store, input, getPrincipal(c)!.id);
+    const r = await createKnowledgeItem(store, input, actor);
     if (!r.ok) {
       return c.redirect(backWith("/admin/knowledge", { err: r.error }), 303);
     }
@@ -85,7 +85,9 @@ export function registerKnowledgeUiMutations(
       summary: formStr(b, "summary") || null,
       expectedSeq: expectedSeq ?? undefined,
     };
-    const r = await updateKnowledgeDraft(store, id, input, getPrincipal(c)!.id);
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const r = await updateKnowledgeDraft(store, id, input, actor);
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -115,7 +117,9 @@ export function registerKnowledgeUiMutations(
     // re-evidenced items refuse rather than approving unseen state.
     const expectedVersionId = formStr(b, "expectedVersionId") || undefined;
     const expectedEvidence = formStr(b, "expectedEvidence") || undefined;
-    const r = await transitionKnowledgeItem(store, id, to, getPrincipal(c)!.id, null, {
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const r = await transitionKnowledgeItem(store, id, to, actor, null, {
       expectedVersionId,
       expectedEvidence,
     });
@@ -146,7 +150,9 @@ export function registerKnowledgeUiMutations(
         303,
       );
     }
-    const r = await restoreKnowledgeVersion(store, id, seq, getPrincipal(c)!.id);
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const r = await restoreKnowledgeVersion(store, id, seq, actor);
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -168,7 +174,8 @@ export function registerKnowledgeUiMutations(
           303,
         );
       }
-      const actor = getPrincipal(c)!.id;
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const r = await (action === "resolve"
         ? resolveGap(store, id, formStr(b, "linkedItemId"), actor)
         : action === "triage"

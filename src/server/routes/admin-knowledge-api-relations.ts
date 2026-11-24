@@ -22,7 +22,7 @@ import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   addEvidence,
@@ -77,7 +77,8 @@ export function registerKnowledgeRelationRoutes(
       },
     }),
     async (c) => {
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const body = relationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -114,7 +115,8 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const body = removeRelationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -169,7 +171,8 @@ export function registerKnowledgeRelationRoutes(
       const versionId = c.req.param("vid") ?? "";
       const ctrlBad = rejectCtrl(c, versionId);
       if (ctrlBad) return ctrlBad;
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const body = evidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
@@ -232,7 +235,8 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const body = removeEvidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );

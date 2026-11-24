@@ -1,14 +1,13 @@
 /**
- * EPIC-229 (SLICE-229-11, H-1 fix; Arc R1 H2/M8): x-operator-id is
- * REQUIRED on mutating /admin/api/knowledge/* POSTs — audit
- * attribution is part of the contract, not an optional nicety.
- * The ref must match isOperatorRef (allowlist shape + agent-prefix
- * denylist) — self-declared inside the shared-key boundary, but no
- * longer free-text: unicode/fullwidth/zero-width/agent-shaped refs
- * get an honest 400 instead of silently passing as "operator".
- * Over-length is rejected, never truncated (an 80-char slice makes
- * two distinct ids collide in idempotency scopes + audit rows).
- * Returns the ref or a typed 400 Response (`instanceof Response`).
+ * EPIC-229 (SLICE-229-11; Arc R1 H1/M8): shared write-path guards for
+ * /admin/api/knowledge/* — control-char rejection and the single
+ * idempotent-write wrapper.
+ *
+ * SLICE-264-6: attribution moved to the credential-resolved principal
+ * (principalId in middleware/operatorAuth); x-operator-id is a typed
+ * 400 at the operatorAuth boundary. requireOperatorRef was removed —
+ * review-center + agent-interaction keep their own header handling
+ * until their 264-8 migration.
  */
 
 import type { Context } from "hono";
@@ -21,32 +20,7 @@ import {
   requestFingerprint,
   type IdempotentScope,
 } from "../lib/contract-guards";
-import {
-  isOperatorRef,
-  noCtrlStrict,
-  normalizeOperatorRef,
-} from "../lib/knowledge/types";
-
-export function requireOperatorRef(c: Context): string | Response {
-  const raw = c.req.header("x-operator-id")?.trim();
-  if (!raw) {
-    return errorResponse(
-      c,
-      400,
-      ErrorCodes.MISSING_FIELDS,
-      "x-operator-id header required on mutations (audit attribution)",
-    );
-  }
-  if (!isOperatorRef(raw)) {
-    return errorResponse(
-      c,
-      400,
-      ErrorCodes.INVALID_INPUT,
-      "x-operator-id must be 1-80 chars of [a-z0-9._@-] and not agent-shaped",
-    );
-  }
-  return normalizeOperatorRef(raw);
-}
+import { noCtrlStrict } from "../lib/knowledge/types";
 
 /** Prod-verify fix: NUL/C0 in :id/:vid/?uri params 500s the PG driver.
  *  Arc R1 M8: single-line params also refuse \t \n \r DEL and format

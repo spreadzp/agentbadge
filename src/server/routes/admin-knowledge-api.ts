@@ -22,8 +22,8 @@ import { z } from "zod";
 
 import {
   capabilityForSurface,
-  getPrincipal,
   operatorAuth,
+  principalId,
   requireCapability,
 } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
@@ -60,7 +60,7 @@ const notFound = (c: Context) =>
   errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such knowledge item");
 
 /** actor = the credential-resolved principal — never request data. */
-const actorId = (c: Context): string => getPrincipal(c)!.id;
+const actorId = (c: Context): string | Response => principalId(c);
 
 export interface AdminKnowledgeDeps {
   store: KnowledgeStore;
@@ -86,7 +86,9 @@ export function createAdminKnowledgeRoutes(
     if (deny) return deny;
     await next();
   };
-  app.use("/admin/api/knowledge", auth, capGate);
+  // `path/*` covers the bare `path` in Hono 4 — a second bare mount
+  // would run operatorAuth twice (double keyHash lookup, double
+  // touchLastUsed, double legacy-window metric).
   app.use("/admin/api/knowledge/*", auth, capGate);
 
   app.get(
@@ -163,6 +165,7 @@ export function createAdminKnowledgeRoutes(
     }),
     async (c) => {
       const actor = actorId(c);
+      if (actor instanceof Response) return actor;
       const raw = await c.req.json().catch(() => null);
       const body = createBodySchema.safeParse(raw);
       if (!body.success) {

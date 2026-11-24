@@ -15,7 +15,7 @@ import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { getPrincipal } from "../middleware/operatorAuth";
+import { principalId } from "../middleware/operatorAuth";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   linkItemCapability,
@@ -95,7 +95,8 @@ export function registerKnowledgeCapabilityRoutes(
       },
     }),
     async (c) => {
-      const actorRef = getPrincipal(c)!.id;
+      const actorRef = principalId(c);
+      if (actorRef instanceof Response) return actorRef;
       const body = capBodySchema.safeParse(await c.req.json().catch(() => null));
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad capability body");
@@ -128,7 +129,7 @@ export function registerKnowledgeCapabilityRoutes(
   for (const unlink of [false, true] as const) {
     app.post(
       `/admin/api/knowledge/items/:id/capabilities${unlink ? "/unlink" : ""}`,
-        describeRoute({
+      describeRoute({
         summary: unlink ? "Unlink a capability from an item" : "Link a capability to an item",
         tags: ["Admin Knowledge"],
         responses: {
@@ -141,7 +142,8 @@ export function registerKnowledgeCapabilityRoutes(
         const itemId = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, itemId);
         if (ctrlBad) return ctrlBad;
-        const actorRef = getPrincipal(c)!.id;
+        const actorRef = principalId(c);
+        if (actorRef instanceof Response) return actorRef;
         const body = linkBodySchema.safeParse(
           await c.req.json().catch(() => null),
         );
