@@ -259,10 +259,39 @@ export interface KnowledgeStore {
   }): Promise<KnowledgeGapRecord[]>;
   transitionGap(
     id: string,
-    input: { from: string; to: string; linkedItemId?: string | null },
+    input: {
+      from: string;
+      to: string;
+      linkedItemId?: string | null;
+      /** SLICE-264-10: written on EVERY transition — the RESOLVED
+       *  stamp, or null to keep/clear it. */
+      resolvedAt?: string | null;
+    },
   ): Promise<{
     gap: KnowledgeGapRecord | null;
     transitioned: boolean;
     reason?: "missing" | "status_mismatch";
   }>;
+  /** SLICE-264-10: idempotent ownership overwrite — assign,
+   *  unassign (null fields), reassign and dueAt changes all funnel
+   *  here. No CAS on the values themselves: a lost race is covered
+   *  by the 264-11 assignment audit events, not by refusing. */
+  assignGap(
+    id: string,
+    input: KnowledgeGapAssignment,
+  ): Promise<{
+    gap: KnowledgeGapRecord | null;
+    updated: boolean;
+    reason?: "missing";
+  }>;
+}
+
+/** SLICE-264-10: the four ownership columns, written atomically.
+ *  All nullable — unassign clears the triple; setGapDueAt passes
+ *  the current row's values through unchanged. */
+export interface KnowledgeGapAssignment {
+  assignedTo: string | null;
+  assignedBy: string | null;
+  assignedAt: string | null;
+  dueAt: string | null;
 }

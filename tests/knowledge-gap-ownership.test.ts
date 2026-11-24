@@ -1,0 +1,297 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  addEvidence,
+  assignGap,
+  createMemoryKnowledgeStores,
+  createKnowledgeItem,
+  recordGap,
+  reassignGap,
+  resolveGap,
+  setGapDueAt,
+  triageGap,
+  unassignGap,
+  wontfixGap,
+} from "../src/server/lib/knowledge";
+import type { OperatorStore } from "../src/server/lib/operators";
+import { generateReportId } from "../src/agent-readiness/integrity/ulid";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
+import { approveTransition } from "./helpers/knowledge";
+
+/**
+ * SLICE-264-10 DoD — gap ownership fields:
+ * - assign/unassign/reassign/setGapDueAt on the memory backend
+ * - service/break_glass/inactive/missing assignee → typed refusal
+ * - reassign NEVER resets dueAt (anti-laundering); unassign keeps it
+ * - setGapDueAt without reason → reason_required; bad ts → bad_due_at
+ * - RESOLVED transition stamps resolvedAt; reopen clears it
+ * - terminal gaps refuse assignment
+ */
+
+async function mkStore() {
+  const store = createMemoryKnowledgeStores();
+  const operators = createMemoryOperatorStore();
+  return { store, operators };
+}
+
+async function mkGap(store: ReturnType<typeof createMemoryKnowledgeStores>) {
+  const r = await recordGap(store, {
+    query: "How does escrow settlement work?",
+    source: "COMPOSER_REFUSAL",
+  });
+  if (!r.ok || !r.gap) throw new Error("gap seed failed");
+  return r.gap;
+}
+
+async function mkServiceOp(operators: OperatorStore, type = "service") {
+  const op = await operators.createOperator({
+    id: `op_${generateReportId()}`,
+    displayName: `${type} principal`,
+    principalType: type,
+    capabilities: ["read"],
+  });
+  if (!op.ok) throw new Error(`seed failed: ${op.reason}`);
+  return op.operator.id;
+}
+
+/** RESOLVED needs a PUBLISHED linked item — create + evidence +
+ *  the PENDING→VERIFIED→PUBLISHED walk (same recipe as
+ *  knowledge-gaps.test.ts). */
+async function mkPublishedItem(
+  store: ReturnType<typeof createMemoryKnowledgeStores>,
+  slug: string,
+) {
+  const c = await createKnowledgeItem(
+    store, { kind: "GUIDE", slug, title: "t", body: "b" }, "ops",
+  );
+  if (!c.ok) throw new Error(`create failed: ${c.error}`);
+  const ev = await addEvidence(store, c.version.id, {
+    type: "INTERNAL_DOC", uri: `internal://runbook/${slug}`, addedBy: "ops",
+  });
+  if (!ev.ok) throw new Error("evidence failed");
+  for (const [to, actor] of [
+    ["PENDING", "ops"], ["VERIFIED", "ops_review"], ["PUBLISHED", "ops"],
+  ] as const) {
+    const t = await approveTransition(store, c.item.id, to, actor);
+    if (!t.ok) throw new Error(`transition ${to} failed`);
+  }
+  return c.item.id;
+}
+
+describe("gap ownership (SLICE-264-10)", () => {
+  it("assign writes all four fields", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators, "On-call");
+    const due = "2026-12-01T00:00:00.000Z";
+    const r = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: due },
+      { operators },
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.gap.assignedTo).toBe(operatorId);
+    expect(r.gap.assignedBy).toBe("op_admin");
+    expect(r.gap.assignedAt).not.toBeNull();
+    expect(r.gap.dueAt).toBe(due);
+    expect(r.gap.status).toBe("OPEN"); // assignment ≠ lifecycle
+  });
+
+  it("assign refusals: missing gap / missing op / non-human / inactive / terminal", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators, "A");
+    await seedOperator(operators, "B"); // keeps C5 satisfied while A…nope — B is the spare
+
+    const missingGap = await assignGap(
+      store,
+      { gapId: "kgap_nope", assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(missingGap.ok).toBe(false);
+    if (!missingGap.ok) expect(missingGap.error).toBe("not_found");
+
+    const missingOp = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: "op_nope", assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(missingOp.ok).toBe(false);
+    if (!missingOp.ok) {
+      expect(missingOp.error).toBe("assignee_missing");
+      expect(missingOp.field).toBe("assignedTo");
+    }
+
+    for (const type of ["service", "break_glass"] as const) {
+      const svcId = await mkServiceOp(operators, type);
+      const r = await assignGap(
+        store,
+        { gapId: gap.id, assignedTo: svcId, assignedBy: "op_admin" },
+        { operators },
+      );
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toBe("assignee_not_human");
+    }
+
+    // inactive human — B stays active so C5 lets A disable.
+    const inactive = await seedOperator(operators, "Gone");
+    const disabled = await operators.disableOperator(inactive.operatorId);
+    expect(disabled.ok).toBe(true);
+    const r2 = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: inactive.operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error).toBe("assignee_inactive");
+
+    // terminal — RESOLVED needs a published linked item.
+    const itemId = await mkPublishedItem(store, "escrow-answer");
+    await triageGap(store, gap.id);
+    const resolved = await resolveGap(store, gap.id, itemId);
+    expect(resolved.ok).toBe(true);
+    const term = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(term.ok).toBe(false);
+    if (!term.ok) expect(term.error).toBe("gap_terminal");
+  });
+
+  it("assign validates dueAt shape (absolute timestamp, not duration)", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    const r = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: "in 3 days" },
+      { operators },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBe("bad_due_at");
+      expect(r.field).toBe("dueAt");
+    }
+  });
+
+  it("reassign keeps dueAt; unassign clears the triple but keeps dueAt", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const a = await seedOperator(operators, "A");
+    const b = await seedOperator(operators, "B");
+    const due = "2026-12-05T12:00:00.000Z";
+    await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: a.operatorId, assignedBy: "op_admin", dueAt: due },
+      { operators },
+    );
+    const re = await reassignGap(
+      store,
+      { gapId: gap.id, assignedTo: b.operatorId, assignedBy: "op_admin2" },
+      { operators },
+    );
+    expect(re.ok).toBe(true);
+    if (!re.ok) return;
+    expect(re.gap.assignedTo).toBe(b.operatorId);
+    expect(re.gap.assignedBy).toBe("op_admin2");
+    expect(re.gap.dueAt).toBe(due); // anti-laundering: deadline survives
+
+    const un = await unassignGap(store, { gapId: gap.id });
+    expect(un.ok).toBe(true);
+    if (!un.ok) return;
+    expect(un.gap.assignedTo).toBeNull();
+    expect(un.gap.assignedBy).toBeNull();
+    expect(un.gap.assignedAt).toBeNull();
+    expect(un.gap.dueAt).toBe(due);
+  });
+
+  it("setGapDueAt requires reason; updates/clears the deadline; validates ts", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: "2026-12-01T00:00:00.000Z" },
+      { operators },
+    );
+
+    const noReason = await setGapDueAt(store, {
+      gapId: gap.id,
+      dueAt: "2026-12-20T00:00:00.000Z",
+      reason: "  ",
+    });
+    expect(noReason.ok).toBe(false);
+    if (!noReason.ok) expect(noReason.error).toBe("reason_required");
+
+    const badTs = await setGapDueAt(store, {
+      gapId: gap.id, dueAt: "tomorrow-ish", reason: "reprioritize",
+    });
+    expect(badTs.ok).toBe(false);
+    if (!badTs.ok) expect(badTs.error).toBe("bad_due_at");
+
+    const moved = await setGapDueAt(store, {
+      gapId: gap.id, dueAt: "2026-12-20T00:00:00.000Z", reason: "sprint slip",
+    });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(moved.gap.dueAt).toBe("2026-12-20T00:00:00.000Z");
+    expect(moved.gap.assignedTo).toBe(operatorId); // assignment untouched
+
+    const cleared = await setGapDueAt(store, {
+      gapId: gap.id, dueAt: null, reason: "deprioritized",
+    });
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok) return;
+    expect(cleared.gap.dueAt).toBeNull();
+  });
+
+  it("RESOLVED stamps resolvedAt; reopen clears it; WONTFIX refuses assign", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    const itemId = await mkPublishedItem(store, "wontfix-answer");
+    await triageGap(store, gap.id);
+    const resolved = await resolveGap(store, gap.id, itemId);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.gap.resolvedAt).not.toBeNull();
+    const stamp = resolved.gap.resolvedAt!;
+
+    // same normalizedQuery → reopen; resolvedAt must clear.
+    const again = await recordGap(store, {
+      query: "how DOES escrow settlement WORK",
+      source: "INTERACTION_SIGNAL",
+    });
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.reopened).toBe(true);
+    expect(again.gap!.resolvedAt).toBeNull();
+    expect(again.gap!.status).toBe("OPEN");
+
+    // re-resolve then wontfix a second gap for the terminal pair.
+    await triageGap(store, gap.id);
+    await resolveGap(store, gap.id, itemId);
+    const g2 = await recordGap(store, {
+      query: "Why is the sky blue?", source: "MANUAL",
+    });
+    if (!g2.ok || !g2.gap) throw new Error("gap2 failed");
+    await triageGap(store, g2.gap.id);
+    const wf = await wontfixGap(store, g2.gap.id);
+    expect(wf.ok).toBe(true);
+    if (!wf.ok) return;
+    expect(wf.gap.resolvedAt).toBeNull(); // WONTFIX ≠ resolved
+    const term = await assignGap(
+      store,
+      { gapId: g2.gap.id, assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(term.ok).toBe(false);
+    if (!term.ok) expect(term.error).toBe("gap_terminal");
+    void stamp;
+  });
+});

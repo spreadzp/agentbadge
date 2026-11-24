@@ -147,6 +147,7 @@ flowchart LR
   server_routes["server/routes"] --> pkg_passport_logger["pkg: passport/logger"]
   server_routes["server/routes"] --> pkg_webmcp["pkg: webmcp"]
   server_routes["server/routes"] --> server["server"]
+  server_routes["server/routes"] --> server_agent_readiness["server/agent-readiness"]
   server_routes["server/routes"] --> server_lib["server/lib"]
   server_routes["server/routes"] --> server_metrics["server/metrics"]
   server_routes["server/routes"] --> server_middleware["server/middleware"]

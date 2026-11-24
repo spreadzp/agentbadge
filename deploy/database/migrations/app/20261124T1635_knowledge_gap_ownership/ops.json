@@ -1,0 +1,290 @@
+[
+  {
+    "id": "column.public.knowledgeGap.assignedAt",
+    "label": "Add column \"assignedAt\" to \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "assignedAt",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"assignedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"assignedAt\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD COLUMN \"assignedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"assignedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.knowledgeGap.assignedBy",
+    "label": "Add column \"assignedBy\" to \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "assignedBy",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"assignedBy\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedBy"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"assignedBy\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD COLUMN \"assignedBy\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"assignedBy\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedBy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.knowledgeGap.assignedTo",
+    "label": "Add column \"assignedTo\" to \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "assignedTo",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"assignedTo\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedTo"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"assignedTo\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD COLUMN \"assignedTo\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"assignedTo\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "assignedTo"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.knowledgeGap.dueAt",
+    "label": "Add column \"dueAt\" to \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "dueAt",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"dueAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "dueAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"dueAt\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD COLUMN \"dueAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"dueAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "dueAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.knowledgeGap.resolvedAt",
+    "label": "Add column \"resolvedAt\" to \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "resolvedAt",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"resolvedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "resolvedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"resolvedAt\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD COLUMN \"resolvedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"resolvedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "knowledgeGap",
+          "resolvedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeGap.knowledgeGap_assignedTo_status_idx_4cd13cbf",
+    "label": "Create index \"knowledgeGap_assignedTo_status_idx_4cd13cbf\" on \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeGap_assignedTo_status_idx_4cd13cbf",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeGap_assignedTo_status_idx_4cd13cbf\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_assignedTo_status_idx_4cd13cbf\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeGap_assignedTo_status_idx_4cd13cbf\"",
+        "sql": "CREATE INDEX \"knowledgeGap_assignedTo_status_idx_4cd13cbf\" ON \"public\".\"knowledgeGap\" (\"assignedTo\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeGap_assignedTo_status_idx_4cd13cbf\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_assignedTo_status_idx_4cd13cbf\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeGap.knowledgeGap_status_dueAt_idx_0bd78a2c",
+    "label": "Create index \"knowledgeGap_status_dueAt_idx_0bd78a2c\" on \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeGap_status_dueAt_idx_0bd78a2c",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeGap_status_dueAt_idx_0bd78a2c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_status_dueAt_idx_0bd78a2c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeGap_status_dueAt_idx_0bd78a2c\"",
+        "sql": "CREATE INDEX \"knowledgeGap_status_dueAt_idx_0bd78a2c\" ON \"public\".\"knowledgeGap\" (\"status\", \"dueAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeGap_status_dueAt_idx_0bd78a2c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_status_dueAt_idx_0bd78a2c\""
+        ]
+      }
+    ]
+  }
+]

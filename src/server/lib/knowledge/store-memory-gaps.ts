@@ -55,6 +55,9 @@ export class MemoryKnowledgeGaps {
       if (reopened) {
         gap.status = "OPEN";
         gap.linkedItemId = null;
+        // SLICE-264-10: the resolution is un-done — the stamp must
+        // not survive the reopen (PG bump path clears it too).
+        gap.resolvedAt = null;
       }
       if (
         gap.sampleQueries.length < KNOWLEDGE_GAP_SAMPLES_CAP &&
@@ -86,6 +89,11 @@ export class MemoryKnowledgeGaps {
       sourceRef: input.sourceRef ?? null,
       status: "OPEN",
       linkedItemId: null,
+      assignedTo: null,
+      assignedBy: null,
+      assignedAt: null,
+      dueAt: null,
+      resolvedAt: null,
       firstSeenAt: now,
       lastSeenAt: now,
     };
@@ -126,7 +134,12 @@ export class MemoryKnowledgeGaps {
 
   async transitionGap(
     id: string,
-    input: { from: string; to: string; linkedItemId?: string | null },
+    input: {
+      from: string;
+      to: string;
+      linkedItemId?: string | null;
+      resolvedAt?: string | null;
+    },
   ) {
     const gap = this.data.gaps.get(id);
     if (!gap) {
@@ -141,6 +154,30 @@ export class MemoryKnowledgeGaps {
     }
     gap.status = input.to;
     if (input.linkedItemId !== undefined) gap.linkedItemId = input.linkedItemId;
+    // SLICE-264-10: always written (PG mirrors) — RESOLVED stamps,
+    // everything else keeps/clears to null.
+    gap.resolvedAt = input.resolvedAt ?? null;
     return { gap, transitioned: true };
+  }
+
+  /** SLICE-264-10: idempotent overwrite — see KnowledgeStore.assignGap. */
+  async assignGap(
+    id: string,
+    input: {
+      assignedTo: string | null;
+      assignedBy: string | null;
+      assignedAt: string | null;
+      dueAt: string | null;
+    },
+  ) {
+    const gap = this.data.gaps.get(id);
+    if (!gap) {
+      return { gap: null, updated: false, reason: "missing" as const };
+    }
+    gap.assignedTo = input.assignedTo;
+    gap.assignedBy = input.assignedBy;
+    gap.assignedAt = input.assignedAt;
+    gap.dueAt = input.dueAt;
+    return { gap, updated: true };
   }
 }

@@ -6,6 +6,7 @@ import type {
 import type {
   KnowledgeCapabilityUpsert,
   KnowledgeEvidenceInsert,
+  KnowledgeGapAssignment,
   KnowledgeGapUpsert,
   KnowledgeItemInsert,
   KnowledgeRelationInsert,
@@ -232,13 +233,27 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   async transitionGap(
     id: string,
-    input: { from: string; to: string; linkedItemId?: string | null },
+    input: {
+      from: string;
+      to: string;
+      linkedItemId?: string | null;
+      resolvedAt?: string | null;
+    },
   ) {
     const r = await this.taxonomy.transitionGap(id, input);
     return {
       gap: r.gap ? mapGap(r.gap) : null,
       transitioned: r.transitioned,
       reason: r.reason as "missing" | "status_mismatch" | undefined,
+    };
+  }
+
+  async assignGap(id: string, input: KnowledgeGapAssignment) {
+    const r = await this.taxonomy.assignGap(id, input);
+    return {
+      gap: r.gap ? mapGap(r.gap) : null,
+      updated: r.updated,
+      reason: r.reason as "missing" | undefined,
     };
   }
 }
@@ -255,6 +270,11 @@ function mapGap(row: {
   sourceRef: string | null;
   status: string;
   linkedItemId: string | null;
+  assignedTo: string | null;
+  assignedBy: string | null;
+  assignedAt: string | null;
+  dueAt: string | null;
+  resolvedAt: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
 }): KnowledgeGapRecord {

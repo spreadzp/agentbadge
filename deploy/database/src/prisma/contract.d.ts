@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'c7f566ab20a8b3c767ae2e6447944c6d0ea632cd24c4079b36eba03b9a4a5b0d'>;
+  StorageHashBase<'9dbca36b71816d7a9f4ca16fd430f30b0ac5c5c076d0fe1d3fb9bab43c4cec17'>;
 export type ExecutionHash =
   ExecutionHashBase<'4b072e2478a83ed531f6f2cf299da6415d9aca304e05e7111ab6e17b4287c38c'>;
 export type ProfileHash =
@@ -1067,6 +1067,11 @@ export type FieldOutputTypes = {
       readonly sourceRef: CodecTypes['pg/text@1']['output'] | null;
       readonly status: CodecTypes['pg/text@1']['output'];
       readonly linkedItemId: CodecTypes['pg/text@1']['output'] | null;
+      readonly assignedTo: CodecTypes['pg/text@1']['output'] | null;
+      readonly assignedBy: CodecTypes['pg/text@1']['output'] | null;
+      readonly assignedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly dueAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly resolvedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -2351,6 +2356,11 @@ export type FieldInputTypes = {
       readonly sourceRef: CodecTypes['pg/text@1']['input'] | null;
       readonly status: CodecTypes['pg/text@1']['input'];
       readonly linkedItemId: CodecTypes['pg/text@1']['input'] | null;
+      readonly assignedTo: CodecTypes['pg/text@1']['input'] | null;
+      readonly assignedBy: CodecTypes['pg/text@1']['input'] | null;
+      readonly assignedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly dueAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly resolvedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -3625,14 +3635,19 @@ export type StorageColumnTypes = {
       readonly versionId: CodecTypes['pg/text@1']['output'];
     };
     readonly knowledgeGap: {
+      readonly assignedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly assignedBy: CodecTypes['pg/text@1']['output'] | null;
+      readonly assignedTo: CodecTypes['pg/text@1']['output'] | null;
       readonly capabilityRef: CodecTypes['pg/text@1']['output'] | null;
       readonly count: CodecTypes['pg/int4@1']['output'];
+      readonly dueAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly intent: CodecTypes['pg/text@1']['output'] | null;
       readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly linkedItemId: CodecTypes['pg/text@1']['output'] | null;
       readonly normalizedQuery: CodecTypes['pg/text@1']['output'];
+      readonly resolvedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly sampleQueries: CodecTypes['pg/json@1']['output'];
       readonly source: CodecTypes['pg/text@1']['output'];
       readonly sourceRef: CodecTypes['pg/text@1']['output'] | null;
@@ -4909,14 +4924,19 @@ export type StorageColumnInputTypes = {
       readonly versionId: CodecTypes['pg/text@1']['input'];
     };
     readonly knowledgeGap: {
+      readonly assignedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly assignedBy: CodecTypes['pg/text@1']['input'] | null;
+      readonly assignedTo: CodecTypes['pg/text@1']['input'] | null;
       readonly capabilityRef: CodecTypes['pg/text@1']['input'] | null;
       readonly count: CodecTypes['pg/int4@1']['input'];
+      readonly dueAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly intent: CodecTypes['pg/text@1']['input'] | null;
       readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly linkedItemId: CodecTypes['pg/text@1']['input'] | null;
       readonly normalizedQuery: CodecTypes['pg/text@1']['input'];
+      readonly resolvedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly sampleQueries: CodecTypes['pg/json@1']['input'];
       readonly source: CodecTypes['pg/text@1']['input'];
       readonly sourceRef: CodecTypes['pg/text@1']['input'] | null;
@@ -6431,6 +6451,11 @@ export namespace Models {
     sourceRef: CodecTypes['pg/text@1']['output'] | null;
     status: CodecTypes['pg/text@1']['output'];
     linkedItemId: CodecTypes['pg/text@1']['output'] | null;
+    assignedTo: CodecTypes['pg/text@1']['output'] | null;
+    assignedBy: CodecTypes['pg/text@1']['output'] | null;
+    assignedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    dueAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    resolvedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
     lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
     readonly [RelationKeys]?: never;
@@ -11992,6 +12017,31 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
+                readonly assignedTo: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly assignedBy: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly assignedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly dueAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly resolvedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
                 readonly firstSeenAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-string@1';
@@ -12018,6 +12068,18 @@ type ContractBase = Omit<
                   readonly name: 'knowledgeGap_count_idx_2c782125';
                   readonly prefix: 'knowledgeGap_count_idx';
                   readonly columns: readonly ['count'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'knowledgeGap_assignedTo_status_idx_4cd13cbf';
+                  readonly prefix: 'knowledgeGap_assignedTo_status_idx';
+                  readonly columns: readonly ['assignedTo', 'status'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'knowledgeGap_status_dueAt_idx_0bd78a2c';
+                  readonly prefix: 'knowledgeGap_status_dueAt_idx';
+                  readonly columns: readonly ['status', 'dueAt'];
                   readonly unique: false;
                 },
               ];
@@ -19795,6 +19857,35 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly assignedTo: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignedBy: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly dueAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly resolvedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
               readonly firstSeenAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -19825,6 +19916,11 @@ type ContractBase = Omit<
                 readonly sourceRef: { readonly column: 'sourceRef' };
                 readonly status: { readonly column: 'status' };
                 readonly linkedItemId: { readonly column: 'linkedItemId' };
+                readonly assignedTo: { readonly column: 'assignedTo' };
+                readonly assignedBy: { readonly column: 'assignedBy' };
+                readonly assignedAt: { readonly column: 'assignedAt' };
+                readonly dueAt: { readonly column: 'dueAt' };
+                readonly resolvedAt: { readonly column: 'resolvedAt' };
                 readonly firstSeenAt: { readonly column: 'firstSeenAt' };
                 readonly lastSeenAt: { readonly column: 'lastSeenAt' };
               };

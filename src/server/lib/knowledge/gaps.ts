@@ -31,9 +31,8 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 };
 
 /** Arc R1 H3 cap: distinct OPEN gaps are bounded — the public ask
- *  surface creates a row per novel normalized query, so an
- *  unauthenticated writer could otherwise grow the table and the
- *  operator queue without limit. */
+ *  surface creates a row per novel normalized query (unauthenticated
+ *  writers could otherwise grow the operator queue without limit). */
 export const KNOWLEDGE_GAP_OPEN_CAP = 2000;
 
 /** demand-registry normalize pattern — same query ≠ new gap.
@@ -142,8 +141,7 @@ export async function recordGap(
     }
   }
   // Arc R2 M-1: a RESOLVED gap that reopens is an event too — the
-  // operator queue silently filling back up is exactly the signal
-  // the lifecycle was built to surface.
+  // queue silently filling back up is the signal this surfaces.
   if (res.reopened === true && res.row) {
     emitKnowledgeEvent("knowledge.gap_reopened", {
       gapId: res.row.id,
@@ -171,8 +169,8 @@ export async function recordGap(
   };
 }
 
-/** Arc R1 M8: the 228 hook's fields get validated — an ireq_*
- *  sourceRef shape, bounded single-line intent/capabilityRef. */
+/** Arc R1 M8: the 228 hook's fields are validated inside recordGap
+ *  (ireq_* sourceRef shape, bounded single-line intent/capabilityRef). */
 
 /** 229-7 composer seam — the KnowledgeGapRecorder interface impl.
  *  Arc R1 H3 + R2 M-1: reports whether the write actually LANDED
@@ -258,12 +256,14 @@ async function transition(
     from: gap.status,
     to,
     linkedItemId: linkedItemId ?? null,
+    // SLICE-264-10: RESOLVED stamps resolvedAt; other transitions
+    // write null — nothing stale survives (WONTFIX ≠ resolution).
+    resolvedAt: to === "RESOLVED" ? new Date().toISOString() : null,
   });
   if (!res.transitioned || !res.gap) {
     return { ok: false, error: "status_race" };
   }
-  // Arc R1 M7: lifecycle actions record WHO moved the gap (domain
-  // event — the gap table carries no actor column).
+  // Arc R1 M7: lifecycle actions record WHO moved the gap.
   emitKnowledgeEvent(`knowledge.gap_${to.toLowerCase()}`, {
     gapId: id,
     from: gap.status,

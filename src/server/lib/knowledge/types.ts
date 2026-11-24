@@ -156,6 +156,17 @@ export interface KnowledgeGapRecord {
   sourceRef: string | null;
   status: string;
   linkedItemId: string | null;
+  /** EPIC-264 (SLICE-264-10): ownership — principal.id of the
+   *  operator this gap is assigned to; null = unassigned. */
+  assignedTo: string | null;
+  /** principal.id of the operator who set the current assignment. */
+  assignedBy: string | null;
+  assignedAt: string | null;
+  /** Absolute UTC deadline; reassigning does NOT reset it (no
+   *  laundering an overdue gap into a fresh one by swapping hands). */
+  dueAt: string | null;
+  /** Stamp written on the RESOLVED transition; cleared on reopen. */
+  resolvedAt: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
 }

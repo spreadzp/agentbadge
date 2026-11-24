@@ -7978,6 +7978,27 @@
           },
           "KnowledgeGap": {
             "fields": {
+              "assignedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "assignedBy": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "assignedTo": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "capabilityRef": {
                 "nullable": true,
                 "type": {
@@ -7989,6 +8010,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "dueAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
                   "kind": "scalar"
                 }
               },
@@ -8034,6 +8062,13 @@
                   "kind": "scalar"
                 }
               },
+              "resolvedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
               "sampleQueries": {
                 "nullable": false,
                 "type": {
@@ -8066,11 +8101,23 @@
             "relations": {},
             "storage": {
               "fields": {
+                "assignedAt": {
+                  "column": "assignedAt"
+                },
+                "assignedBy": {
+                  "column": "assignedBy"
+                },
+                "assignedTo": {
+                  "column": "assignedTo"
+                },
                 "capabilityRef": {
                   "column": "capabilityRef"
                 },
                 "count": {
                   "column": "count"
+                },
+                "dueAt": {
+                  "column": "dueAt"
                 },
                 "firstSeenAt": {
                   "column": "firstSeenAt"
@@ -8089,6 +8136,9 @@
                 },
                 "normalizedQuery": {
                   "column": "normalizedQuery"
+                },
+                "resolvedAt": {
+                  "column": "resolvedAt"
                 },
                 "sampleQueries": {
                   "column": "sampleQueries"
@@ -18374,6 +18424,21 @@
             },
             "knowledgeGap": {
               "columns": {
+                "assignedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "assignedBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "assignedTo": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "capabilityRef": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -18387,6 +18452,11 @@
                   },
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "dueAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "firstSeenAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -18426,6 +18496,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "resolvedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "sampleQueries": {
                   "codecId": "pg/json@1",
                   "nativeType": "json",
@@ -18451,10 +18526,28 @@
               "indexes": [
                 {
                   "columns": [
+                    "assignedTo",
+                    "status"
+                  ],
+                  "name": "knowledgeGap_assignedTo_status_idx_4cd13cbf",
+                  "prefix": "knowledgeGap_assignedTo_status_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "count"
                   ],
                   "name": "knowledgeGap_count_idx_2c782125",
                   "prefix": "knowledgeGap_count_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status",
+                    "dueAt"
+                  ],
+                  "name": "knowledgeGap_status_dueAt_idx_0bd78a2c",
+                  "prefix": "knowledgeGap_status_dueAt_idx",
                   "unique": false
                 },
                 {
@@ -21897,7 +21990,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "c7f566ab20a8b3c767ae2e6447944c6d0ea632cd24c4079b36eba03b9a4a5b0d"
+    "storageHash": "9dbca36b71816d7a9f4ca16fd430f30b0ac5c5c076d0fe1d3fb9bab43c4cec17"
   },
   "execution": {
     "executionHash": "4b072e2478a83ed531f6f2cf299da6415d9aca304e05e7111ab6e17b4287c38c",

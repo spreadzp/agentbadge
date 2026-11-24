@@ -1570,11 +1570,22 @@ model KnowledgeGap {
   sourceRef       String? // ireq_* for INTERACTION_SIGNAL (O-229-6)
   status          String // OPEN|TRIAGED|RESOLVED|WONTFIX
   linkedItemId    String? // → KnowledgeItem.id (set on RESOLVED)
+  // EPIC-264 (264-10): ownership — assignee is a human AdminOperator
+  // id; assignedBy the acting principal; dueAt absolute UTC (no
+  // duration); resolvedAt stamps the RESOLVED transition (cleared
+  // on reopen) for the time-to-clear metric.
+  assignedTo      String?
+  assignedBy      String?
+  assignedAt      TimestamptzString?
+  dueAt           TimestamptzString?
+  resolvedAt      TimestamptzString?
   firstSeenAt     TimestamptzString @default(now())
   lastSeenAt      TimestamptzString @default(now())
 
   @@index([status, lastSeenAt])
   @@index([count])
+  @@index([assignedTo, status])
+  @@index([status, dueAt])
 }
 
 // ─── EPIC-230: Feedback & Review Infrastructure (D-230-1..9) ──────

@@ -17,6 +17,7 @@ export * from "./composer";
 export * from "./evidence";
 export * from "./gaps";
 export * from "./gaps-interaction";
+export * from "./gaps-ownership";
 export * from "./form-tokens";
 export * from "./terms";
 export * from "./relations";
