@@ -9,6 +9,7 @@ export const INTEL_PAID_OPERATIONS = [
   "inside_diagnostics",
   "fix_apply",
   "report_diff",
+  "attestation",
 ] as const;
 export type IntelPaidOperation = (typeof INTEL_PAID_OPERATIONS)[number];
 

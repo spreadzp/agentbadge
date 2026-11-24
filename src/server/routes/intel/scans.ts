@@ -150,6 +150,10 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       }
     }
 
+    // SLICE-262-20 — retention expiry at the scan cadence: expired
+    // envelopes are purged before this scan collects fresh ones.
+    await deps.evidence.sweep(now.toISOString());
+
     // SLICE-262-31 — the request's correlation id follows the job
     // (and every pull-job it spawns) for support diagnostics.
     const correlationId =

@@ -13,6 +13,8 @@ import {
   authenticateOperator,
   rolePermitted,
 } from "../../lib/intel/registry";
+import { checkEntitlement } from "../../lib/intel/entitlement";
+import { hasActiveConsent } from "../../lib/intel/consent";
 import type { IntelRouteDeps } from "./index";
 
 function bearerToken(c: { req: { header(name: string): string | undefined } }) {
@@ -64,6 +66,26 @@ export function registerAttestationRoutes(
     const job = await deps.scanJobs.byScanId(c.req.param("scanId"));
     if (!job || job.tenantId !== g.auth.tenant_id)
       return c.json({ error: "scan_unknown", message: "unknown scan id" }, 404);
+    // SLICE-262-20 — issuance is a paid-class op (D-262-Q8 matrix):
+    // consent → entitlement BEFORE minting; existing attestations
+    // stay valid by their own valid_until regardless.
+    if (
+      deps.consent &&
+      !(await hasActiveConsent(deps.consent, job.siteId, "audit"))
+    ) {
+      return c.json({ error: "consent_denied" }, 403);
+    }
+    if (deps.entitlement) {
+      const decision = checkEntitlement(
+        await deps.entitlement.getByTenant(g.auth.tenant_id),
+        "attestation",
+        job.siteId,
+        new Date().toISOString(),
+      );
+      if (!decision.allowed) {
+        return c.json({ error: "entitlement_denied", reason: decision.reason }, 403);
+      }
+    }
     const r = await issueAttestation(
       deps.attestations,
       job,

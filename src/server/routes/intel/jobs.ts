@@ -116,7 +116,7 @@ export function registerPullJobRoutes(app: Hono, deps: IntelRouteDeps): void {
       params: body.params as Record<string, unknown>,
     });
     if (!r.ok) return c.json({ error: r.reason }, 400);
-    return c.json({ job: r.job }, 201);
+    return c.json({ job: r.job, warning: decision.warning }, 201);
   });
 
   // ── plugin peek — read-only (D-262-Q23) ─────────────────────────

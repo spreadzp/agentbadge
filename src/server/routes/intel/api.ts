@@ -81,6 +81,11 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
       );
     }
 
+    // SLICE-262-20 — retention expiry applied at the insert cadence:
+    // expiresAt rows are removed on every intake call (pull-model —
+    // no background timer; the deadline was transparent at write).
+    await deps.evidence.sweep(new Date().toISOString());
+
     // 1. site_key → authenticated site identity (never from the body)
     const token = bearerToken(c);
     const auth = token
