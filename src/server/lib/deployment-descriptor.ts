@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+import { importPKCS8, SignJWT } from "jose";
 import { getConfig } from "../../config/env";
+import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "./agent-discovery/did-key";
 import {
   MARKETPLACE_LISTINGS,
   type MarketplaceListing,
@@ -42,4 +45,77 @@ export function getDeploymentDescriptor(): DeploymentDescriptor {
     trust_tiers_url: `${baseUrl}/api/meta/trust-tiers`,
     generated_at: new Date().toISOString(),
   };
+}
+
+// ─── Detached-JWS signature (SLICE-259-41, DeepSeek R5) ──────────────────────
+// did:web key exists + kid is unified — but no artifact carried a signature,
+// so the trust chain had nothing to verify. This signs the descriptor itself:
+// payload claim `descriptor_sha256` = sha256 of the canonical doc (sorted
+// keys, without `signature`), so an agent can recompute and compare, then
+// verify the JWS against did:web:{host}#key-1. Absent without DID_SIGNING_KEY.
+
+export interface DescriptorSignature {
+  alg: "EdDSA";
+  kid: string;
+  /** Compact JWS; decoded payload carries `descriptor_sha256`. */
+  jws: string;
+  /** "sha256:<hex>" of the canonical descriptor — the signed input. */
+  signing_input: string;
+  canonicalization: string;
+}
+
+const CANONICALIZATION_SPEC =
+  "sha256 hex of JSON.stringify(descriptor minus the 'signature' field, object keys recursively sorted, arrays in order)";
+
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value !== null && typeof value === "object") {
+    const src = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(src)
+        .sort()
+        .map((k) => [k, sortKeysDeep(src[k])]),
+    );
+  }
+  return value;
+}
+
+let signedCache: {
+  pkcs8: string | null;
+  value: Promise<DeploymentDescriptor & { signature?: DescriptorSignature }>;
+} | null = null;
+
+export function getSignedDeploymentDescriptor(): Promise<
+  DeploymentDescriptor & { signature?: DescriptorSignature }
+> {
+  const material = didKeyMaterialFromEnv();
+  const cacheKey = material?.pkcs8 ?? null;
+  if (signedCache?.pkcs8 === cacheKey) return signedCache.value;
+  const value = (async () => {
+    const descriptor = getDeploymentDescriptor();
+    if (!material) return descriptor;
+    const canonical = JSON.stringify(sortKeysDeep(descriptor));
+    const digest = `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
+    const kid = `did:web:${descriptor.deployment_id}${DID_VM_FRAGMENT}`;
+    const key = await importPKCS8(material.pkcs8, "EdDSA");
+    const jws = await new SignJWT({ descriptor_sha256: digest })
+      .setProtectedHeader({ alg: "EdDSA", kid, typ: "JWT" })
+      .setIssuer(`did:web:${descriptor.deployment_id}`)
+      .setSubject("deployment-descriptor")
+      .setIssuedAt()
+      .setExpirationTime("90d")
+      .sign(key);
+    return {
+      ...descriptor,
+      signature: {
+        alg: "EdDSA" as const,
+        kid,
+        jws,
+        signing_input: digest,
+        canonicalization: CANONICALIZATION_SPEC,
+      },
+    };
+  })().catch(() => getDeploymentDescriptor());
+  signedCache = { pkcs8: cacheKey, value };
+  return value;
 }

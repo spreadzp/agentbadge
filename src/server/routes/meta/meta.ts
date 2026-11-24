@@ -5,7 +5,7 @@ import { resolver } from "hono-openapi";
 import { getErrorCatalog } from "../../lib/error-catalog";
 import { getFeeCatalog } from "../../lib/fee-catalog";
 import { getTrustTiers } from "../../lib/trust-tiers";
-import { getDeploymentDescriptor } from "../../lib/deployment-descriptor";
+import { getSignedDeploymentDescriptor } from "../../lib/deployment-descriptor";
 import { getJwks } from "../../lib/jwks";
 import { getRefusalContract } from "../../lib/refusal-contract";
 
@@ -212,7 +212,7 @@ metaRoutes.get(
     tags: ["Meta"],
     summary: "Deployment descriptor — network config, token IDs, API version",
     description:
-      "Returns a machine-readable deployment descriptor with Hedera network configuration, passport token ID, directory/audit topic IDs, API version, payment protocol, and links to fee/error/trust-tier catalogs.",
+      "Returns a machine-readable deployment descriptor: Hedera network, token/topic IDs, API version, payment protocol, catalog links, detached-JWS signature.",
     responses: {
       200: {
         description: "Deployment descriptor JSON",
@@ -243,6 +243,7 @@ metaRoutes.get(
                     since: z.string().optional(),
                   }),
                 ),
+                signature: z.record(z.string(), z.unknown()).optional(),
                 generated_at: z.string(),
               }),
             ),
@@ -251,8 +252,8 @@ metaRoutes.get(
       },
     },
   }),
-  (c) => {
-    return c.json(getDeploymentDescriptor(), 200, {
+  async (c) => {
+    return c.json(await getSignedDeploymentDescriptor(), 200, {
       "Content-Type": "application/json",
       "Cache-Control": "public, max-age=3600",
     });

@@ -23,6 +23,18 @@ export function buildAiSitemap(): string {
       desc: "Server Agent Card — machine-readable identity manifest",
     },
     {
+      loc: `${baseUrl}/.well-known/agent-start.json`,
+      priority: "1.0",
+      format: "json",
+      desc: "Canonical agent entry point — free scan, quickstart chain, auth model, key registration",
+    },
+    {
+      loc: `${baseUrl}/.well-known/agentbadge.json`,
+      priority: "0.9",
+      format: "json",
+      desc: "Deployment descriptor — network, token IDs, API version, payment protocol, detached-JWS signature",
+    },
+    {
       loc: `${baseUrl}/llms.txt`,
       priority: "1.0",
       format: "text",
