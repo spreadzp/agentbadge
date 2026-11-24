@@ -18,31 +18,53 @@ import { principalId } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import {
-  createDemandOpportunity,
   retagDemandSignal,
+  setDemandClusterLevel,
   triageDemandCluster,
 } from "../lib/demand/operator-ops";
 import type { DemandStore } from "../lib/demand/store";
-import { DEMAND_CLUSTER_STATUSES } from "../lib/demand/types";
+import {
+  DEMAND_CLUSTER_STATUSES,
+  DEMAND_LEVELS,
+} from "../lib/demand/types";
+import {
+  DEMAND_CATEGORY_TERMS,
+  DEMAND_FEATURE_TERMS,
+} from "../lib/demand/vocabulary";
 import {
   rejectCtrl,
   requestFingerprint,
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
+/** Arc 231 R1: body strings reject C0/NUL like path params do
+ *  (admin-operator-guard convention — raw NUL 500s the PG driver).
+ *  \n\t\r stay legal inside multi-line fields. */
+const noCtrl = (s: string) =>
+  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(s);
+
 const retagSchema = z.object({
-  category: z.string().max(120).nullable().optional(),
-  feature: z.string().max(120).nullable().optional(),
+  // Arc 231 R1: retag picks FROM the dictionary — a free-form string
+  // would mint dict:{junk} clusters the vocabulary never classified.
+  category: z.enum(DEMAND_CATEGORY_TERMS).nullable().optional(),
+  feature: z.enum(DEMAND_FEATURE_TERMS).nullable().optional(),
 });
 
 const triageSchema = z.object({
-  to: z.enum(DEMAND_CLUSTER_STATUSES as unknown as [string, ...string[]]),
-  reason: z.string().max(500).optional(),
+  // LINKED is not operator-targetable here — a bare link carries no
+  // linkRef (M10); it arrives via the opportunity link gesture.
+  to: z.enum(
+    DEMAND_CLUSTER_STATUSES.filter((s) => s !== "LINKED") as unknown as [
+      string,
+      ...string[],
+    ],
+  ),
+  reason: z.string().max(500).refine(noCtrl).optional(),
 });
 
-const opportunitySchema = z.object({
-  title: z.string().max(200).optional(),
-  hypothesis: z.string().max(2000).nullable().optional(),
+const levelSchema = z.object({
+  to: z.enum(DEMAND_LEVELS),
+  reason: z.string().max(500).refine(noCtrl).optional(),
 });
 
 export function registerDemandAdminMutations(
@@ -93,14 +115,24 @@ export function registerDemandAdminMutations(
                   message:
                     r.reason === "linked_row"
                       ? "related (non-canonical) rows cannot be retagged — retag the canonical signal"
-                      : "no such signal",
+                      : r.reason === "cluster_closed"
+                        ? "target cluster is DISMISSED or LINKED — reopen it first"
+                        : "no such signal",
                 },
               },
             };
           }
           return { status: 200, body: { signal: r.signal, cluster: r.cluster } };
         },
-        { owner: actor, fingerprint: requestFingerprint(body.data) },
+        {
+          owner: actor,
+          // Arc 231 R1 M1: the path id is part of the fingerprint —
+          // the same key+body on a different :id must not replay.
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
+        },
       );
     },
   );
@@ -154,20 +186,28 @@ export function registerDemandAdminMutations(
           }
           return { status: 200, body: { cluster: r.cluster, event: r.event } };
         },
-        { owner: actor, fingerprint: requestFingerprint(body.data) },
+        {
+          owner: actor,
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
+        },
       );
     },
   );
 
   app.post(
-    "/api/admin/demand/clusters/:id/opportunity",
+    "/api/admin/demand/clusters/:id/level",
     describeRoute({
-      summary: "«→ Opportunity» — PROPOSED draft on the cluster (231-6)",
+      summary:
+        "§16.1 VERIFIED gesture — operator level set (incl. demote; the only path to VERIFIED_DEMAND)",
       tags: ["Admin Demand"],
       responses: {
-        201: { description: "Created opportunity" },
+        200: { description: "Level applied" },
         400: { description: "Validation/idempotency failure" },
         404: { description: "Unknown cluster" },
+        409: { description: "Level drifted since read" },
       },
     }),
     async (c) => {
@@ -175,39 +215,47 @@ export function registerDemandAdminMutations(
       if (ctrlBad) return ctrlBad;
       const actor = principalId(c);
       if (actor instanceof Response) return actor;
-      const raw = await c.req.json().catch(() => ({}));
-      const body = opportunitySchema.safeParse(raw ?? {});
+      const raw = await c.req.json().catch(() => null);
+      const body = levelSchema.safeParse(raw);
       if (!body.success) {
-        return errorResponse(
-          c, 400, ErrorCodes.INVALID_INPUT, "bad opportunity body",
-        );
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad level body");
       }
       return runKnowledgeWrite(
         c,
-        "POST:/api/admin/demand/clusters/:id/opportunity",
+        "POST:/api/admin/demand/clusters/:id/level",
         async () => {
-          const r = await createDemandOpportunity(
+          const r = await setDemandClusterLevel(
             store,
             c.req.param("id"),
-            body.data,
+            body.data.to,
             actor,
           );
           if (!r.ok) {
+            const missing = r.reason === "missing";
             return {
-              status: 404,
+              status: missing ? 404 : 409,
               body: {
                 error: {
-                  code: "REQUEST_NOT_FOUND",
-                  message: "no such demand cluster",
+                  code: missing ? "REQUEST_NOT_FOUND" : "ILLEGAL_LEVEL",
+                  message: missing
+                    ? "no such demand cluster"
+                    : `level set refused (${r.reason})`,
                 },
               },
             };
           }
-          return { status: 201, body: { opportunity: r.opportunity } };
+          return { status: 200, body: { cluster: r.cluster, event: r.event } };
         },
-        { owner: actor, fingerprint: requestFingerprint(body.data) },
+        {
+          owner: actor,
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
+        },
       );
     },
   );
+
 
 }

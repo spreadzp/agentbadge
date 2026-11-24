@@ -11,10 +11,13 @@ import type { Hono } from "hono";
 import { principalId } from "../middleware/operatorAuth";
 import {
   createDemandOpportunity,
-  retagDemandSignal,
   transitionDemandOpportunity,
-  triageDemandCluster,
   updateDemandOpportunity,
+} from "../lib/demand/operator-ops-opportunities";
+import {
+  retagDemandSignal,
+  setDemandClusterLevel,
+  triageDemandCluster,
 } from "../lib/demand/operator-ops";
 import {
   defaultBacklogWriter,
@@ -22,10 +25,16 @@ import {
   type BacklogTaskWriter,
 } from "../lib/demand/backlog-export";
 import type { DemandStore } from "../lib/demand/store";
+import type { DemandLevel } from "../lib/demand/types";
 import {
   DEMAND_CLUSTER_STATUSES,
+  DEMAND_LEVELS,
   DEMAND_OPPORTUNITY_STATUSES,
 } from "../lib/demand/types";
+import {
+  DEMAND_CATEGORY_TERMS,
+  DEMAND_FEATURE_TERMS,
+} from "../lib/demand/vocabulary";
 import { rejectCtrl } from "./admin-operator-guard";
 import {
   formStr,
@@ -48,7 +57,12 @@ export function registerDemandUiMutations(
       return c.redirect(backWithDemand("/admin/demand", { err: FORM_TOKEN_ERR }), 303);
     }
     const to = formStr(b, "to");
-    if (!DEMAND_CLUSTER_STATUSES.includes(to as never)) {
+    // LINKED is not operator-targetable — a bare link carries no
+    // linkRef (Arc 231 R1 M10).
+    if (
+      !DEMAND_CLUSTER_STATUSES.includes(to as never) ||
+      to === "LINKED"
+    ) {
       return c.redirect(backWithDemand("/admin/demand", { err: "bad_target" }), 303);
     }
     const actor = principalId(c);
@@ -85,6 +99,32 @@ export function registerDemandUiMutations(
       backWithDemand(
         "/admin/demand/opportunities",
         r.ok ? { ok: "opportunity_created" } : { err: r.reason },
+      ),
+      303,
+    );
+  });
+
+  // §16.1 VERIFIED gesture — the operator's explicit level set;
+  // the only path a cluster ever reaches VERIFIED_DEMAND.
+  app.post("/admin/demand/clusters/:id/level", async (c) => {
+    const id = c.req.param("id") ?? "";
+    const b = await c.req.parseBody();
+    const bad = rejectCtrl(c, id);
+    if (bad) return bad;
+    if (!tokenConsumed(b)) {
+      return c.redirect(backWithDemand("/admin/demand", { err: FORM_TOKEN_ERR }), 303);
+    }
+    const to = formStr(b, "to");
+    if (!DEMAND_LEVELS.includes(to as DemandLevel)) {
+      return c.redirect(backWithDemand("/admin/demand", { err: "bad_target" }), 303);
+    }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const r = await setDemandClusterLevel(store, id, to as DemandLevel, actor);
+    return c.redirect(
+      backWithDemand(
+        "/admin/demand",
+        r.ok ? { ok: `level_${to}` } : { err: r.reason },
       ),
       303,
     );
@@ -199,17 +239,22 @@ export function registerDemandUiMutations(
         303,
       );
     }
+    const category = formStr(b, "category") || null;
+    const feature = formStr(b, "feature") || null;
+    // Arc 231 R1: retag picks FROM the dictionary — free-form
+    // strings mint dict:{junk} clusters.
+    if (
+      (category !== null && !DEMAND_CATEGORY_TERMS.includes(category as never)) ||
+      (feature !== null && !DEMAND_FEATURE_TERMS.includes(feature as never))
+    ) {
+      return c.redirect(
+        backWithDemand("/admin/demand/signals", { err: "bad_target" }),
+        303,
+      );
+    }
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
-    const r = await retagDemandSignal(
-      store,
-      id,
-      {
-        category: formStr(b, "category") || null,
-        feature: formStr(b, "feature") || null,
-      },
-      actor,
-    );
+    const r = await retagDemandSignal(store, id, { category, feature }, actor);
     return c.redirect(
       backWithDemand(
         "/admin/demand/signals",

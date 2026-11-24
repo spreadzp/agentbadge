@@ -102,12 +102,12 @@ describe("UI mutations (PRG)", () => {
     const a = await seedDemand(store);
     const r = await post(
       app, key, `/admin/demand/signals/${a.signal.id}/retag`,
-      { category: "payments", feature: "refund" },
+      { category: "payments", feature: "refunds" },
     );
     expect(r.status).toBe(303);
     const s = await store.getSignal(a.signal.id);
     expect(s?.category).toBe("payments");
-    expect(s?.feature).toBe("refund");
+    expect(s?.feature).toBe("refunds");
   });
 
   it("«→ Opportunity» drafts a PROPOSED opp with metrics snapshot", async () => {

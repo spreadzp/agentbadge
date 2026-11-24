@@ -7,14 +7,16 @@
  */
 
 import { buildDemandEvent, emitDemandHooks } from "./events";
+import { applyLevelRules } from "./level-rules";
 import { normalizeClusterKey } from "./normalize";
 import type { DemandStore } from "./store";
 import type {
   DemandClusterRecord,
   DemandEventRecord,
-  DemandOpportunityRecord,
+  DemandLevel,
   DemandSignalRecord,
 } from "./types";
+import { DEMAND_LEVEL_RANK } from "./types";
 import { generateReportId } from "../../../agent-readiness/integrity/ulid";
 
 export type RetagResult =
@@ -23,7 +25,7 @@ export type RetagResult =
       signal: DemandSignalRecord;
       cluster: DemandClusterRecord | null;
     }
-  | { ok: false; reason: "missing" | "linked_row" };
+  | { ok: false; reason: "missing" | "linked_row" | "cluster_closed" };
 
 /** Operator re-tag — clusterKey re-derived from the FINAL
  *  category/feature (dict: namespace); absent≠null in the patch
@@ -43,6 +45,12 @@ export async function retagDemandSignal(
     feature ?? null,
     signal.normalizedText,
   );
+  // Arc 231 R1 M9: a DISMISSED/LINKED cluster is a closed judgement —
+  // retagging INTO one would resurrect it silently.
+  const target = await store.getClusterByKey(clusterKey);
+  if (target && target.status !== "OPEN" && target.status !== "TRIAGED") {
+    return { ok: false, reason: "cluster_closed" };
+  }
   const events = {
     signal: [
       buildDemandEvent(
@@ -55,7 +63,9 @@ export async function retagDemandSignal(
           clusterKey,
           actor,
         },
-        `retag:${signal.id}:${clusterKey}`,
+        // Arc 231 R1 H5: per-occurrence suffix — the event key is
+        // globally @unique; retag A→B→A must not collide.
+        `retag:${signal.id}:${clusterKey}:${generateReportId()}`,
       ),
     ],
     cluster: [
@@ -74,7 +84,13 @@ export async function retagDemandSignal(
   if (r.detached !== "ok") return { ok: false, reason: r.detached };
   emitDemandHooks("signal", signal.id, events.signal!);
   if (r.cluster) emitDemandHooks("cluster", r.cluster.id, events.cluster!);
-  return { ok: true, signal: r.signal!, cluster: r.cluster };
+  // Arc 231 R1 M9: the target cluster gained a canonical signal —
+  // re-evaluate unique-actor floors (source can never demote via
+  // rules; operator applyClusterLevel covers demotion if needed).
+  const cluster = r.cluster
+    ? (await applyLevelRules(store, r.cluster)).cluster
+    : r.cluster;
+  return { ok: true, signal: r.signal!, cluster };
 }
 
 export type TriageResult =
@@ -106,7 +122,9 @@ export async function triageDemandCluster(
       actor,
       reason,
     },
-    `triage:${cluster.id}:${cluster.status}:${to}`,
+    // Arc 231 R1 H5: per-occurrence suffix — OPEN↔TRIAGED cycles
+    // would collide on the globally-unique event key otherwise.
+    `triage:${cluster.id}:${cluster.status}:${to}:${generateReportId()}`,
   );
   const r = await store.transitionCluster(
     cluster.id,
@@ -118,156 +136,46 @@ export async function triageDemandCluster(
   return { ok: true, cluster: r.record!, event: r.event! };
 }
 
-export type OpportunityOpResult =
-  | {
-      ok: true;
-      opportunity: DemandOpportunityRecord;
-      event: DemandEventRecord;
-    }
-  | { ok: false; reason: "missing" | "status_mismatch" | "illegal" | "no_patch" };
+export type SetLevelResult =
+  | { ok: true; cluster: DemandClusterRecord; event: DemandEventRecord }
+  | { ok: false; reason: "missing" | "status_mismatch" | "illegal" | "no_change" };
 
 /**
- * Opportunity lifecycle transition (231-7) — the store's from→to
- * table owns legality (effects: closedAt on terminal, patch fields
- * applied). `to=LINKED` refuses here: LINKED is reachable only
- * through the «→ Backlog task» gesture (linkBacklogTask, 231-8) so
- * a LINKED row always carries backlogTaskId.
+ * §16.1 VERIFIED gesture — the operator's explicit level set. This
+ * is the ONLY way a cluster reaches VERIFIED_DEMAND (rules never
+ * mint it): a payment/escrow fact or a confirmed deal, asserted by
+ * a human. Demotion is equally legal — the operator corrects, the
+ * floors only promote. CAS on the read level; target must be a
+ * ladder level different from current.
  */
-export async function transitionDemandOpportunity(
-  store: DemandStore,
-  opportunityId: string,
-  to: string,
-  input: {
-    reason?: string | null;
-    patch?: {
-      title?: string;
-      hypothesis?: string | null;
-      expectedValue?: string | null;
-      declineReason?: string | null;
-    };
-  },
-  actor: string,
-): Promise<OpportunityOpResult> {
-  if (to === "LINKED") return { ok: false, reason: "illegal" };
-  const cur = await store.getOpportunity(opportunityId);
-  if (!cur) return { ok: false, reason: "missing" };
-  const event = buildDemandEvent(
-    "demand.opportunity.updated",
-    "INTERNAL",
-    {
-      opportunityId: cur.id,
-      from: cur.status,
-      to,
-      actor,
-      reason: input.reason ?? null,
-      patch: input.patch ?? null,
-    },
-    `opp-transition:${cur.id}:${cur.status}:${to}`,
-  );
-  const r = await store.transitionOpportunity(
-    cur.id,
-    {
-      from: cur.status,
-      to,
-      actor,
-      reason: input.reason ?? null,
-      patch: input.patch,
-    },
-    event,
-  );
-  if (!r.transitioned) return { ok: false, reason: r.reason };
-  emitDemandHooks("opportunity", cur.id, [event]);
-  return { ok: true, opportunity: r.record!, event: r.event! };
-}
-
-/**
- * Operator field edit without a status move (231-7) — CAS on the
- * read status; requires at least one field in the patch.
- */
-export async function updateDemandOpportunity(
-  store: DemandStore,
-  opportunityId: string,
-  patch: {
-    title?: string;
-    hypothesis?: string | null;
-    expectedValue?: string | null;
-    declineReason?: string | null;
-  },
-  actor: string,
-): Promise<OpportunityOpResult> {
-  if (Object.values(patch).every((v) => v === undefined)) {
-    return { ok: false, reason: "no_patch" };
-  }
-  const cur = await store.getOpportunity(opportunityId);
-  if (!cur) return { ok: false, reason: "missing" };
-  const event = buildDemandEvent(
-    "demand.opportunity.updated",
-    "INTERNAL",
-    {
-      opportunityId: cur.id,
-      action: "edit",
-      actor,
-      patch,
-    },
-    `opp-edit:${cur.id}:${cur.status}:${JSON.stringify(patch)}`,
-  );
-  const r = await store.updateOpportunity(
-    cur.id,
-    patch,
-    { status: cur.status },
-    event,
-  );
-  if (!r.transitioned) return { ok: false, reason: r.reason };
-  emitDemandHooks("opportunity", cur.id, [event]);
-  return { ok: true, opportunity: r.record!, event: r.event! };
-}
-
-export type CreateOpportunityResult =
-  | { ok: true; opportunity: DemandOpportunityRecord }
-  | { ok: false; reason: "missing" };
-
-/** «→ Opportunity» gesture — PROPOSED draft on an existing cluster;
- *  metricsSnapshot freezes the cluster counters at proposal time. */
-export async function createDemandOpportunity(
+export async function setDemandClusterLevel(
   store: DemandStore,
   clusterId: string,
-  input: { title?: string; hypothesis?: string | null },
+  to: DemandLevel,
   actor: string,
-): Promise<CreateOpportunityResult> {
+): Promise<SetLevelResult> {
+  if (!(to in DEMAND_LEVEL_RANK)) return { ok: false, reason: "illegal" };
   const cluster = await store.getCluster(clusterId);
   if (!cluster) return { ok: false, reason: "missing" };
-  const id = `do_${generateReportId()}`;
-  const title = input.title?.trim() || cluster.clusterKey;
-  const events = [
-    buildDemandEvent(
-      "demand.opportunity.created",
-      "INTERNAL",
-      {
-        opportunityId: id,
-        clusterId: cluster.id,
-        title,
-        actor,
-      },
-      `opp:${cluster.id}:${id}`,
-    ),
-  ];
-  const r = await store.createOpportunity(
+  if (cluster.level === to) return { ok: false, reason: "no_change" };
+  const event = buildDemandEvent(
+    "demand.cluster.updated",
+    "INTERNAL",
     {
-      id,
       clusterId: cluster.id,
-      title,
-      hypothesis: input.hypothesis ?? null,
-      metricsSnapshot: {
-        count: cluster.count,
-        uniqueActors: cluster.uniqueActors,
-        level: cluster.level,
-        levelBreakdown: cluster.levelBreakdown,
-      },
-      createdBy: actor,
+      reason: "operator_level",
+      from: cluster.level,
+      to,
+      actor,
     },
-    events,
+    `level:${cluster.id}:${cluster.level}:${to}:${generateReportId()}`,
   );
-  if (!r.created || !r.record) return { ok: false, reason: "missing" };
-  emitDemandHooks("opportunity", r.record.id, events);
-  return { ok: true, opportunity: r.record };
+  const r = await store.applyClusterLevel(
+    cluster.id,
+    { from: cluster.level, to },
+    event,
+  );
+  if (!r.transitioned) return { ok: false, reason: r.reason };
+  emitDemandHooks("cluster", cluster.id, [event]);
+  return { ok: true, cluster: r.record!, event: r.event! };
 }

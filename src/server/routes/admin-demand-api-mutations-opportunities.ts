@@ -18,14 +18,10 @@ import { principalId } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import {
+  createDemandOpportunity,
   transitionDemandOpportunity,
   updateDemandOpportunity,
-} from "../lib/demand/operator-ops";
-import {
-  defaultBacklogWriter,
-  linkDemandBacklog,
-  type BacklogTaskWriter,
-} from "../lib/demand/backlog-export";
+} from "../lib/demand/operator-ops-opportunities";
 import type { DemandStore } from "../lib/demand/store";
 import { DEMAND_OPPORTUNITY_STATUSES } from "../lib/demand/types";
 import {
@@ -34,28 +30,31 @@ import {
   runKnowledgeWrite,
 } from "./admin-operator-guard";
 
+/** Arc 231 R1: body strings reject C0/NUL like path params do. */
+const noCtrl = (s: string) =>
+  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(s);
+
+const opportunitySchema = z.object({
+  title: z.string().max(200).refine(noCtrl).optional(),
+  hypothesis: z.string().max(2000).refine(noCtrl).nullable().optional(),
+});
+
 const oppPatchSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  hypothesis: z.string().max(2000).nullable().optional(),
-  expectedValue: z.string().max(500).nullable().optional(),
-  declineReason: z.string().max(500).nullable().optional(),
+  title: z.string().min(1).max(200).refine(noCtrl).optional(),
+  hypothesis: z.string().max(2000).refine(noCtrl).nullable().optional(),
+  expectedValue: z.string().max(500).refine(noCtrl).nullable().optional(),
+  declineReason: z.string().max(500).refine(noCtrl).nullable().optional(),
 });
 
 const oppTransitionSchema = z.object({
   to: z.enum(DEMAND_OPPORTUNITY_STATUSES as unknown as [string, ...string[]]),
-  reason: z.string().max(500).optional(),
+  reason: z.string().max(500).refine(noCtrl).optional(),
   patch: oppPatchSchema.optional(),
 });
-
-export interface DemandOpportunityRouteDeps {
-  /** Lazy factory — env is read per request; tests inject a stub. */
-  backlogWriter?: () => BacklogTaskWriter;
-}
 
 export function registerDemandOpportunityMutations(
   app: Hono,
   store: DemandStore,
-  deps: DemandOpportunityRouteDeps = {},
 ): void {
   app.post(
     "/api/admin/demand/opportunities/:id/transition",
@@ -112,7 +111,13 @@ export function registerDemandOpportunityMutations(
             body: { opportunity: r.opportunity, event: r.event },
           };
         },
-        { owner: actor, fingerprint: requestFingerprint(body.data) },
+        {
+          owner: actor,
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
+        },
       );
     },
   );
@@ -173,23 +178,26 @@ export function registerDemandOpportunityMutations(
             body: { opportunity: r.opportunity, event: r.event },
           };
         },
-        { owner: actor, fingerprint: requestFingerprint(body.data) },
+        {
+          owner: actor,
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
+        },
       );
     },
   );
 
   app.post(
-    "/api/admin/demand/opportunities/:id/backlog",
+    "/api/admin/demand/clusters/:id/opportunity",
     describeRoute({
-      summary:
-        "«→ Backlog task» — export ACCEPTED opportunity as a Backlog.md task (idempotent)",
+      summary: "«→ Opportunity» — PROPOSED draft on the cluster (231-6)",
       tags: ["Admin Demand"],
       responses: {
-        200: { description: "Linked (or already-linked) opportunity + taskId" },
+        201: { description: "Created opportunity" },
         400: { description: "Validation/idempotency failure" },
-        404: { description: "Unknown opportunity" },
-        409: { description: "Not ACCEPTED / link raced" },
-        502: { description: "Backlog tasks dir unwritable" },
+        404: { description: "Unknown cluster" },
       },
     }),
     async (c) => {
@@ -197,52 +205,42 @@ export function registerDemandOpportunityMutations(
       if (ctrlBad) return ctrlBad;
       const actor = principalId(c);
       if (actor instanceof Response) return actor;
+      const raw = await c.req.json().catch(() => ({}));
+      const body = opportunitySchema.safeParse(raw ?? {});
+      if (!body.success) {
+        return errorResponse(
+          c, 400, ErrorCodes.INVALID_INPUT, "bad opportunity body",
+        );
+      }
       return runKnowledgeWrite(
         c,
-        "POST:/api/admin/demand/opportunities/:id/backlog",
+        "POST:/api/admin/demand/clusters/:id/opportunity",
         async () => {
-          const writer = deps.backlogWriter ?? defaultBacklogWriter;
-          const r = await linkDemandBacklog(
+          const r = await createDemandOpportunity(
             store,
             c.req.param("id"),
+            body.data,
             actor,
-            { writer: writer() },
           );
           if (!r.ok) {
-            const status =
-              r.reason === "missing"
-                ? 404
-                : r.reason === "write_failed"
-                  ? 502
-                  : 409;
             return {
-              status,
+              status: 404,
               body: {
                 error: {
-                  code:
-                    r.reason === "missing"
-                      ? "REQUEST_NOT_FOUND"
-                      : r.reason === "write_failed"
-                        ? "BACKLOG_WRITE_FAILED"
-                        : "ILLEGAL_TRANSITION",
-                  message: `backlog export refused (${r.reason})`,
+                  code: "REQUEST_NOT_FOUND",
+                  message: "no such demand cluster",
                 },
               },
             };
           }
-          return {
-            status: 200,
-            body: {
-              opportunity: r.opportunity,
-              taskId: r.taskId,
-              alreadyLinked: r.alreadyLinked,
-              ...(r.event ? { event: r.event } : {}),
-            },
-          };
+          return { status: 201, body: { opportunity: r.opportunity } };
         },
         {
           owner: actor,
-          fingerprint: requestFingerprint({ id: c.req.param("id") }),
+          fingerprint: requestFingerprint({
+            id: c.req.param("id"),
+            ...body.data,
+          }),
         },
       );
     },

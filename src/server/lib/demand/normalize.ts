@@ -8,36 +8,41 @@ import { DEMAND_LEVEL_RANK, type DemandLevel } from "./types";
  * No store access here: pure functions, unit-testable.
  */
 
-/** Canonical text form: NFKC → lowercase → collapse ws → trim
- *  (normalizeFeedbackText convention). Retained per O3 — it is the
- *  dedupe/clustering artifact, not a verbatim payload. */
+/** Canonical text form: NFKC → lowercase → strip Cf (zero-width /
+ *  format chars — Arc 231 R1 M3: invisible variants must not evade
+ *  burst-dedupe) → map Cc (C0/NUL — the dedupe key joins fields on
+ *  \x00 and the PG driver 500s on NUL) to space → collapse ws →
+ *  trim. Retained per O3 — it is the dedupe/clustering artifact,
+ *  not a verbatim payload. */
 export function normalizeDemandText(text: string): string {
-  return text.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+  return text
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\p{Cf}/gu, "")
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
- * D-231-4 burst-dedupe window — 24h bucket, same horizon as the
- * idempotency TTL convention (contract-guards IDEM_TTL_MS). Same
- * actor + same text inside a window threads under the earliest
- * canonical (relatedSignalId + relatedCount); across windows it is
- * a NEW canonical — re-demand over time is a real signal.
+ * D-231-4 burst-dedupe window — same horizon as the idempotency TTL
+ * convention (contract-guards IDEM_TTL_MS). Arc 231 R1 M3: the window
+ * is ROLLING — a canonical candidate counts only when it is at most
+ * 24h older than the incoming signal (`dedupeAfterMs` on the store
+ * input). A fixed UTC-day bucket let one actor mint two canonicals
+ * per text per midnight and self-inflate `count`.
  */
 export const DEMAND_DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export function demandDedupeWindow(createdAtMs: number): number {
-  return Math.floor(createdAtMs / DEMAND_DEDUPE_WINDOW_MS);
-}
-
-/** sha256(actorRef \x00 normalizedText \x00 windowBucket) — opaque
- *  probe (feedback precedent: uniformly bounded, content-agnostic). */
+/** sha256(actorRef \x00 normalizedText) — opaque probe (feedback
+ *  precedent: uniformly bounded, content-agnostic). The rolling
+ *  freshness bound travels separately as `dedupeAfterMs`. */
 export function demandDedupeKey(
   normalizedText: string,
   actorRef: string | null,
-  createdAtMs: number,
 ): string {
-  const bucket = demandDedupeWindow(createdAtMs);
   return createHash("sha256")
-    .update(`${actorRef ?? ""}\u0000${normalizedText}\u0000${bucket}`)
+    .update(`${actorRef ?? ""}\u0000${normalizedText}`)
     .digest("hex");
 }
 
@@ -65,9 +70,13 @@ export function normalizeClusterKey(
  * VERIFIED_DEMAND arrives only from a payment/escrow fact, a
  * confirmed deal, or an operator — never from agent text, so the
  * pipeline clamps any VERIFIED claim down to PURCHASE_INTENT.
+ * Arc 231 R1 H1: allowlist, not a one-literal denylist — unknown
+ * strings ("verified_demand", junk) fall back to INTEREST instead of
+ * polluting levelBreakdown with non-ladder values.
  */
 export function clampDeclaredLevel(declared: DemandLevel): DemandLevel {
-  return declared === "VERIFIED_DEMAND" ? "PURCHASE_INTENT" : declared;
+  if (declared === "VERIFIED_DEMAND") return "PURCHASE_INTENT";
+  return declared in DEMAND_LEVEL_RANK ? declared : "INTEREST";
 }
 
 /** Higher of two levels by rank — the monotone-max helper for

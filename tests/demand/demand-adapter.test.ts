@@ -22,10 +22,13 @@ import {
 const app = new Hono();
 app.route("/", demandRoutes);
 
-const post = (body: unknown) =>
+const post = (body: unknown, ip?: string) =>
   app.request("/api/demand/request", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(ip ? { "x-forwarded-for": ip } : {}),
+    },
     body: JSON.stringify(body),
   });
 
@@ -87,28 +90,63 @@ describe("SLICE-231-3: POST /api/demand/request → pipeline adapter", () => {
     expect(j2.count).toBe(1);
   });
 
-  it("priority=candidate at 5 registrations", async () => {
-    for (let i = 0; i < 4; i++) {
-      await post({ capability_query: "solidity audit" });
+  // Arc 231 R1 M3: priority derives from DISTINCT actors — one actor
+  // repeating the same need must never push it to candidate/priority.
+  it("priority=candidate at 5 distinct actors", async () => {
+    process.env.TRUST_PROXY_HEADERS = "true";
+    try {
+      for (let i = 0; i < 4; i++) {
+        await post({ capability_query: "solidity audit" }, `10.1.0.${i + 1}`);
+      }
+      const res = await post(
+        { capability_query: "solidity audit" },
+        "10.1.0.5",
+      );
+      const json = await res.json();
+      expect(json.count).toBe(5);
+      expect(json.priority).toBe("candidate");
+    } finally {
+      delete process.env.TRUST_PROXY_HEADERS;
     }
-    const res = await post({ capability_query: "solidity audit" });
-    const json = await res.json();
-    expect(json.count).toBe(5);
-    expect(json.priority).toBe("candidate");
   });
 
-  it("priority=priority at 20 registrations", async () => {
-    for (let i = 0; i < 10; i++) {
-      await post({ capability_query: "rust development" });
+  it("priority=priority at 20 distinct actors", async () => {
+    process.env.TRUST_PROXY_HEADERS = "true";
+    try {
+      for (let i = 0; i < 19; i++) {
+        await post({ capability_query: "rust development" }, `10.2.0.${i + 1}`);
+      }
+      const res = await post(
+        { capability_query: "rust development" },
+        "10.2.0.20",
+      );
+      const json = await res.json();
+      expect(json.count).toBe(20);
+      expect(json.priority).toBe("priority");
+    } finally {
+      delete process.env.TRUST_PROXY_HEADERS;
     }
-    resetDemandRateLimits();
-    for (let i = 0; i < 9; i++) {
-      await post({ capability_query: "rust development" });
+  });
+
+  it("20 repeats from ONE actor stay backlog — uniqueActors never inflates", async () => {
+    process.env.TRUST_PROXY_HEADERS = "true";
+    try {
+      for (let i = 0; i < 19; i++) {
+        await post({ capability_query: "wasm runtime" }, "10.9.9.9");
+        if (i === 9) resetDemandRateLimits();
+      }
+      const res = await post(
+        { capability_query: "wasm runtime" },
+        "10.9.9.9",
+      );
+      const json = await res.json();
+      expect(json.count).toBe(20);
+      expect(json.priority).toBe("backlog");
+      const cluster = (await store().listClusters())[0];
+      expect(cluster.uniqueActors).toBe(1);
+    } finally {
+      delete process.env.TRUST_PROXY_HEADERS;
     }
-    const res = await post({ capability_query: "rust development" });
-    const json = await res.json();
-    expect(json.count).toBe(20);
-    expect(json.priority).toBe("priority");
   });
 
   it("emits signal + cluster events through the same write", async () => {

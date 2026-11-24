@@ -22,10 +22,12 @@ import type {
  *   — burst repeats never inflate demand (§13.2). uniqueActors =
  *   distinct (actorResolution, actorRef); NULL actorRef collapses
  *   to one unattributed actor (under-count, never over-count).
- * - cluster.level is monotone-max on signal.level inside
- *   recordSignal and CAS-promoted/demoted via applyClusterLevel.
- *   VERIFIED_DEMAND is never minted by the store — it arrives only
- *   on input.level from a system/operator caller (§16.1).
+ * - cluster.level moves ONLY via applyClusterLevel — unique-actor
+ *   floors (system) or an operator gesture. recordSignal seeds
+ *   INTEREST and never promotes from signal.level; a caller's
+ *   declaredLevel is informational on the row, nothing more
+ *   (Arc 231 R1 H1). VERIFIED_DEMAND arrives only from an operator
+ *   or payment fact (§16.1).
  * - Status machines are enforced inside the store: refusals return
  *   {transitioned:false, reason} and write NOTHING; effects derive
  *   from `to` (closedAt on DECLINED|SHIPPED|CLOSED).
@@ -53,6 +55,10 @@ export interface DemandSignalInput {
   sessionId?: string | null;
   dedupeKey: string;
   createdAtMs: number;
+  /** Arc 231 R1 M3: rolling-window dedupe — a burst-dup links only to
+   *  a canonical row with `createdAtMs >= dedupeAfterMs`. Absent =
+   *  no time bound (pipeline always sets createdAtMs - 24h). */
+  dedupeAfterMs?: number | null;
 }
 
 export interface DemandEventInput {
@@ -101,6 +107,11 @@ export interface DemandTransitionInput {
   to: string;
   actor: string;
   reason?: string | null;
+  /** Required when `to === "LINKED"` (clusters) — the row id the
+   *  cluster was linked to. Bare LINKED refuses: a LINKED cluster
+   *  must always carry what it was linked to (Arc 231 R1 M10 —
+   *  LINKED is terminal and cannot be undone). */
+  linkRef?: string | null;
   /** ISO timestamp for effect columns — caller-supplied so memory
    *  and PG backends stay comparable in tests. */
   now?: string;
@@ -263,6 +274,6 @@ export interface DemandStore {
   listEvents(
     entityType: DemandEntityType,
     entityId: string,
-    opts?: { visibility?: string },
+    opts?: { visibility?: string; limit?: number },
   ): Promise<DemandEventRecord[]>;
 }

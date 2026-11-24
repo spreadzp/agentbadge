@@ -14,6 +14,10 @@ import {
 } from "../../server/lib/demand/types";
 import { emptyMsg, fmtMs, tableShell, td } from "../finops/shared";
 import {
+  DEMAND_CATEGORY_TERMS,
+  DEMAND_FEATURE_TERMS,
+} from "../../server/lib/demand/vocabulary";
+import {
   demandFilterBar,
   demandNav,
   demandShell,
@@ -38,20 +42,26 @@ const retagForm = (s: DemandSignalRecord) => {
       class="flex flex-wrap items-center gap-1"
     >
       ${tokenField()}
-      <input
-        type="text"
+      <select
         name="category"
-        placeholder="category"
-        value="${s.category ?? ""}"
-        class="w-24 rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
-      />
-      <input
-        type="text"
+        class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
+      >
+        <option value="">—</option>
+        ${DEMAND_CATEGORY_TERMS.map(
+          (t) =>
+            html`<option value="${t}" ${t === s.category ? "selected" : ""}>${t}</option>`,
+        )}
+      </select>
+      <select
         name="feature"
-        placeholder="feature"
-        value="${s.feature ?? ""}"
-        class="w-24 rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
-      />
+        class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
+      >
+        <option value="">—</option>
+        ${DEMAND_FEATURE_TERMS.map(
+          (t) =>
+            html`<option value="${t}" ${t === s.feature ? "selected" : ""}>${t}</option>`,
+        )}
+      </select>
       <button
         type="submit"
         class="rounded bg-sky-800 px-2 py-0.5 text-[11px] text-sky-100 hover:bg-sky-700"

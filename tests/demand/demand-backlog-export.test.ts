@@ -15,7 +15,7 @@ import {
 import {
   createDemandOpportunity,
   transitionDemandOpportunity,
-} from "../../src/server/lib/demand/operator-ops";
+} from "../../src/server/lib/demand/operator-ops-opportunities";
 import {
   createMemoryOperatorStore,
   seedOperator,
@@ -90,7 +90,7 @@ describe("linkDemandBacklog (op)", () => {
     const card = captured.cards[0]!;
     expect(card.title).toContain("Escrow payouts");
     expect(card.description).toContain("unique actors");
-    expect(card.description).toContain("level INTENT");
+    expect(card.description).toContain("level INTEREST");
     expect(card.description).toContain("can you escrow my payout");
     const events = await store.listEvents("opportunity", opp.id);
     expect(events.map((e) => e.kind)).toContain(

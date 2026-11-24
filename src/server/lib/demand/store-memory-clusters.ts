@@ -1,4 +1,4 @@
-import type { DemandClusterRecord } from "./types";
+import type { DemandClusterRecord, DemandClusterStatus } from "./types";
 import { DEMAND_CLUSTER_TRANSITIONS } from "./types";
 import type { DemandStore } from "./store";
 import type { MemoryDemandCore } from "./store-memory-core";
@@ -94,6 +94,36 @@ export function memoryClusterOps(core: MemoryDemandCore): ClusterOps {
     },
 
     async transitionCluster(id, input, event) {
+      // Refusal precedence mirrors the Postgres twin (FOR UPDATE
+      // path): missing → status_mismatch → illegal(table) →
+      // illegal(bare LINKED, Arc 231 R1 M10).
+      const cur = clusters.get(id) ?? null;
+      if (!cur) {
+        return {
+          record: null,
+          event: null,
+          transitioned: false,
+          reason: "missing",
+        };
+      }
+      if (cur.status !== input.from) {
+        return {
+          record: cloneCluster(cur),
+          event: null,
+          transitioned: false,
+          reason: "status_mismatch",
+        };
+      }
+      if (DEMAND_CLUSTER_TRANSITIONS[input.from as DemandClusterStatus]?.has(
+        input.to as DemandClusterStatus,
+      ) !== true || (input.to === "LINKED" && !input.linkRef)) {
+        return {
+          record: cloneCluster(cur),
+          event: null,
+          transitioned: false,
+          reason: "illegal",
+        };
+      }
       const out = transition(
         clusters,
         id,

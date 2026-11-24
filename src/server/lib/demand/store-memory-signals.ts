@@ -1,7 +1,11 @@
 import type { DemandSignalRecord } from "./types";
 import type { DemandStore } from "./store";
 import type { MemoryDemandCore } from "./store-memory-core";
-import { cloneCluster, cloneSignal } from "./store-memory-core";
+import {
+  cloneCluster,
+  cloneSignal,
+  redactSignalContext,
+} from "./store-memory-core";
 
 /**
  * EPIC-231 (SLICE-231-1): signal + cluster ops for the in-memory
@@ -35,12 +39,13 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
   return {
     async getSignal(id) {
       const row = signals.get(id);
-      return row ? cloneSignal(row) : null;
+      return row ? redactSignalContext(cloneSignal(row)) : null;
     },
 
     async findSignalByIdempotency(idempotencyKey, dedupeScope) {
-      const row = byIdem.get(idemKey(dedupeScope, idempotencyKey));
-      return row ? cloneSignal(row) : null;
+      const id = byIdem.get(idemKey(dedupeScope, idempotencyKey));
+      const row = id ? signals.get(id) : undefined;
+      return row ? redactSignalContext(cloneSignal(row)) : null;
     },
 
     async listSignals(opts) {
@@ -62,21 +67,24 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
       );
       const off = Math.max(0, opts?.offset ?? 0);
       const lim = Math.min(opts?.limit ?? 100, 1000);
-      return out.slice(off, off + lim).map(cloneSignal);
+      return out
+        .slice(off, off + lim)
+        .map((s) => redactSignalContext(cloneSignal(s)));
     },
 
     async recordSignal(input, clusterKey, evts) {
       if (input.idempotencyKey) {
-        const existing = byIdem.get(
+        const existingId = byIdem.get(
           idemKey(input.dedupeScope, input.idempotencyKey),
         );
+        const existing = existingId ? signals.get(existingId) : undefined;
         if (existing) {
           const cluster = existing.clusterId
             ? clusters.get(existing.clusterId)!
             : null;
           if (cluster) {
             return {
-              signal: cloneSignal(existing),
+              signal: redactSignalContext(cloneSignal(existing)),
               cluster: cloneCluster(cluster),
               canonicalOf: existing.relatedSignalId,
               duplicate: true,
@@ -84,9 +92,19 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
           }
         }
       }
-      // Burst-dedup: earliest canonical row sharing dedupeKey.
+      // Burst-dedup: earliest canonical row sharing dedupeKey that is
+      // still inside the rolling window (Arc 231 R1 M3 — a fixed
+      // UTC-day bucket let one actor mint two canonicals per midnight).
       const canonical = (byDedupeKey.get(input.dedupeKey) ?? [])
+        .map((id) => signals.get(id))
+        .filter((s): s is DemandSignalRecord => s !== undefined)
         .filter((s) => s.relatedSignalId === null)
+        .filter(
+          (s) =>
+            input.dedupeAfterMs === undefined ||
+            input.dedupeAfterMs === null ||
+            s.createdAtMs >= input.dedupeAfterMs,
+        )
         .sort((a, b) =>
           a.createdAt === b.createdAt
             ? a.id.localeCompare(b.id)
@@ -100,7 +118,6 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
         category: input.category,
         feature: input.feature,
         capabilityKey: input.capabilityKey,
-        level: input.level,
       });
       const signal: DemandSignalRecord = {
         id: input.id,
@@ -128,22 +145,23 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
       };
       signals.set(signal.id, signal);
       if (input.idempotencyKey) {
-        byIdem.set(idemKey(input.dedupeScope, input.idempotencyKey), signal);
+        byIdem.set(
+          idemKey(input.dedupeScope, input.idempotencyKey),
+          signal.id,
+        );
       }
       const dk = byDedupeKey.get(input.dedupeKey) ?? [];
-      dk.push(signal);
+      dk.push(signal.id);
       byDedupeKey.set(input.dedupeKey, dk);
       if (canonical) {
         canonical.relatedCount += 1;
         signals.set(canonical.id, canonical);
       }
-      const fresh = recountCluster(cluster.id, {
-        promotedLevel: input.level,
-      });
+      const fresh = recountCluster(cluster.id);
       appendEventsMem("signal", signal.id, evts?.signal ?? []);
       appendEventsMem("cluster", cluster.id, evts?.cluster ?? []);
       return {
-        signal: cloneSignal(signal),
+        signal: redactSignalContext(cloneSignal(signal)),
         cluster: cloneCluster(fresh),
         canonicalOf: canonical?.id ?? null,
         duplicate: false,
@@ -158,7 +176,7 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
           ? clusters.get(cur.clusterId) ?? null
           : null;
         return {
-          signal: cloneSignal(cur),
+          signal: redactSignalContext(cloneSignal(cur)),
           cluster: cluster ? cloneCluster(cluster) : null,
           detached: "linked_row",
         };
@@ -168,25 +186,29 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
         category: patch.category,
         feature: patch.feature,
         capabilityKey: patch.capabilityKey,
-        level: cur.level,
       });
       const sourceClusterId = cur.clusterId;
       const next: DemandSignalRecord = {
         ...cur,
         category: patch.category ?? null,
         feature: patch.feature ?? null,
-        capabilityKey: patch.capabilityKey ?? null,
+        // Arc 231 R1 M9: absent ≠ clear — a category/feature retag
+        // must not silently null the signal's capabilityKey.
+        capabilityKey:
+          patch.capabilityKey === undefined
+            ? cur.capabilityKey
+            : patch.capabilityKey,
         clusterId: target.id,
       };
       signals.set(id, next);
       if (sourceClusterId && sourceClusterId !== target.id) {
-        recountCluster(sourceClusterId, {});
+        recountCluster(sourceClusterId);
       }
-      const fresh = recountCluster(target.id, {});
+      const fresh = recountCluster(target.id);
       appendEventsMem("signal", id, evts?.signal ?? []);
       appendEventsMem("cluster", target.id, evts?.cluster ?? []);
       return {
-        signal: cloneSignal(next),
+        signal: redactSignalContext(cloneSignal(next)),
         cluster: cloneCluster(fresh),
         detached: "ok",
       };

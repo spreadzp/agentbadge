@@ -133,7 +133,9 @@ describe("dedupe semantics edges", () => {
     expect(a.ok && b.ok).toBe(true);
     if (a.ok && b.ok) {
       expect(b.signal.relatedSignalId).toBeNull(); // fresh canonical
-      expect(b.signal.dedupeKey).not.toBe(a.signal.dedupeKey);
+      // R1 M3: dedupeKey is actor+text only (window lives on the
+      // probe) — same key, but past the window it mints a new row.
+      expect(b.signal.dedupeKey).toBe(a.signal.dedupeKey);
     }
     const canon = await store().listSignals({ canonicalOnly: true });
     expect(canon.length).toBe(2);

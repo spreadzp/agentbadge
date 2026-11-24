@@ -107,9 +107,9 @@ describe("clusters + signals reads", () => {
     expect(j.count).toBe(2);
     expect(j.items[0].count).toBe(2);
     expect(j.items[0].uniqueActors).toBe(2);
-    expect(j.items[0].level).toBe("INTENT"); // max(INTENT, floor NEED)
+    expect(j.items[0].level).toBe("NEED"); // 2 unique actors → floor NEED (R1 H1)
     const filtered = await admin(
-      app, key, "/api/admin/demand/clusters?level=INTENT",
+      app, key, "/api/admin/demand/clusters?level=NEED",
     );
     expect((await filtered.json()).count).toBe(1);
     expect((await admin(app, key, "/api/admin/demand/clusters?status=BOGUS")).status).toBe(400);
@@ -168,14 +168,14 @@ describe("retag + triage mutations", () => {
     const { b } = await seedDemand(store);
     const r = await admin(app, key, `/api/admin/demand/signals/${b.signal.id}/retag`, {
       method: "POST",
-      body: { category: "payments", feature: "refund" },
+      body: { category: "payments", feature: "refunds" },
       idem: "idem-retag-1",
     });
     expect(r.status).toBe(200);
     const j = await r.json();
     expect(j.signal.category).toBe("payments");
-    expect(j.signal.feature).toBe("refund");
-    expect(j.cluster.clusterKey).toBe("dict:payments|refund");
+    expect(j.signal.feature).toBe("refunds");
+    expect(j.cluster.clusterKey).toBe("dict:payments|refunds");
     const moved = await store.getSignal(b.signal.id);
     expect(moved?.clusterId).toBe(j.cluster.id);
     const events = await store.listEvents("signal", b.signal.id);
@@ -200,7 +200,7 @@ describe("retag + triage mutations", () => {
     expect(dup.signal.relatedSignalId).toBe(a.ok ? a.signal.id : "unreachable");
     const r = await admin(app, key, `/api/admin/demand/signals/${dup.signal.id}/retag`, {
       method: "POST",
-      body: { category: "x" },
+      body: { category: "identity" }, // valid dict term → reaches the store
       idem: "idem-retag-2",
     });
     expect(r.status).toBe(409);
@@ -217,20 +217,27 @@ describe("retag + triage mutations", () => {
     });
     expect(ok.status).toBe(200);
     expect((await ok.json()).cluster.status).toBe("TRIAGED");
-    const illegal = await admin(app, key, `/api/admin/demand/clusters/${a.cluster.id}/triage`, {
+    // Arc 231 R1 M10: LINKED is not operator-targetable — a bare
+    // link carries no linkRef; the schema refuses before the store.
+    const linked = await admin(app, key, `/api/admin/demand/clusters/${a.cluster.id}/triage`, {
       method: "POST",
       body: { to: "LINKED" },
       idem: "idem-triage-b",
     });
-    // TRIAGED→LINKED is actually legal — DISMISSED→LINKED is not; use a
-    // real illegal hop: TRIAGED stays, DISMISSED→LINKED via two steps.
-    expect(illegal.status).toBe(200); // legal per table
+    expect(linked.status).toBe(400);
+    // TRIAGED→DISMISSED is legal; DISMISSED→TRIAGED is not.
     const dismissed = await admin(app, key, `/api/admin/demand/clusters/${a.cluster.id}/triage`, {
       method: "POST",
       body: { to: "DISMISSED" },
       idem: "idem-triage-c",
     });
-    expect(dismissed.status).toBe(409); // LINKED is terminal
+    expect(dismissed.status).toBe(200);
+    const illegal = await admin(app, key, `/api/admin/demand/clusters/${a.cluster.id}/triage`, {
+      method: "POST",
+      body: { to: "TRIAGED" },
+      idem: "idem-triage-d",
+    });
+    expect(illegal.status).toBe(409); // DISMISSED→TRIAGED not in table
   });
 
   it("mutations require Idempotency-Key → 400", async () => {
@@ -333,7 +340,7 @@ describe("metrics", () => {
     const r = await admin(app, key, "/api/admin/demand/metrics");
     expect(r.status).toBe(200);
     const j = await r.json();
-    expect(j.requests).toBe(3);
+    expect(j.sampledRequests).toBe(3);
     expect(j.canonicalSignals).toBe(3);
     expect(j.actors.identified).toBe(2);
     expect(j.actors.anonymous).toBe(1);

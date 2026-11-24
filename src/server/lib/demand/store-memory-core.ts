@@ -4,7 +4,6 @@ import type {
   DemandOpportunityRecord,
   DemandSignalRecord,
 } from "./types";
-import { DEMAND_LEVEL_RANK } from "./types";
 import type { DemandEventInput } from "./store";
 
 /**
@@ -34,6 +33,18 @@ export function createMemoryDemandData(): DemandMemoryData {
 export const cloneSignal = (r: DemandSignalRecord): DemandSignalRecord => ({
   ...r,
 });
+
+/** O3 read-side retention (Arc 231 R1 M8): verbatim `context` is
+ *  nulled past contextRetainUntil on every READ — the janitor that
+ *  physically clears the column is future work, but no surface may
+ *  expose retained text past its horizon. */
+export const redactSignalContext = (
+  r: DemandSignalRecord,
+  nowIso = new Date().toISOString(),
+): DemandSignalRecord =>
+  r.context !== null && r.contextRetainUntil !== null && r.contextRetainUntil < nowIso
+    ? { ...r, context: null }
+    : r;
 export const cloneCluster = (r: DemandClusterRecord): DemandClusterRecord => ({
   ...r,
   levelBreakdown: { ...r.levelBreakdown },
@@ -59,8 +70,11 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
   const { signals, clusters, opportunities, events } = data;
   // Secondary indexes — idempotency + dedupeKey probes must not be
   // O(store) scans on an unauthenticated path (Arc 230-8 M14).
-  const byIdem = new Map<string, DemandSignalRecord>();
-  const byDedupeKey = new Map<string, DemandSignalRecord[]>();
+  // Arc 231 R1 H3: indexes hold signal IDS, not row objects — a
+  // retag replaces the row (signals.set(id, next)) and any index
+  // still pointing at the old object would silently resurrect it.
+  const byIdem = new Map<string, string>();
+  const byDedupeKey = new Map<string, string[]>();
   const byClusterKey = new Map<string, DemandClusterRecord>();
   const now = () => new Date().toISOString();
 
@@ -97,12 +111,11 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
     return out;
   };
 
-  /** Full canonical-only recount + monotone level — the memory
-   *  twin of recountClusterTx (serialized by the sync body). */
-  const recountCluster = (
-    clusterId: string,
-    opts?: { promotedLevel?: string },
-  ): DemandClusterRecord => {
+  /** Full canonical-only recount — the memory twin of
+   *  recountClusterTx (serialized by the sync body). Level is NOT
+   *  touched: it moves only via applyClusterLevel (floors or
+   *  operator), never from signal volume (Arc 231 R1 H1). */
+  const recountCluster = (clusterId: string): DemandClusterRecord => {
     const cluster = clusters.get(clusterId)!;
     const canonical = [...signals.values()].filter(
       (s) => s.clusterId === clusterId && s.relatedSignalId === null,
@@ -114,20 +127,11 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
     for (const s of canonical) {
       levelBreakdown[s.level] = (levelBreakdown[s.level] ?? 0) + 1;
     }
-    const promoted = opts?.promotedLevel;
-    const nextLevel =
-      promoted &&
-      (DEMAND_LEVEL_RANK[promoted as keyof typeof DEMAND_LEVEL_RANK] ?? 0) >
-        (DEMAND_LEVEL_RANK[cluster.level as keyof typeof DEMAND_LEVEL_RANK] ??
-          0)
-        ? promoted
-        : cluster.level;
     const fresh: DemandClusterRecord = {
       ...cluster,
       count: canonical.length,
       uniqueActors: actors.size,
       levelBreakdown,
-      level: nextLevel,
       lastSeenAt: now(),
       updatedAt: now(),
     };
@@ -141,7 +145,6 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
     category?: string | null;
     feature?: string | null;
     capabilityKey?: string | null;
-    level: string;
   }): DemandClusterRecord => {
     const existing = byClusterKey.get(seed.clusterKey);
     if (existing) return existing;
@@ -155,7 +158,9 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
       count: 0,
       uniqueActors: 0,
       levelBreakdown: {},
-      level: seed.level,
+      // Arc 231 R1 H1: seed INTEREST — a caller's declaredLevel is
+      // informational on the signal, never the cluster's level.
+      level: "INTEREST",
       status: "OPEN",
       firstSeenAt: ts,
       lastSeenAt: ts,

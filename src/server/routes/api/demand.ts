@@ -19,6 +19,7 @@ import { errorResponse } from "../../lib/error-response";
 import { resolveActor } from "../../lib/agent-interaction/actor";
 import { getDatabase } from "../../lib/database";
 import { pickDemandStore } from "../../lib/demand/db-stores";
+import { normalizeDemandText } from "../../lib/demand/normalize";
 import { ingestDemand } from "../../lib/demand/pipeline";
 import {
   createRateLimiter,
@@ -61,6 +62,13 @@ function validateDemandRequest(body: unknown): { capability_query?: string; cont
     return { error: "capability_query is required and must be a string" };
   }
 
+  // Arc 231 R1: NUL/C0 500 the PG driver (admin-operator-guard
+  // convention) — reject at the boundary, keep \n\t\r.
+  const CTRL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+  if (CTRL_RE.test(capability_query)) {
+    return { error: "capability_query must not contain control characters" };
+  }
+
   if (capability_query.trim().length === 0) {
     return { error: "capability_query must not be empty" };
   }
@@ -77,6 +85,9 @@ function validateDemandRequest(body: unknown): { capability_query?: string; cont
     if (context.length > MAX_CONTEXT_LEN) {
       return { error: `context must not exceed ${MAX_CONTEXT_LEN} characters` };
     }
+    if (CTRL_RE.test(context)) {
+      return { error: "context must not contain control characters" };
+    }
   }
 
   return { capability_query: capability_query.trim(), context: context?.trim() || undefined };
@@ -84,11 +95,12 @@ function validateDemandRequest(body: unknown): { capability_query?: string; cont
 
 // ─── Response mapping (frozen contract fields) ───────────
 
-// Legacy priority ladder — thresholds unchanged (backlog <5,
-// candidate 5–19, priority ≥20 registrations).
-function legacyPriority(count: number): "backlog" | "candidate" | "priority" {
-  if (count >= 20) return "priority";
-  if (count >= 5) return "candidate";
+// Priority is derived from DISTINCT actors, never registration
+// count — one actor repeating themselves must never inflate demand
+// (Arc 231 R1 M3 / §13.2).
+function legacyPriority(uniqueActors: number): "backlog" | "candidate" | "priority" {
+  if (uniqueActors >= 20) return "priority";
+  if (uniqueActors >= 5) return "candidate";
   return "backlog";
 }
 
@@ -139,9 +151,8 @@ demandRoutes.post("/api/demand/request", async (c) => {
   };
 
   const store = pickDemandStore(getDatabase());
-  let res;
   try {
-    res = await ingestDemand(
+    const res = await ingestDemand(
       store,
       {
         text: capability_query!,
@@ -152,6 +163,50 @@ demandRoutes.post("/api/demand/request", async (c) => {
       demandActor,
       { idempotencyKey },
     );
+    if (!res.ok) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, res.error);
+    }
+
+    // Arc 231 R1 M2: an idempotency replay whose text differs from
+    // the stored signal's is a conflict, not a silent 202 — the
+    // caller would believe a demand that was never recorded.
+    if (
+      res.duplicate &&
+      res.signal.normalizedText !== normalizeDemandText(capability_query!)
+    ) {
+      return errorResponse(
+        c,
+        409,
+        ErrorCodes.CONFLICT,
+        "idempotency-key was already used with a different body",
+      );
+    }
+
+    // count = registrations under this need — canonical relatedCounts
+    // (burst dups fold into their canonical, §13.2). Bounded at 1000
+    // canonical rows — far past any real demand volume on this route.
+    // Arc 231 R1 M5: the read lives inside the same try — a store
+    // error after commit surfaces as a clean 500, not an unhandled
+    // rejection.
+    const canonicals = await store.listSignals({
+      clusterId: res.cluster.id,
+      canonicalOnly: true,
+      limit: 1000,
+    });
+    const count = canonicals.reduce((n, s) => n + s.relatedCount, 0);
+
+    return c.json(
+      {
+        // The canonical signal is the demand record callers reference —
+        // repeat requests inside the burst window return the same id.
+        demand_id: res.canonicalOf ?? res.signal.id,
+        capability_query,
+        count,
+        priority: legacyPriority(res.cluster.uniqueActors),
+        status: "accepted",
+      },
+      202,
+    );
   } catch {
     return errorResponse(
       c,
@@ -160,30 +215,4 @@ demandRoutes.post("/api/demand/request", async (c) => {
       "Demand store unavailable",
     );
   }
-  if (!res.ok) {
-    return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, res.error);
-  }
-
-  // count = registrations under this need — canonical relatedCounts
-  // (burst dups fold into their canonical, §13.2). Bounded at 1000
-  // canonical rows — far past any real demand volume on this route.
-  const canonicals = await store.listSignals({
-    clusterId: res.cluster.id,
-    canonicalOnly: true,
-    limit: 1000,
-  });
-  const count = canonicals.reduce((n, s) => n + s.relatedCount, 0);
-
-  return c.json(
-    {
-      // The canonical signal is the demand record callers reference —
-      // repeat requests inside the burst window return the same id.
-      demand_id: res.canonicalOf ?? res.signal.id,
-      capability_query,
-      count,
-      priority: legacyPriority(count),
-      status: "accepted",
-    },
-    202,
-  );
 });

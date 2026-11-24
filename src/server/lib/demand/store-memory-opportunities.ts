@@ -1,5 +1,11 @@
-import type { DemandOpportunityRecord } from "./types";
-import { DEMAND_OPPORTUNITY_TRANSITIONS } from "./types";
+import type {
+  DemandOpportunityRecord,
+  DemandOpportunityStatus,
+} from "./types";
+import {
+  DEMAND_OPPORTUNITY_TRANSITIONS,
+  EDITABLE_OPPORTUNITY_STATUSES,
+} from "./types";
 import type { DemandStore } from "./store";
 import type { MemoryDemandCore } from "./store-memory-core";
 import { cloneEvent, cloneOpportunity } from "./store-memory-core";
@@ -123,6 +129,12 @@ export function memoryOpportunityOps(
     async updateOpportunity(id, patch, expected, event) {
       const cur = opportunities.get(id) ?? null;
       if (!cur) return { record: null, event: null, transitioned: false, reason: "missing" };
+      // Arc 231 R1 M10: edits only while the opportunity is still
+      // being shaped — linked/terminal rows refuse (Postgres twin
+      // enforces EDITABLE_OPPORTUNITY_STATUSES).
+      if (!EDITABLE_OPPORTUNITY_STATUSES.has(cur.status as DemandOpportunityStatus)) {
+        return { record: cloneOpportunity(cur), event: null, transitioned: false, reason: "illegal" };
+      }
       if (cur.status !== expected.status) {
         return { record: cloneOpportunity(cur), event: null, transitioned: false, reason: "status_mismatch" };
       }
@@ -145,6 +157,12 @@ export function memoryOpportunityOps(
       if (!cur) return { linked: false, reason: "missing" };
       if (cur.backlogTaskId !== null) {
         return { linked: false, reason: "already_linked" };
+      }
+      // Arc 231 R1 M10: the link gesture is ACCEPTED-only — the row
+      // itself must be ACCEPTED, regardless of what the caller
+      // claimed to have read (a DECLINED row can never be linked).
+      if (cur.status !== "ACCEPTED") {
+        return { linked: false, reason: "status_mismatch" };
       }
       if (cur.status !== expected.status) {
         return { linked: false, reason: "status_mismatch" };
@@ -202,10 +220,11 @@ export function memoryEventOps(core: MemoryDemandCore): EventOps {
     },
 
     async listEvents(entityType, entityId, opts) {
-      const out = eventsOf(entityType, entityId)
+      const lim = Math.min(opts?.limit ?? 500, 1000);
+      return eventsOf(entityType, entityId)
         .filter((e) => !opts?.visibility || e.visibility === opts.visibility)
+        .slice(0, lim)
         .map(cloneEvent);
-      return out;
     },
   };
 }

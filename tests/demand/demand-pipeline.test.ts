@@ -5,7 +5,6 @@ import { ingestDemand } from "../../src/server/lib/demand/pipeline";
 import {
   clampDeclaredLevel,
   demandDedupeKey,
-  demandDedupeWindow,
   DEMAND_DEDUPE_WINDOW_MS,
   normalizeClusterKey,
   normalizeDemandText,
@@ -59,19 +58,14 @@ describe("normalizeDemandText", () => {
 });
 
 describe("demandDedupeKey", () => {
-  it("same actor+text+window → same key; window/actor drift → new key", () => {
-    const k1 = demandDedupeKey("x402 escrow", "ag_1", T0);
-    expect(demandDedupeKey("x402 escrow", "ag_1", T0 + H)).toBe(k1);
-    expect(
-      demandDedupeKey(
-        "x402 escrow",
-        "ag_1",
-        T0 + DEMAND_DEDUPE_WINDOW_MS,
-      ),
-    ).not.toBe(k1);
-    expect(demandDedupeKey("x402 escrow", "ag_2", T0)).not.toBe(k1);
-    expect(demandDedupeKey("other text", "ag_1", T0)).not.toBe(k1);
-    expect(demandDedupeWindow(T0)).toBe(demandDedupeWindow(T0 + H));
+  it("actor+text identity — rolling window enforced by the store probe", () => {
+    // Arc 231 R1 M3: the key is actor+text only (no time bucket) —
+    // dedupe recency comes from dedupeAfterMs on the canonical probe.
+    const k1 = demandDedupeKey("x402 escrow", "ag_1");
+    expect(demandDedupeKey("x402 escrow", "ag_1")).toBe(k1);
+    expect(demandDedupeKey("x402 escrow", "ag_2")).not.toBe(k1);
+    expect(demandDedupeKey("other text", "ag_1")).not.toBe(k1);
+    expect(demandDedupeKey("x402 escrow", null)).not.toBe(k1);
   });
 });
 
@@ -173,9 +167,10 @@ describe("ingestDemand (memory store)", () => {
     // cluster counts canonical only — count stays 1
     const cluster = await s.getCluster(a.cluster.id);
     expect(cluster!.count).toBe(1);
-    // across the window → a NEW canonical signal
+    // past the rolling window (dedupeAfterMs is inclusive — +1ms
+    // puts the canonical strictly outside) → a NEW canonical signal
     const c = await ingest(s, "x402 escrow support", {
-      now: T0 + DEMAND_DEDUPE_WINDOW_MS,
+      now: T0 + DEMAND_DEDUPE_WINDOW_MS + 1,
     });
     expect(c.ok && !c.signal.relatedSignalId).toBe(true);
     if (!c.ok) return;
@@ -227,7 +222,10 @@ describe("ingestDemand (memory store)", () => {
     if (!r.ok) return;
     expect(r.signal.declaredLevel).toBe("PURCHASE_INTENT");
     expect(r.signal.level).toBe("PURCHASE_INTENT");
-    expect(r.cluster.level).toBe("PURCHASE_INTENT");
+    // Arc 231 R1 H1: the SIGNAL's clamped level is informational —
+    // the cluster seeds INTEREST and moves only via uniqueActors
+    // floors (a single self-declared INTENT must not mint INTENT).
+    expect(r.cluster.level).toBe("INTEREST");
     // and rules can never take it to VERIFIED
     expect(r.promotedTo).not.toBe("VERIFIED_DEMAND");
   });

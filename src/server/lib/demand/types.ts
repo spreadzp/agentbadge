@@ -64,6 +64,9 @@ export const DEMAND_CLUSTER_TRANSITIONS: Readonly<
   Record<DemandClusterStatus, ReadonlySet<DemandClusterStatus>>
 > = {
   OPEN: new Set(["TRIAGED", "DISMISSED"]),
+  // Arc 231 R1 M10: TRIAGED→LINKED stays legal ONLY with a linkRef
+  // (enforced inside both stores — the repo FOR UPDATE path and the
+  // memory twin refuse bare LINKED); the table stays in parity.
   TRIAGED: new Set(["OPEN", "LINKED", "DISMISSED"]),
   LINKED: new Set(),
   DISMISSED: new Set(["OPEN"]),
@@ -83,12 +86,21 @@ export const DEMAND_OPPORTUNITY_STATUSES = [
 export type DemandOpportunityStatus =
   (typeof DEMAND_OPPORTUNITY_STATUSES)[number];
 
+/** Arc 231 R1 M10: field edits (updateOpportunity) are allowed only
+ *  while the opportunity is still being shaped — linked and
+ *  terminal rows refuse (Postgres twin exports the same set). */
+export const EDITABLE_OPPORTUNITY_STATUSES: ReadonlySet<DemandOpportunityStatus> =
+  new Set(["PROPOSED", "EVALUATING", "ACCEPTED"]);
+
 export const DEMAND_OPPORTUNITY_TRANSITIONS: Readonly<
   Record<DemandOpportunityStatus, ReadonlySet<DemandOpportunityStatus>>
 > = {
   PROPOSED: new Set(["EVALUATING", "DECLINED"]),
   EVALUATING: new Set(["ACCEPTED", "DECLINED"]),
-  ACCEPTED: new Set(["LINKED", "DECLINED"]),
+  // Arc 231 R1 M10: bare ACCEPTED→LINKED is out of the table —
+  // LINKED is reachable only through linkBacklogTask so a LINKED
+  // row always carries backlogTaskId (invariant was op-level only).
+  ACCEPTED: new Set(["DECLINED"]),
   DECLINED: new Set(),
   LINKED: new Set(["SHIPPED", "CLOSED"]),
   SHIPPED: new Set(),

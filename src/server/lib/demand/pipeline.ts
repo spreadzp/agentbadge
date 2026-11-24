@@ -34,6 +34,7 @@ import { buildDemandEvent, emitDemandHooks } from "./events";
 import { applyLevelRules } from "./level-rules";
 import {
   clampDeclaredLevel,
+  DEMAND_DEDUPE_WINDOW_MS,
   demandDedupeKey,
   normalizeClusterKey,
   normalizeDemandText,
@@ -90,24 +91,37 @@ export async function ingestDemand(
     now?: number;
   },
 ): Promise<DemandIngestResult> {
-  if (typeof input.text !== "string" || input.text.length > DEMAND_TEXT_MAX) {
+  // Arc 231 R1 M11: length is counted in CODE POINTS — a seam that
+  // clamps with [...s].slice(0, N) then hits a UTF-16 length check
+  // gets a spurious 400 on emoji-heavy text.
+  if (
+    typeof input.text !== "string" ||
+    [...input.text].length > DEMAND_TEXT_MAX
+  ) {
     return { ok: false, error: "text too long", field: "text" };
   }
-  if ((input.context?.length ?? 0) > DEMAND_CONTEXT_MAX) {
+  if ([...(input.context ?? "")].length > DEMAND_CONTEXT_MAX) {
     return { ok: false, error: "context too long", field: "context" };
   }
-  const normalizedText = normalizeDemandText(input.text);
+  // Codepoint-safe cap — a UTF-16 slice can split a surrogate pair.
+  const normalizedText = [...normalizeDemandText(input.text)]
+    .slice(0, DEMAND_TEXT_MAX)
+    .join("");
   if (normalizedText.length === 0) {
     return { ok: false, error: "empty text", field: "text" };
   }
 
   // ANON actors have no identity ref — bucket them per session so
   // unidentified callers never merge into one fake actor (landmine).
-  const actorRef =
-    actor.actorRef ??
-    (input.sessionId ? `anon:${input.sessionId}` : null);
+  // Arc 231 R1 H2b: distinct `anon:sess:` namespace — a caller-chosen
+  // sessionId like "ip:1.2.3.4" must never collide with the public
+  // route's `anon:ip:` actor buckets; bounded length too.
+  const sessionRef = input.sessionId
+    ? `anon:sess:${String(input.sessionId).slice(0, 128)}`
+    : null;
+  const actorRef = actor.actorRef ?? sessionRef;
   const createdAtMs = opts?.now ?? Date.now();
-  const dedupeKey = demandDedupeKey(normalizedText, actorRef, createdAtMs);
+  const dedupeKey = demandDedupeKey(normalizedText, actorRef);
 
   // Classification — caller terms win, rules fill the gaps.
   const classified = classifyDemandText(normalizedText);
@@ -191,6 +205,7 @@ export async function ingestDemand(
       sessionId: input.sessionId ?? null,
       dedupeKey,
       createdAtMs,
+      dedupeAfterMs: createdAtMs - DEMAND_DEDUPE_WINDOW_MS,
     },
     clusterKey,
     { signal: signalEvents, cluster: clusterEvents },
@@ -212,8 +227,14 @@ export async function ingestDemand(
 
   // Level rules — uniqueActors floors promote the cluster; a burst
   // dup (canonicalOf set) still lands on a recounted cluster, so the
-  // rule run covers repeat-demand too.
-  const rules = await applyLevelRules(store, res.cluster);
+  // rule run covers repeat-demand too. Arc 231 R1 M5: the signal is
+  // already committed at this point — a rules failure must surface
+  // as best-effort, not a 500 claiming the write never happened.
+  const rules = await applyLevelRules(store, res.cluster).catch(() => ({
+    promoted: false,
+    cluster: res.cluster,
+    target: null,
+  }));
 
   return {
     ok: true,

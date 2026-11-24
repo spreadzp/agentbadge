@@ -35,9 +35,11 @@ const breakdown = (b: Record<string, number>) =>
     .join(" ");
 
 const triageForm = (cl: DemandClusterRecord) => {
+  // LINKED is not operator-targetable — a bare link carries no
+  // linkRef (Arc 231 R1 M10).
   const allowed = [
     ...DEMAND_CLUSTER_TRANSITIONS[cl.status as DemandClusterStatus],
-  ];
+  ].filter((s) => s !== "LINKED");
   if (allowed.length === 0) return html`<span class="text-slate-600">—</span>`;
   return html`<form
       method="post"
@@ -66,6 +68,30 @@ const opportunityForm = (cl: DemandClusterRecord) =>
     "→ Opportunity",
   );
 
+/** §16.1 VERIFIED gesture — the operator's explicit level set;
+ *  the only path a cluster ever reaches VERIFIED_DEMAND. */
+const levelForm = (cl: DemandClusterRecord) => html`<form
+    method="post"
+    action="/admin/demand/clusters/${cl.id}/level"
+    class="mt-1 flex items-center gap-1"
+  >
+    ${tokenField()}
+    <select
+      name="to"
+      class="rounded border border-slate-700 bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200"
+    >
+      ${DEMAND_LEVELS.map(
+        (l) =>
+          html`<option value="${l}" ${l === cl.level ? "selected" : ""}>${l}</option>`,
+      )}
+    </select>
+    <button
+      type="submit"
+      class="rounded bg-slate-700 px-2 py-0.5 text-[11px] text-slate-100 hover:bg-slate-600"
+      >set level</button
+    >
+  </form>`;
+
 const row = (cl: DemandClusterRecord) => {
   const lastSeen = Date.parse(cl.lastSeenAt);
   return html`<tr>
@@ -77,7 +103,7 @@ const row = (cl: DemandClusterRecord) => {
     ${td(cl.feature ?? "—", false)}
     ${td(String(cl.count))}
     ${td(String(cl.uniqueActors))}
-    ${td(levelPill(cl.level), false)}
+    ${td(html`${levelPill(cl.level)}${levelForm(cl)}`, false)}
     ${td(breakdown(cl.levelBreakdown), false)}
     ${td(clusterPill(cl.status), false)}
     ${td(fmtMs(Number.isFinite(lastSeen) ? lastSeen : null))}

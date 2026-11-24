@@ -63,7 +63,9 @@ describe("DemandStore (memory backend, SLICE-231-1)", () => {
     expect(cluster.status).toBe("OPEN");
     expect(cluster.count).toBe(1);
     expect(cluster.uniqueActors).toBe(1);
-    expect(cluster.level).toBe("INTENT");
+    // Arc 231 R1 H1: the cluster seeds INTEREST — a signal's
+    // declaredLevel feeds levelBreakdown, never cluster.level.
+    expect(cluster.level).toBe("INTEREST");
     expect(cluster.levelBreakdown).toEqual({ INTENT: 1 });
     expect(signal.clusterId).toBe(cluster.id);
     const sev = await s.listEvents("signal", signal.id);
@@ -111,16 +113,18 @@ describe("DemandStore (memory backend, SLICE-231-1)", () => {
     expect(c.uniqueActors).toBe(3);
   });
 
-  it("cluster level is monotone-max of signal levels", async () => {
+  it("cluster level ignores signal levels — INTEREST seed, floors/operator only (R1 H1)", async () => {
     const s = createMemoryDemandStores();
     await record(s, "ck_lvl", { level: "INTEREST", actorRef: "a1" });
     const r2 = await record(s, "ck_lvl", {
       level: "PURCHASE_INTENT",
       actorRef: "a2",
     });
-    expect(r2.cluster.level).toBe("PURCHASE_INTENT");
+    // A self-declared PURCHASE_INTENT must NOT move the cluster —
+    // level moves via applyClusterLevel (floors) or operator only.
+    expect(r2.cluster.level).toBe("INTEREST");
     const r3 = await record(s, "ck_lvl", { level: "INTEREST", actorRef: "a3" });
-    expect(r3.cluster.level).toBe("PURCHASE_INTENT");
+    expect(r3.cluster.level).toBe("INTEREST");
     expect(r3.cluster.levelBreakdown).toEqual({
       INTEREST: 2,
       PURCHASE_INTENT: 1,
@@ -139,7 +143,7 @@ describe("DemandStore (memory backend, SLICE-231-1)", () => {
     if (!drift.transitioned) expect(drift.reason).toBe("status_mismatch");
     const ok = await s.applyClusterLevel(
       cluster.id,
-      { from: "INTENT", to: "VERIFIED_DEMAND" },
+      { from: "INTEREST", to: "VERIFIED_DEMAND" },
       ev("demand.cluster.updated"),
     );
     expect(ok.transitioned).toBe(true);

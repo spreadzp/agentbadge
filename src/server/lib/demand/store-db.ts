@@ -13,6 +13,7 @@ import {
   toSignal,
 } from "./store-db-mappers";
 import { dbOpportunityOps } from "./store-db-opportunity";
+import { redactSignalContext } from "./store-memory-core";
 
 /**
  * EPIC-231 (SLICE-231-1): Postgres adapter — DemandRepository rows
@@ -28,7 +29,9 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
 
     async getSignal(id) {
       const row = await repo.getSignal(id);
-      return row ? toSignal(row) : null;
+      // O3 read-side retention (Arc 231 R1 M8): null context past
+      // contextRetainUntil — mirrors the memory adapter.
+      return row ? redactSignalContext(toSignal(row)) : null;
     },
 
     async findSignalByIdempotency(idempotencyKey, dedupeScope) {
@@ -36,7 +39,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
         idempotencyKey,
         dedupeScope,
       );
-      return row ? toSignal(row) : null;
+      return row ? redactSignalContext(toSignal(row)) : null;
     },
 
     async listSignals(opts) {
@@ -49,7 +52,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
         limit: opts?.limit,
         offset: opts?.offset,
       });
-      return rows.map(toSignal);
+      return rows.map((r) => redactSignalContext(toSignal(r)));
     },
 
     async recordSignal(input, clusterKey, events) {
@@ -73,6 +76,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
           sessionId: input.sessionId ?? null,
           dedupeKey: input.dedupeKey,
           createdAtMs: input.createdAtMs,
+          dedupeAfterMs: input.dedupeAfterMs ?? null,
         },
         clusterKey,
         events
@@ -83,7 +87,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
           : undefined,
       );
       return {
-        signal: toSignal(out.signal),
+        signal: redactSignalContext(toSignal(out.signal)),
         cluster: toCluster(out.cluster),
         canonicalOf: out.canonicalOf,
         duplicate: out.duplicate,
@@ -107,7 +111,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
           : undefined,
       );
       return {
-        signal: out.signal ? toSignal(out.signal) : null,
+        signal: out.signal ? redactSignalContext(toSignal(out.signal)) : null,
         cluster: out.cluster ? toCluster(out.cluster) : null,
         detached: out.detached,
       };
@@ -165,6 +169,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
           to: input.to,
           actor: input.actor,
           reason: input.reason ?? null,
+          linkRef: input.linkRef ?? null,
           now: input.now,
         },
         repoEvent(event),
@@ -202,6 +207,7 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
     async listEvents(entityType, entityId, opts) {
       const rows = await repo.listEvents(entityType, entityId, {
         visibility: opts?.visibility,
+        limit: opts?.limit,
       });
       return rows.map(toEvent);
     },

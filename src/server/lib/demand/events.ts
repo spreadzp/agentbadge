@@ -48,13 +48,17 @@ export function onDemandEvent(fn: DemandEventHook): () => void {
 }
 
 /** Fire-and-forget fan-out AFTER commit — a hook failure must never
- *  break a write (feedback precedent). */
+ *  break a write (feedback precedent). Arc 231 R1 M13: INTERNAL
+ *  events never fan out — the audit payload carries actor refs,
+ *  sessionIds and dedupe keys a notification seam must not leak
+ *  (D-228-8). */
 export function emitDemandHooks(
   entityType: string,
   entityId: string,
   events: DemandEventInput[],
 ): void {
   for (const e of events) {
+    if (e.visibility !== "PUBLIC") continue;
     for (const fn of hooks) {
       try {
         const r = fn(entityType, entityId, e);

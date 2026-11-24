@@ -195,9 +195,9 @@ describe("SLICE-231-9: e2e request→signal→cluster→opportunity→backlog→
     const metrics = await admin(app, key, "/api/admin/demand/metrics");
     expect(metrics.status).toBe(200);
     const m = await metrics.json();
-    expect(m.requests).toBe(13); // 10 canonical + 1 dup + 1 niche + 1 seam
+    expect(m.sampledRequests).toBe(13); // 10 canonical + 1 dup + 1 niche + 1 seam
     expect(m.canonicalSignals).toBe(12);
-    expect(m.repeatDemand).toBe(1);
+    expect(m.sampledRepeatDemand).toBe(1);
     // identified: 3 api_key canon + 1 dup + 1 niche + 1 DID seam = 6;
     // anonymous: 7.
     expect(m.actors.identified).toBe(6);

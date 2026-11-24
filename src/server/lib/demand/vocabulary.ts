@@ -67,9 +67,11 @@ export interface DemandClassifyRule {
 
 /**
  * Deterministic rules — evaluated in order, FIRST match wins.
- * Terms are substrings of the normalized text (word-boundary-free:
- * "x402" inside "x402refunds" still matches — acceptable for a
- * technical vocabulary, retag covers the rare miss).
+ * Arc 231 R1 (nit): terms match on WORD BOUNDARIES — "did", "key",
+ * "api", "log", "ask", "pay" no longer fire inside unrelated words
+ * ("candidate", "keyboard", "billing"→"log" miss was steering
+ * callers into wrong clusters). Multi-word terms keep substring
+ * semantics between the words.
  */
 export const DEMAND_CLASSIFY_RULES: readonly DemandClassifyRule[] = [
   {
@@ -156,12 +158,25 @@ export interface DemandClassification {
   capabilityKey: string | null;
 }
 
+// `s?` plural tolerance — the vocab uses singular terms ("refund")
+// but callers write plurals ("refunds"); substring-era parity.
+const termRe = (t: string): RegExp =>
+  new RegExp(
+    `(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?(?:[^a-z0-9]|$)`,
+    "i",
+  );
+
+const RULE_RES = DEMAND_CLASSIFY_RULES.map((r) =>
+  r.terms.map(termRe),
+);
+
 /** First-match deterministic classify — unclassified → all null. */
 export function classifyDemandText(
   normalizedText: string,
 ): DemandClassification {
-  for (const rule of DEMAND_CLASSIFY_RULES) {
-    if (rule.terms.some((t) => normalizedText.includes(t))) {
+  for (let i = 0; i < DEMAND_CLASSIFY_RULES.length; i += 1) {
+    const rule = DEMAND_CLASSIFY_RULES[i]!;
+    if (RULE_RES[i]!.some((re) => re.test(normalizedText))) {
       return {
         category: rule.category,
         feature: rule.feature ?? null,

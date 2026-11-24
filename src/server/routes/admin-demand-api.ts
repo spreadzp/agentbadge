@@ -34,26 +34,28 @@ import type { DemandStore } from "../lib/demand/store";
 import {
   DEMAND_CLUSTER_STATUSES,
   DEMAND_LEVELS,
-  DEMAND_LEVEL_RANK,
   DEMAND_OPPORTUNITY_STATUSES,
   DEMAND_SOURCES,
 } from "../lib/demand/types";
 import type { OperatorStore } from "../lib/operators";
 import { rejectCtrl } from "./admin-operator-guard";
 import { registerDemandAdminMutations } from "./admin-demand-api-mutations";
+import { registerDemandMetrics } from "./admin-demand-api-metrics";
+import { registerDemandOpportunityMutations } from "./admin-demand-api-mutations-opportunities";
 import {
-  registerDemandOpportunityMutations,
-  type DemandOpportunityRouteDeps,
-} from "./admin-demand-api-mutations-opportunities";
+  registerDemandBacklogMutation,
+  type DemandBacklogRouteDeps,
+} from "./admin-demand-api-mutations-backlog";
 
 const LIST_LIMIT_MAX = 200;
-const METRICS_LIMIT = 5000;
+const OFFSET_MAX = 100_000;
+const EVENTS_LIMIT = 500;
 
 export interface AdminDemandDeps {
   store: DemandStore;
   operatorStore: OperatorStore;
   /** 231-8: «→ Backlog task» writer factory (default: FS/env). */
-  backlogWriter?: DemandOpportunityRouteDeps["backlogWriter"];
+  backlogWriter?: DemandBacklogRouteDeps["backlogWriter"];
 }
 
 const listLimit = (c: Context, fallback = 50): number => {
@@ -65,7 +67,9 @@ const listLimit = (c: Context, fallback = 50): number => {
 
 const listOffset = (c: Context): number => {
   const n = Number(c.req.query("offset") ?? "0");
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  return Number.isFinite(n) && n > 0
+    ? Math.min(Math.floor(n), OFFSET_MAX)
+    : 0;
 };
 
 const badEnum = (c: Context, name: string) =>
@@ -77,10 +81,17 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
 
   const auth = operatorAuth(operatorStore);
   const capGate: MiddlewareHandler = async (c, next) => {
-    const deny = requireCapability(
-      c,
-      capabilityForSurface(c.req.path, c.req.method),
-    );
+    // Arc 231 R1 M12: the signals feed and cluster detail expose
+    // actorRef (raw IP), sessionId, dedupeKey and verbatim context —
+    // workflow-gated, matching the sibling interactions surface.
+    const path = c.req.path;
+    const cap =
+      c.req.method !== "GET" && c.req.method !== "HEAD"
+        ? "workflow"
+        : path.includes("/signals") || /\/clusters\/[^/]+$/.test(path)
+          ? "workflow"
+          : capabilityForSurface(path, c.req.method);
+    const deny = requireCapability(c, cap);
     if (deny) return deny;
     await next();
   };
@@ -136,7 +147,7 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
       const [signals, opportunities, events] = await Promise.all([
         store.listSignals({ clusterId: cluster.id, limit: LIST_LIMIT_MAX }),
         store.listOpportunities({ clusterId: cluster.id, limit: LIST_LIMIT_MAX }),
-        store.listEvents("cluster", cluster.id),
+        store.listEvents("cluster", cluster.id, { limit: EVENTS_LIMIT }),
       ]);
       return c.json({ cluster, signals, opportunities, events });
     },
@@ -196,78 +207,10 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
     },
   );
 
-  app.get(
-    "/api/admin/demand/metrics",
-    describeRoute({
-      summary: "§17.4 demand digest — top asks, repeat demand, intent, conversion",
-      tags: ["Admin Demand"],
-      responses: { 200: { description: "Aggregated demand metrics" } },
-    }),
-    async (c) => {
-      const [signals, clusters, opportunities] = await Promise.all([
-        store.listSignals({ limit: METRICS_LIMIT }),
-        store.listClusters({ limit: METRICS_LIMIT }),
-        store.listOpportunities({ limit: METRICS_LIMIT }),
-      ]);
-      const canonical = signals.filter((s) => s.relatedSignalId === null);
-      const byActors: Record<string, number> = {};
-      const sessions = new Set<string>();
-      let identified = 0;
-      let anonymous = 0;
-      for (const s of signals) {
-        byActors[s.actorResolution] = (byActors[s.actorResolution] ?? 0) + 1;
-        if (s.actorResolution === "ANON") anonymous += 1;
-        else identified += 1;
-        if (s.sessionId) sessions.add(s.sessionId);
-      }
-      const byStatus: Record<string, number> = {};
-      const top = new Map<string, { count: number; uniqueActors: number }>();
-      for (const cl of clusters) {
-        byStatus[cl.status] = (byStatus[cl.status] ?? 0) + 1;
-        const key = cl.capabilityKey ?? cl.clusterKey;
-        const cur = top.get(key) ?? { count: 0, uniqueActors: 0 };
-        top.set(key, {
-          count: cur.count + cl.count,
-          uniqueActors: cur.uniqueActors + cl.uniqueActors,
-        });
-      }
-      const topCapabilities = [...top.entries()]
-        .map(([key, v]) => ({ key, ...v }))
-        .sort((a, b) => b.count - a.count || b.uniqueActors - a.uniqueActors)
-        .slice(0, 20);
-      const highIntent = clusters.filter(
-        (cl) =>
-          (DEMAND_LEVEL_RANK[cl.level as keyof typeof DEMAND_LEVEL_RANK] ?? 0) >=
-          DEMAND_LEVEL_RANK.PURCHASE_INTENT,
-      );
-      return c.json({
-        sampled: {
-          signals: signals.length,
-          clusters: clusters.length,
-          opportunities: opportunities.length,
-          cappedAt: METRICS_LIMIT,
-        },
-        requests: signals.length,
-        canonicalSignals: canonical.length,
-        repeatDemand: signals.length - canonical.length,
-        actors: { identified, anonymous, sessions: sessions.size, byResolution: byActors },
-        clusters: { total: clusters.length, byStatus },
-        topCapabilities,
-        highIntent: {
-          purchaseIntent: highIntent.filter((cl) => cl.level === "PURCHASE_INTENT").length,
-          verifiedDemand: highIntent.filter((cl) => cl.level === "VERIFIED_DEMAND").length,
-        },
-        demandToFeatures: {
-          total: opportunities.length,
-          shipped: opportunities.filter((o) => o.status === "SHIPPED").length,
-          linkedToBacklog: opportunities.filter((o) => o.backlogTaskId !== null).length,
-        },
-      });
-    },
-  );
-
+  registerDemandMetrics(app, store);
   registerDemandAdminMutations(app, store);
-  registerDemandOpportunityMutations(app, store, {
+  registerDemandOpportunityMutations(app, store);
+  registerDemandBacklogMutation(app, store, {
     backlogWriter: deps.backlogWriter,
   });
 
