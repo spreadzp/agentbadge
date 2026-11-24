@@ -91,8 +91,12 @@ export function wireStaticOps(app: Hono): void {
     return next();
   }, serveStatic({ root: "./public" }));
   // SLICE-258-6: x402 payout proof (draft-x402payto1) — short cache,
-  // proof rotates on issued-date/payTo change.
+  // proof rotates on issued-date/payTo change. GET/HEAD only —
+  // serveStatic answers every method otherwise (probe finding: PUT → 200).
   app.use("/.well-known/x402-payto.json", (c, next) => {
+    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+      return c.text("Method Not Allowed", 405, { Allow: "GET, HEAD" });
+    }
     c.header("Cache-Control", "public, max-age=300");
     return serveStatic({
       root: "./public",

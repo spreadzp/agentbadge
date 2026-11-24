@@ -11,6 +11,11 @@ endpoints:
     method: GET
   - path: /.well-known/x402.json
     method: GET
+  # EPIC-258: x402 payout proof — статический well-known + self-scan showcase.
+  - path: /.well-known/x402-payto.json
+    method: GET
+  - path: /agent-readiness.json
+    method: GET
   - path: /.well-known/agent-card.json
     method: GET
   # Корень для endpoint-discovery (path-feed сценарий применяется к "/").
