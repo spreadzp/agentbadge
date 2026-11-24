@@ -204,6 +204,9 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
       tenantId: ctx.tenantId,
       scanId: `scan_${generateReportId()}`,
       status: "queued",
+      // SLICE-262-31 — correlation id for support diagnostics
+      correlationId:
+        (c.get("requestId" as never) as string | undefined) ?? null,
       baseUrl: `https://${ctx.primaryHostname}`,
       probeFailures: 0,
       probeTotal: SCAN_PLAN.length,

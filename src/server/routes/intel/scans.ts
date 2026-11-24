@@ -123,12 +123,18 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       );
     }
 
+    // SLICE-262-31 — the request's correlation id follows the job
+    // (and every pull-job it spawns) for support diagnostics.
+    const correlationId =
+      (c.get("requestId" as never) as string | undefined) ?? null;
+
     let job = await deps.scanJobs.insert({
       id: `job_${generateReportId()}`,
       siteId,
       tenantId: ctx.tenantId,
       scanId: `scan_${generateReportId()}`,
       status: "queued",
+      correlationId,
       baseUrl: `https://${ctx.primaryHostname}`,
       probeFailures: 0,
       probeTotal: SCAN_PLAN.length,
@@ -175,6 +181,7 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
           probeId: "const_read",
           params: { name },
           scanId: job.scanId,
+          correlationId: correlationId ?? undefined,
         });
         if (r.ok) pullJobsCreated += 1;
       }
@@ -185,6 +192,7 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
           probeId: "option_read",
           params: { name },
           scanId: job.scanId,
+          correlationId: correlationId ?? undefined,
         });
         if (r.ok) pullJobsCreated += 1;
       }
@@ -194,6 +202,7 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
         probeId: "phpinfo_summary",
         params: {},
         scanId: job.scanId,
+          correlationId: correlationId ?? undefined,
       });
       if (r.ok) pullJobsCreated += 1;
     }

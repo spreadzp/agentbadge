@@ -60,6 +60,7 @@ function mkJob(over: Partial<ScanJob> = {}): ScanJob {
     siteId: "site_t",
     tenantId: "tnt_t",
     scanId: "scan_t1",
+    correlationId: null,
     status: "queued",
     baseUrl: "https://bakery.com",
     probeFailures: 0,

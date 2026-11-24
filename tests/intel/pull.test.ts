@@ -317,6 +317,7 @@ describe("G3 — report immutability", () => {
       siteId: SITE,
       tenantId: "tnt_t",
       scanId: "scan_late",
+      correlationId: null,
       status: "queued",
       baseUrl: "https://bakery.com",
       probeFailures: 0,

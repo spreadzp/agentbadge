@@ -56,6 +56,7 @@ const mkReport = (over: Partial<IntelReport> = {}): IntelReport => ({
 
 const mkJob = (report: IntelReport | null = mkReport()): ScanJob => ({
   id: "job_1", siteId: "site_1", tenantId: "tnt_1", scanId: "scan_1",
+    correlationId: null,
   status: "complete", baseUrl: "https://bakery.com",
   probeFailures: 0, probeTotal: 18, error: null,
   reportId: report?.report_id ?? null, report,

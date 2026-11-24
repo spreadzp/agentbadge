@@ -41,6 +41,8 @@ export interface PullJob {
   resultEnvelopeId: string | null;
   /** scan_<ulid> when created by a /scans bounded-wait run */
   scanId: string | null;
+  /** SLICE-262-31 — X-Request-Id of the request that created the job */
+  correlationId: string | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
   claimedAt: string | null;

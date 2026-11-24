@@ -14,6 +14,10 @@ import type { CapabilityProbeId } from "./registry";
 import { PULL_PROTOCOL_LIMITS, validateParams } from "./registry";
 import { signJobBody, jobSignedBody } from "./sign";
 import type { IntelPullJobStore, IntelSecurityEventStore } from "./store";
+import {
+  intelPullJobsTotal,
+  intelSecurityEventsTotal,
+} from "../metrics";
 import type { PullJob, PullJobPeek } from "./types";
 
 export interface PullDeps {
@@ -37,6 +41,7 @@ export async function securityEvent(
   deps: PullDeps,
   e: Omit<import("./types").IntelSecurityEvent, "id" | "createdAt">,
 ) {
+  intelSecurityEventsTotal.labels(e.eventType).inc();
   return deps.securityEvents.append({
     ...e,
     id: `sev_${generateReportId()}`,
@@ -59,6 +64,8 @@ export async function createPullJob(
     probeId: string;
     params: Record<string, unknown>;
     scanId?: string;
+    /** SLICE-262-31 — X-Request-Id of the creating request */
+    correlationId?: string;
   },
 ): Promise<{ ok: true; job: PullJob } | { ok: false; reason: string }> {
   const v = validateParams(input.probeId, input.params);
@@ -85,12 +92,14 @@ export async function createPullJob(
     result: null,
     resultEnvelopeId: null,
     scanId: input.scanId ?? null,
+    correlationId: input.correlationId ?? null,
     createdAt: now,
     updatedAt: now,
     claimedAt: null,
     completedAt: null,
   };
   unsigned.sig = signJobBody(jobSignedBody(unsigned), deps.jobsKey);
+  intelPullJobsTotal.labels("created").inc();
   return { ok: true, job: await deps.pullJobs.insert(unsigned) };
 }
 
@@ -153,5 +162,6 @@ export async function claimPullJob(
     ).toISOString(),
     claimedAt: now,
   });
+  if (r.ok) intelPullJobsTotal.labels("claimed").inc();
   return r;
 }

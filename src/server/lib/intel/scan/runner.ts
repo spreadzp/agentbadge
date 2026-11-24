@@ -11,6 +11,11 @@ import { computeDedupeHash } from "../evidence/store";
 import type { IntelEvidenceStore } from "../evidence/store";
 import { INTEL_API_VERSION } from "../keys";
 import { assembleIntelReport } from "../report";
+import {
+  intelEnvelopesTotal,
+  intelScanDurationMs,
+  intelScansTotal,
+} from "../metrics";
 import type { IntelRuleset } from "../rules";
 import type { ScanFetch, ScanObservation } from "./fetcher";
 import { SCAN_PLAN, probeToSubmissions } from "./plan";
@@ -148,6 +153,7 @@ export async function runScanJob(
       finishedAt: iso(),
       updatedAt: iso(),
     };
+    intelScansTotal.labels("failed").inc();
     return deps.jobs.update(job);
   }
 
@@ -186,6 +192,15 @@ export async function runScanJob(
     finishedAt: iso(),
     updatedAt: iso(),
   };
+  // SLICE-262-31 — terminal metrics: status, wall time, evidence
+  // volume by provenance class (labels stay low-cardinality).
+  intelScansTotal.labels(completeness).inc();
+  intelScanDurationMs.observe(
+    Math.max(0, Date.parse(iso()) - Date.parse(job.createdAt)),
+  );
+  for (const e of envelopes) {
+    intelEnvelopesTotal.labels(e.provenance).inc();
+  }
   return deps.jobs.update(job);
 }
 

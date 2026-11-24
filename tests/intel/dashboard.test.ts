@@ -154,7 +154,8 @@ describe("tenant isolation", () => {
   it("foreign report → 404", async () => {
     const job: ScanJob = {
       id: "job_f", siteId: foreignSiteId, tenantId: "tnt_foreign",
-      scanId: "scan_f", status: "complete", baseUrl: "https://other.com",
+      scanId: "scan_f",
+    correlationId: null, status: "complete", baseUrl: "https://other.com",
       probeFailures: 0, probeTotal: 1, error: null, reportId: "rpt_f",
       report: null, createdAt: "x", updatedAt: "x", finishedAt: null,
     };

@@ -19,6 +19,9 @@ export interface ScanJob {
   tenantId: string;
   /** scan_<ulid> — shared with the envelopes and the report it feeds */
   scanId: string;
+  /** SLICE-262-31 — X-Request-Id of the triggering request (null for
+   *  jobs created outside a request context); support correlation */
+  correlationId: string | null;
   status: ScanJobStatus;
   baseUrl: string; // https://<primary-hostname>
   /** probe transport failures seen while running */

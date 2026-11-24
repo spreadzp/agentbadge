@@ -101,6 +101,7 @@ describe("computeMoMDelta", () => {
 describe("previous_hash chain", () => {
   const mkJob = (id: string, createdAt: string): ScanJob => ({
     id, siteId: "site_c", tenantId: "tnt_c", scanId: `scan_${id}`,
+    correlationId: null,
     status: "queued", baseUrl: "https://x.com", probeFailures: 0,
     probeTotal: SCAN_PLAN.length, error: null, reportId: null, report: null,
     createdAt, updatedAt: createdAt, finishedAt: null,

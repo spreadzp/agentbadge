@@ -36,6 +36,32 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
     });
   });
 
+  // SLICE-262-31 — liveness: process serves intel; readiness: every
+  // store the intake/scan paths depend on is wired. A missing piece
+  // is named, never silently absent (D-262-Q14).
+  app.get("/health", (c) => {
+    if (!deps.key) return c.json(INTEL_KEY_MISSING, 503);
+    return c.json({ status: "ok", version: INTEL_API_VERSION });
+  });
+  app.get("/ready", (c) => {
+    const missing = [
+      ["key", deps.key],
+      ["registry", deps.registry],
+      ["registryStores", deps.registryStores],
+      ["evidence", deps.evidence],
+      ["consent", deps.consent],
+      ["scanJobs", deps.scanJobs],
+      ["ruleset", deps.ruleset],
+      ["scanFetch", deps.scanFetch],
+      ["entitlement", deps.entitlement],
+    ]
+      .filter(([, v]) => !v)
+      .map(([k]) => k);
+    return missing.length === 0
+      ? c.json({ ready: true, version: INTEL_API_VERSION })
+      : c.json({ ready: false, missing }, 503);
+  });
+
   // The ONLY evidence entry point. Every trust field on the envelope is
   // derived from the authenticated site_key — the body stays an
   // untrusted CollectorSubmission all the way to the boundary.

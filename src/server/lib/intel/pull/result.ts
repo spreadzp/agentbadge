@@ -8,6 +8,7 @@ import { computeDedupeHash } from "../evidence/store";
 import { hasActiveConsent } from "../consent";
 import { validateResultShape } from "./registry";
 import type { PullJob } from "./types";
+import { intelPullJobsTotal } from "../metrics";
 import {
   digestOf,
   nowIso,
@@ -51,9 +52,10 @@ export async function submitPullResult(
       leaseGeneration: j.leaseGeneration,
       eventType: "result_conflict",
       principal,
-      correlationId: null,
+      correlationId: j.correlationId,
       payloadDigest: incomingDigest,
     });
+    intelPullJobsTotal.labels("result_conflict").inc();
     return { ok: false, http: 409, reason: "conflict" };
   }
 
@@ -74,9 +76,10 @@ export async function submitPullResult(
       leaseGeneration: j.leaseGeneration,
       eventType: "lease_stale",
       principal,
-      correlationId: null,
+      correlationId: j.correlationId,
       payloadDigest: incomingDigest,
     });
+    intelPullJobsTotal.labels("lease_stale").inc();
     return { ok: false, http: 409, reason: "lease_expired" };
   }
   if (j.leaseExpiresAt !== null && j.leaseExpiresAt <= now) {
@@ -88,9 +91,10 @@ export async function submitPullResult(
       leaseGeneration: j.leaseGeneration,
       eventType: "lease_stale",
       principal,
-      correlationId: null,
+      correlationId: j.correlationId,
       payloadDigest: incomingDigest,
     });
+    intelPullJobsTotal.labels("lease_stale").inc();
     return { ok: false, http: 409, reason: "lease_expired" };
   }
 
@@ -154,6 +158,7 @@ export async function submitPullResult(
     completedAt: now,
     updatedAt: now,
   };
+  intelPullJobsTotal.labels("result_accepted").inc();
   return {
     ok: true,
     job: await deps.pullJobs.update(done),
