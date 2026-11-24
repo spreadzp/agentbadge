@@ -42,7 +42,9 @@ export const scanRuleRoutes = new Hono();
 /**
  * Map a target path substring to a resource key (mirrors rule-engine's targetToSnapshotKey).
  */
-const TARGET_TO_RESOURCE: Record<string, string> = {
+// Longest-key-first iteration: specific paths must beat generic prefixes
+// ("oauth-authorization-server" before "oauth" — same fix as evidence-collector).
+const TARGET_TO_RESOURCE: [string, string][] = Object.entries({
   "robots": "robots",
   "sitemap": "sitemap",
   "agent-guide": "guide",
@@ -60,7 +62,7 @@ const TARGET_TO_RESOURCE: Record<string, string> = {
   "did.json": "identity",
   "webfinger": "identity",
   "oauth": "bot_auth",
-  "oauth-authorization-server": "identity",
+  "oauth-authorization-server": "oauth_authorization_server",
   "http-message-signatures": "bot_auth",
   "infrastructure": "infrastructure",
   "agent-card": "a2a",
@@ -70,7 +72,7 @@ const TARGET_TO_RESOURCE: Record<string, string> = {
   "nonexistent": "content_negotiation",
   "pricing": "pricing",
   "passport": "l402",
-};
+}).sort((a, b) => b[0].length - a[0].length);
 
 /**
  * Determine which resources to fetch for a single rule.
@@ -85,7 +87,7 @@ function getResourcesForRule(rule: AgentReadinessRule): string[] {
   // For http_fetch rules, map target to resource
   if (rule.check.target) {
     const target = rule.check.target;
-    for (const [substr, key] of Object.entries(TARGET_TO_RESOURCE)) {
+    for (const [substr, key] of TARGET_TO_RESOURCE) {
       if (target.includes(substr)) return [key];
     }
   }
