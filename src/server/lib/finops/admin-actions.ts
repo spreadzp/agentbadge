@@ -165,7 +165,7 @@ export async function reviewPayment(
     subjectType: "payment",
     subjectId: paymentId,
     operator,
-    principalId: operator,
+    principalId: normalizeOperator(operator),
     evidence,
   });
 }
@@ -195,7 +195,7 @@ export async function retryVerification(
     subjectType: "payment",
     subjectId: paymentId,
     operator,
-    principalId: operator,
+    principalId: normalizeOperator(operator),
     evidence,
   });
   if (!action.ok) return action;
@@ -255,7 +255,7 @@ export async function markExternalReviewed(
     subjectType: subjType,
     subjectId: subjId,
     operator,
-    principalId: operator,
+    principalId: normalizeOperator(operator),
     evidence,
   });
 }

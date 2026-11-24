@@ -79,7 +79,7 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
       summary: "Complete a refund intent behind verified txHash",
       responses: {
         200: { description: "Intent COMPLETED" },
-        400: { description: "Missing operator/txHash" },
+        400: { description: "Missing txHash / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Intent not found" },
         503: { description: "Tx verification not configured" },
@@ -88,6 +88,9 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
     async (c) => {
       const actor = principalId(c);
       if (actor instanceof Response) return actor;
+      const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       if (!deps.verifyRefundTx) {
         return c.json(
           {
@@ -100,9 +103,6 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
           503,
         );
       }
-      const b = await readBody(c);
-      const opField = rejectOperatorField(b);
-      if (opField) return respond(c, opField);
       const res = await completeRefundIntent(
         getDb(),
         {

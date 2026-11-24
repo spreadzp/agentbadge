@@ -53,7 +53,7 @@ export async function auditStripeOutcome(
       subjectType: "payment",
       subjectId: input.paymentId,
       operator: input.operator,
-      principalId: input.operator,
+      principalId: normalizeOperator(input.operator),
       evidence,
     },
     minimal,
@@ -130,7 +130,7 @@ export async function auditRejectedCompletion(
     subjectType: "payment",
     subjectId: intentPaymentId,
     operator: normalizeOperator(input.operator),
-    principalId: input.operator,
+    principalId: normalizeOperator(input.operator),
     evidence: {
       kind: "INTENT_COMPLETE_REJECTED",
       intentId: input.intentId,

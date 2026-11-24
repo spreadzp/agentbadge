@@ -84,7 +84,7 @@ export function createFinopsActionRoutes(
       summary: "Record a verification retry for the payment's open attempts",
       responses: {
         200: { description: "AdminAction + retryable attempts" },
-        400: { description: "Operator field sent" },
+        400: { description: "Oversized evidence / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Payment not found" },
       },
@@ -112,7 +112,7 @@ export function createFinopsActionRoutes(
       summary: "Mark an external/off-chain subject reviewed (evidence required)",
       responses: {
         200: { description: "AdminAction recorded" },
-        400: { description: "Missing evidence/subject" },
+        400: { description: "Missing evidence / operator field sent" },
         401: { description: "Unauthorized" },
       },
     }),
@@ -144,7 +144,7 @@ export function createFinopsActionRoutes(
         "Refund a payment — Stripe auto (provider call) or manual intent",
       responses: {
         200: { description: "Stripe refund id or RefundIntent" },
-        400: { description: "Missing reason/amount" },
+        400: { description: "Missing reason/amount / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Payment not found" },
         409: { description: "Payment not CONFIRMED" },
