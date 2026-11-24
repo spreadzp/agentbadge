@@ -20,10 +20,8 @@ import {
   mppQuotesDivergent,
   type MppQuote,
 } from "../../scanner/fetchers/mpp-payment-challenge";
-import {
-  collectProofInputs,
-  type PaytoInputs,
-} from "./x402-payto-inputs";
+import { collectProofInputs } from "./x402-proof-inputs";
+import { type PaytoInputs } from "./x402-payto-inputs";
 
 interface X402ProbeAttemptDoc {
   status: number;
@@ -84,7 +82,16 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
         perPaymentSuspect: suspect || undefined,
       };
       const key = observationKey(o);
-      if (liveKeys.has(key)) continue;
+      if (liveKeys.has(key)) {
+        // Non-suspect beats a suspect row for the same key (arc-review H4).
+        if (!suspect) {
+          const idx = observations.findIndex(
+            (x) => observationKey(x) === key && x.perPaymentSuspect,
+          );
+          if (idx >= 0) observations[idx] = o;
+        }
+        continue;
+      }
       liveKeys.add(key);
       observations.push(o);
     }
@@ -100,7 +107,11 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
       : null;
     if (quotes1.length > 0 || (quotes2 !== null && quotes2.length > 0)) {
       anyChallenge = true;
-      if (
+      if (quotes1.length === 0) {
+        // First attempt yielded no quotes — probe-2's set is
+        // silently dropped without this branch (arc-review M10).
+        skipReasons.add("first_probe_no_quotes");
+      } else if (
         quotes2 === null || // legacy single-probe snapshot
         h["x-agentbadge-probe2-status"] !== "402" ||
         quotes2.length === 0
@@ -137,8 +148,14 @@ export function collectMppInputs(sources: Snapshots): PaytoInputs | null {
       });
       continue;
     }
+    if (m1.length === 0) {
+      // Attempt-1 carried no MPP quotes — m2 exists but is dropped
+      // (arc-review M10; matches x402's no_accepts_in_402).
+      skipReasons.add("first_probe_no_quotes");
+      continue;
+    }
     if (!a2 || a2.status !== 402 || m2.length === 0) {
-      if (m1.length > 0) skipReasons.add("second_probe_failed");
+      skipReasons.add("second_probe_failed");
       continue;
     }
     push(m1, a1?.observedAt ?? observedAt, false,

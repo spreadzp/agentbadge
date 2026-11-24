@@ -17,6 +17,9 @@ export interface ProofCoverage {
   verified: number;
   mismatch: number;
   absent_or_unchecked: number;
+  /** Exempt divergent rows — counted separately so "5 exempt" never
+   *  reads as "0 verified, 0 absent" (arc-review M9). */
+  possible_per_payment: number;
   skip_reasons: string[];
 }
 
@@ -50,6 +53,7 @@ export function coverageOf(
     mismatch: conflicts.length,
     absent_or_unchecked:
       count("absent") + count("unchecked") + count("malformed"),
+    possible_per_payment: count("possible_per_payment_address"),
     skip_reasons: [...skipReasons],
   };
 }
@@ -86,6 +90,20 @@ export function mapEvaluationVerdict(
   switch (result.aggregate) {
     case "verified": {
       const v = result.perAddress.find((a) => a.outcome === "verified");
+      // arc-review C2: a clean aggregate can hide endpoints that were
+      // never verified (probe failed / no accepts → skipReasons only).
+      // "verified" must mean everything we saw passed — cap at partial.
+      if (coverage.skip_reasons.length > 0) {
+        return {
+          outcome: "partial",
+          verdict: "partial",
+          summary:
+            `${labels.subject} proven at ${v?.level ?? "dns/site"} level ` +
+            `for ${coverage.verified} observed address(es) — ` +
+            `${coverage.skip_reasons.length} probe(s) inconclusive ` +
+            `(${coverage.skip_reasons.join(", ")})`,
+        };
+      }
       return {
         outcome: "found",
         verdict: "verified",

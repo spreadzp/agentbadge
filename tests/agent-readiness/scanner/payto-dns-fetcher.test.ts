@@ -204,4 +204,79 @@ describe("fetchPayToDns", () => {
     expect(fetchMock.mock.calls.length).toBe(calls); // throttled
     expect(r2.fromCache).toBe(true);
   });
+
+  it("resolver STATUS split (ok + absent) is disagreement → unchecked (arc H1)", async () => {
+    const fetchMock = mockDoh({
+      [`${G}|${q("example.com")}`]: () => dohOk(q("example.com"), [PROOF_TXT]),
+      [`${C}|${q("example.com")}`]: dohNxdomain,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await fetchPayToDns("example.com");
+    expect(r.status).toBe("unchecked");
+    expect(r.records).toHaveLength(0);
+  });
+
+  it("cache honors the SHORTEST record TTL, not the longest (arc M3)", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockDoh({
+      [`${G}|${q("example.com")}`]: () =>
+        new Response(
+          JSON.stringify({
+            Status: 0,
+            Answer: [
+              { name: q("example.com"), type: 16, data: PROOF_TXT, TTL: 60 },
+              { name: q("example.com"), type: 16, data: "v=x402payto1; a=0xBBB", TTL: 3600 },
+            ],
+          }),
+          { status: 200 },
+        ),
+      [`${C}|${q("example.com")}`]: () =>
+        new Response(
+          JSON.stringify({
+            Status: 0,
+            Answer: [
+              { name: q("example.com"), type: 16, data: PROOF_TXT, TTL: 60 },
+              { name: q("example.com"), type: 16, data: "v=x402payto1; a=0xBBB", TTL: 3600 },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchPayToDns("example.com");
+    const calls = fetchMock.mock.calls.length;
+    vi.setSystemTime(Date.now() + 61_000); // past min-TTL 60s, below max 3600s
+    const r2 = await fetchPayToDns("example.com");
+    expect(r2.fromCache).toBe(false);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+    vi.useRealTimers();
+  });
+
+  it("TTL 0 → never cached (arc M3)", async () => {
+    const fetchMock = mockDoh({
+      [`${G}|${q("example.com")}`]: () => dohOk(q("example.com"), [PROOF_TXT], 0),
+      [`${C}|${q("example.com")}`]: () => dohOk(q("example.com"), [PROOF_TXT], 0),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchPayToDns("example.com");
+    const calls = fetchMock.mock.calls.length;
+    const r2 = await fetchPayToDns("example.com");
+    expect(r2.fromCache).toBe(false);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+  });
+
+  it("rate-limited recheck never serves an EXPIRED entry (arc M3)", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockDoh({
+      [`${G}|${q("example.com")}`]: () => dohOk(q("example.com"), [PROOF_TXT], 30),
+      [`${C}|${q("example.com")}`]: () => dohOk(q("example.com"), [PROOF_TXT], 30),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchPayToDns("example.com"); // caches @ TTL 30s, lastRecheck=now
+    vi.setSystemTime(Date.now() + 45_000); // entry expired, inside rate-limit window
+    const r = await fetchPayToDns("example.com", { forceRecheck: true });
+    expect(r.fromCache).toBe(false);
+    expect(r.status).toBe("unchecked");
+    vi.useRealTimers();
+  });
 });

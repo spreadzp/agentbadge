@@ -30,7 +30,9 @@ export interface PayToWellknownFetchResult {
 export async function fetchPayToWellknown(
   baseUrl: string,
 ): Promise<PayToWellknownFetchResult> {
-  const url = `${baseUrl}${PAYTO_WELLKNOWN_PATH}`;
+  // Strip trailing slash/query so `${base}${PATH}` always builds the
+  // well-known URL (arc-review nit).
+  const url = `${baseUrl.replace(/[/?#]+$/, "")}${PAYTO_WELLKNOWN_PATH}`;
   try {
     const result = await safeFetch(url, {
       maxRedirects: 0,

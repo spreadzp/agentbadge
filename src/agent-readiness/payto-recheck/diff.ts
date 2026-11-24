@@ -11,6 +11,12 @@
 
 import { normalizeAddress } from "@agentbadge/x402-payto-proof";
 import {
+  confirmsAbsence,
+  identity,
+  normalizeEntries,
+  scopeOf,
+} from "./entries.js";
+import {
   RECHECK_SCHEMA_VERSION,
   type ProofSetEntry,
   type ProofSetSnapshot,
@@ -29,27 +35,6 @@ export interface DiffOptions {
   knownDropped?: string[];
 }
 
-const identity = (e: Pick<ProofSetEntry, "source" | "scope_name" | "payTo">) =>
-  `${e.source}|${e.scope_name}|${e.payTo}`;
-
-const scopeOf = (e: Pick<ProofSetEntry, "source" | "scope_name">) =>
-  `${e.source}|${e.scope_name}`;
-
-/** Was this member's absence actually provable this run? (C13/D-258-Q27) */
-function confirmsAbsence(
-  prev: ProofSetEntry,
-  cur: ProofSetSnapshot,
-): boolean {
-  if (cur.absence_confirmed === true) return true;
-  if (prev.source === "dns") return cur.dns_state === "ok";
-  // site member: the effective tier must have been resolved — an
-  // unanswered DNS could have published a shadowing set this run.
-  if (cur.dns_state !== "ok") return false;
-  const dnsHas = cur.entries.some((e) => e.source === "dns");
-  if (dnsHas) return true; // DNS set rules — absence in it is confirmed
-  return cur.site_state !== "unchecked";
-}
-
 const day = (iso?: string) => (iso ? iso.slice(0, 10) : "?");
 
 /**
@@ -64,7 +49,10 @@ export function diffPaytoReports(
   cur: ProofSetSnapshot,
   opts: DiffOptions = {},
 ): RecheckDiffResult {
-  if (!prev || !cur || !prev.domain || !cur.domain) {
+  if (
+    !prev || !cur || !prev.domain || !cur.domain ||
+    !Array.isArray(prev.entries) || !Array.isArray(cur.entries)
+  ) {
     return { comparable: false, reason: "invalid_report" };
   }
   if (
@@ -101,24 +89,31 @@ export function diffPaytoReports(
   const dropped: ProofSetEntry[] = [];
   const added: ProofSetEntry[] = [];
 
-  const prevByIdentity = new Map(prev.entries.map((e) => [identity(e), e]));
-  const curByIdentity = new Map(cur.entries.map((e) => [identity(e), e]));
+  const prevEntries = normalizeEntries(prev.entries);
+  const curEntries = normalizeEntries(cur.entries);
+
+  const prevByIdentity = new Map(prevEntries.map((e) => [identity(e), e]));
+  const curByIdentity = new Map(curEntries.map((e) => [identity(e), e]));
   const curByPayTo = new Map<string, ProofSetEntry[]>();
-  for (const e of cur.entries) {
+  for (const e of curEntries) {
     const list = curByPayTo.get(e.payTo) ?? [];
     list.push(e);
     curByPayTo.set(e.payTo, list);
   }
-  const prevPayTos = new Set(prev.entries.map((e) => e.payTo));
+  const prevPayTos = new Set(prevEntries.map((e) => e.payTo));
 
   // ── prev members: still / scope-change / drop / unchecked ────────
-  for (const pm of prev.entries) {
+  for (const pm of prevEntries) {
     const id = identity(pm);
     const exact = curByIdentity.get(id);
     if (exact) {
+      // Any WEAKENING of a once-valid signature is a conflict — not
+      // only valid→invalid. valid→none means the signature was
+      // stripped; valid→unverifiable means it was corrupted into a
+      // shape we cannot check (arc-review M7).
       if (
         pm.signature_status === "valid" &&
-        exact.signature_status === "invalid"
+        exact.signature_status !== "valid"
       ) {
         transitions.push({
           kind: "CONFLICT",
@@ -127,9 +122,10 @@ export function diffPaytoReports(
           identity: id,
           previously_verified_at: prev.observed_at,
           currently_observed_at: cur.observed_at,
+          signature_status: exact.signature_status,
           note:
             `signature for ${pm.payTo} was valid ${day(prev.observed_at)}, ` +
-            `verifies invalid ${day(cur.observed_at)} — investigate`,
+            `now ${exact.signature_status ?? "none"} ${day(cur.observed_at)} — investigate`,
         });
       } else {
         transitions.push({
@@ -185,7 +181,7 @@ export function diffPaytoReports(
   }
 
   // ── cur members not in prev: new / reappeared ────────────────────
-  for (const ce of cur.entries) {
+  for (const ce of curEntries) {
     if (prevByIdentity.has(identity(ce)) || prevPayTos.has(ce.payTo)) {
       continue; // already classified via prev side
     }
@@ -194,6 +190,9 @@ export function diffPaytoReports(
 
   // ── classify drops + adds ────────────────────────────────────────
   const rotated = dropped.length > 0 && added.length > 0;
+  // replaced_by/replaces only when the pairing is unambiguous —
+  // many-to-many attributions would lie (arc-review nit).
+  const oneToOne = dropped.length === 1 && added.length === 1;
   for (const pm of dropped) {
     const kind = rotated ? "ROTATED" : "DROPPED";
     transitions.push({
@@ -203,7 +202,7 @@ export function diffPaytoReports(
       identity: identity(pm),
       previously_verified_at: prev.observed_at,
       currently_observed_at: cur.observed_at,
-      ...(rotated ? { replaced_by: added[0]!.payTo } : {}),
+      ...(oneToOne ? { replaced_by: added[0]!.payTo } : {}),
       note:
         `${pm.payTo} was proven ${day(prev.observed_at)}, absent ` +
         `${day(cur.observed_at)}` +
@@ -220,24 +219,34 @@ export function diffPaytoReports(
       : rotated
         ? "ROTATED"
         : "newly_proven";
+    // An added member that does NOT carry a verified signature is an
+    // unsigned address claim — the add-only-compromise shape
+    // (arc-review M7). Signed adds stay info.
+    const unsignedAdd = ce.signature_status !== "valid";
     transitions.push({
       kind,
-      severity: reappeared ? "info" : rotated ? "medium" : "info",
+      severity:
+        reappeared || kind === "newly_proven"
+          ? unsignedAdd
+            ? "medium"
+            : "info"
+          : "medium", // ROTATED is already medium
       payTo: ce.payTo,
       identity: identity(ce),
       currently_observed_at: cur.observed_at,
-      ...(rotated && !reappeared && dropped.length > 0
-        ? { replaces: dropped[0]!.payTo }
-        : {}),
+      signature_status: ce.signature_status,
+      ...(oneToOne && !reappeared ? { replaces: dropped[0]!.payTo } : {}),
       note: reappeared
-        ? `${ce.payTo} reappeared at ${scopeOf(ce)} — was dropped earlier`
+        ? `${ce.payTo} reappeared at ${scopeOf(ce)} — was dropped earlier` +
+          (unsignedAdd ? " (signature not verified)" : "")
         : rotated
           ? `${ce.payTo} appeared replacing ${dropped.map((d) => d.payTo).join(", ")}`
-          : `${ce.payTo} newly proven at ${scopeOf(ce)}`,
+          : `${ce.payTo} newly proven at ${scopeOf(ce)}` +
+            (unsignedAdd ? " (signature not verified)" : ""),
     });
   }
 
-  if (prev.entries.length === 0 && cur.entries.length === 0) {
+  if (prevEntries.length === 0 && curEntries.length === 0) {
     transitions.push({
       kind: "still_absent",
       severity: "none",

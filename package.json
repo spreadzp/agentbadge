@@ -71,7 +71,7 @@
     "@agentbadge/payment-forensics": "^0.1.1",
     "@agentbadge/payments": "^0.1.1",
     "@agentbadge/webmcp": "^0.5.1",
-    "@agentbadge/x402-payto-proof": "^0.2.0",
+    "@agentbadge/x402-payto-proof": "^0.2.2",
     "@hashgraph/sdk": "^2.55.0",
     "@hono/swagger-ui": "^0.6.1",
     "@modelcontextprotocol/sdk": "^1.12.0",

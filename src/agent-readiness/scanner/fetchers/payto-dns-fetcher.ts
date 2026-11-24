@@ -59,6 +59,16 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>();
 const lastRecheck = new Map<string, number>();
 
+/** Both maps are keyed by caller-supplied domains — bound them so a
+ *  scan spray cannot grow memory unboundedly (arc-review M4). */
+const MAX_CACHE_ENTRIES = 1000;
+function boundedSet<K, V>(map: Map<K, V>, key: K, value: V) {
+  if (map.size >= MAX_CACHE_ENTRIES && !map.has(key)) {
+    map.delete(map.keys().next().value!); // Map iterates in insertion order — evict oldest
+  }
+  map.set(key, value);
+}
+
 /** Test hook: reset module-level caches. */
 export function resetPayToDnsCache(): void {
   cache.clear();
@@ -115,7 +125,9 @@ export async function fetchPayToDns(
   opts: { forceRecheck?: boolean } = {},
 ): Promise<PayToDnsFetchResult> {
   const start = Date.now();
-  const key = domain.toLowerCase();
+  // Canonical key: `example.com` and `example.com.` must share the
+  // recheck budget and cache slot (arc-review M4).
+  const key = domain.toLowerCase().replace(/\.+$/, "");
   const now = Date.now();
 
   const entry = cache.get(key);
@@ -136,8 +148,9 @@ export async function fetchPayToDns(
     lastRecheck.has(key) &&
     now - lastRecheck.get(key)! < RECHECK_MIN_MS
   ) {
-    // Rate limit hit — serve the cached view if any, else unchecked.
-    if (entry) {
+    // Rate limit hit — serve the cached view if it is still fresh;
+    // an EXPIRED entry is not evidence (arc-review M3).
+    if (entry && entry.expiresAt > now) {
       return {
         domain,
         hitName: entry.hitName,
@@ -160,31 +173,35 @@ export async function fetchPayToDns(
       fetchTime: Date.now() - start,
     };
   }
-  if (opts.forceRecheck) lastRecheck.set(key, now);
+  if (opts.forceRecheck) boundedSet(lastRecheck, key, now);
 
   const live = await lookupLive(domain);
   // Any live lookup counts toward the recheck rate limit — a
   // forceRecheck within RECHECK_MIN_MS of a normal scan's lookup
   // must also be throttled.
-  lastRecheck.set(key, now);
+  boundedSet(lastRecheck, key, now);
 
-  // Only cache evidence: hits for min(record TTL, 24h), verified
-  // absence for NEGATIVE_CACHE_MS. "unchecked" is transient —
-  // never cache it or a blip suppresses the next real lookup.
+  // Only cache evidence: hits for min(record TTL, 24h) — the set is
+  // only as fresh as its most volatile member; TTL 0 means "do not
+  // cache"; verified absence gets NEGATIVE_CACHE_MS. "unchecked" is
+  // transient — never cache it or a blip suppresses the next lookup.
+  // (arc-review M3: max→min, TTL-0→no cache.)
   if (live.status !== "unchecked") {
+    const ttls = live.records.map((r) => r.ttl);
     const ttlMs =
       live.status === "hit"
-        ? Math.min(
-            Math.max(...live.records.map((r) => r.ttl), 0) * 1000 || MAX_POSITIVE_TTL_MS,
-            MAX_POSITIVE_TTL_MS,
-          )
+        ? ttls.length === 0 || ttls.some((t) => t <= 0)
+          ? 0
+          : Math.min(Math.min(...ttls) * 1000, MAX_POSITIVE_TTL_MS)
         : NEGATIVE_CACHE_MS;
-    cache.set(key, {
-      status: live.status,
-      hitName: live.hitName,
-      records: live.records,
-      expiresAt: now + ttlMs,
-    });
+    if (ttlMs > 0) {
+      boundedSet(cache, key, {
+        status: live.status,
+        hitName: live.hitName,
+        records: live.records,
+        expiresAt: now + ttlMs,
+      });
+    }
   }
 
   return {

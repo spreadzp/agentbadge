@@ -109,21 +109,27 @@ export async function queryDohTxt(
     queryOne(DOH_RESOLVERS[1], name, timeoutMs),
   ]);
   const live = [a, b].filter((r) => r !== null);
-  if (live.length === 0) {
-    return { name, status: "unchecked", answers: [], resolversAgreed: true };
+  // Dual mode is a *safety* mode (arc-review H1): both resolvers must
+  // answer, and they must answer the SAME thing. A single survivor or
+  // a status mismatch proves nothing — report unchecked, never pick
+  // a side (a poisoned resolver must not inject a proof or force
+  // absence).
+  if (live.length < 2) {
+    return { name, status: "unchecked", answers: [], resolversAgreed: false };
   }
-  if (live.length === 2 && a!.status === "ok" && b!.status === "ok") {
-    if (normalizeSet(a!.answers) !== normalizeSet(b!.answers)) {
-      return { name, status: "unchecked", answers: [], resolversAgreed: false };
-    }
+  if (a!.status !== b!.status) {
+    return { name, status: "unchecked", answers: [], resolversAgreed: false };
   }
-  // Prefer a resolver that actually returned TXT; else the first
-  // surviving answer (absent); single-survivor errors already dropped.
-  const winner = live.find((r) => r!.status === "ok") ?? live[0];
+  if (
+    a!.status === "ok" &&
+    normalizeSet(a!.answers) !== normalizeSet(b!.answers)
+  ) {
+    return { name, status: "unchecked", answers: [], resolversAgreed: false };
+  }
   return {
     name,
-    status: winner!.status,
-    answers: winner!.answers,
+    status: a!.status,
+    answers: a!.answers,
     resolversAgreed: true,
   };
 }

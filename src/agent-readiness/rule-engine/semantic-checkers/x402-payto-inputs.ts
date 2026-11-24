@@ -1,42 +1,28 @@
 // SLICE-258-4: snapshot → evaluatePaytoProofs input assembly (split from
-// x402-payto-proof.ts under the 300-line file guard).
+// x402-payto-proof.ts under the 300-line file guard; proof tier moved to
+// x402-proof-inputs.ts under the same guard in 258-24).
 //
-// Decodes the three snapshot payloads the scan produces and builds the
-// PayToObservation set: live402 accepts from double-probe results
-// (authoritative) + manifest payTo (hint only, D-258-Q11).
+// Decodes the x402 discovery snapshot and builds the PayToObservation
+// set: live402 accepts from double-probe results (authoritative) +
+// manifest payTo (hint only, D-258-Q11).
 import type { Snapshots } from "./helpers";
 import {
-  parseDnsTxtRecords,
-  parseWellKnownFile,
   observationKey,
   normalizeAddress,
   type PayToObservation,
   type ProofEntry,
 } from "@agentbadge/x402-payto-proof";
-
-// ─── Snapshot payload shapes (what the handlers put in body) ────────────────
-
-interface PayToDnsFetchResult {
-  domain: string;
-  hitName: string | null;
-  records: { data: string; ttl: number }[];
-  status: "hit" | "absent" | "unchecked";
-  pslStopped: boolean;
-  fromCache: boolean;
-  fetchTime: number;
-}
-
-interface PayToWellknownFetchResult {
-  url: string;
-  status: number;
-  body: string | null;
-}
+import { collectProofInputs, tryParseJson } from "./x402-proof-inputs";
 
 interface X402ProbeAttempt {
   status: number;
   observedAt: string;
   accepts: { scheme?: string; network?: string; asset?: string; payTo?: string }[] | null;
 }
+
+/** Seller-controlled accepts count — bounded so evaluation stays
+ *  linear in practice (arc-review M11). */
+const MAX_ACCEPTS_PER_PROBE = 100;
 
 interface X402DoubleProbe {
   endpoint: string;
@@ -73,122 +59,6 @@ export interface PaytoInputs {
   skipReasons: Set<string>;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function tryParse(body: string | null | undefined): unknown | null {
-  if (!body) return null;
-  try {
-    return JSON.parse(body);
-  } catch {
-    return null;
-  }
-}
-
-/** RFC-1035 quoted `data` → character-strings (mirrors dogfood txtChunks). */
-function txtChunks(data: string): string[] {
-  const m = data.match(/"((?:[^"\\]|\\.)*)"/g);
-  return m ? m.map((s) => s.slice(1, -1).replace(/\\"/g, '"')) : [data];
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
-  }
-}
-
-// ─── Assembly ───────────────────────────────────────────────────────────────
-
-export interface ProofInputs {
-  domain: string;
-  dnsEntries: ProofEntry[];
-  siteEntries: ProofEntry[];
-  malformedCount: number;
-  dnsState: "ok" | "unchecked";
-  siteState: "ok" | "absent" | "unchecked";
-  liveRecheckDone: boolean;
-  /** DNS walk was truncated by a shared-hosting suffix (D-258-Q19). */
-  pslStopped: boolean;
-  /** Name the DNS proof record resolved at — child vs parent scope (258-18). */
-  dnsHitName?: string | null;
-}
-
-/**
- * The protocol-agnostic proof tier (shared by AB-188 and AB-189,
- * SLICE-258-5): `_x402-payto` DNS TXT + `/.well-known/x402-payto.json`
- * publish one proof SET that any payment protocol's quoted address is
- * checked against. `domainHints` are snapshot urls to fall back to
- * when the DNS result carries no domain.
- */
-export function collectProofInputs(
-  sources: Snapshots,
-  domainHints: (string | undefined)[] = [],
-): ProofInputs {
-  const dnsSnap = sources["x402_payto_dns"] ?? null;
-  const siteSnap = sources["x402_payto_site"] ?? null;
-
-  // DNS tier
-  let domain = "";
-  let dnsState: "ok" | "unchecked" = "unchecked";
-  let liveRecheckDone = false;
-  const dnsEntries: ProofEntry[] = [];
-  let malformedCount = 0;
-
-  let pslStopped = false;
-  let dnsHitName: string | null = null;
-  const dnsResult = tryParse(dnsSnap?.body) as PayToDnsFetchResult | null;
-  if (dnsResult && typeof dnsResult === "object") {
-    domain = dnsResult.domain ?? "";
-    dnsState = dnsResult.status === "unchecked" ? "unchecked" : "ok";
-    pslStopped = dnsResult.pslStopped === true;
-    dnsHitName = dnsResult.hitName ?? null;
-    // A fresh lookup in this scan IS the live re-check (dogfood parity);
-    // a cache hit cannot prove substitution.
-    liveRecheckDone = dnsResult.fromCache === false;
-    for (const p of parseDnsTxtRecords((dnsResult.records ?? []).map((r) => txtChunks(r.data)))) {
-      if (p.status === "ok" && p.entry) dnsEntries.push(p.entry);
-      else malformedCount += 1;
-    }
-  }
-
-  // Well-known tier (weaker — shadowed by any DNS proof, enforced in lib)
-  const siteEntries: ProofEntry[] = [];
-  let siteState: "ok" | "absent" | "unchecked" = "unchecked";
-  const siteResult = tryParse(siteSnap?.body) as PayToWellknownFetchResult | null;
-  if (siteSnap) {
-    const status = siteResult?.status ?? siteSnap.status;
-    if (status === 200 && siteResult?.body) {
-      siteState = "ok";
-      const host = domain || hostOf(siteResult.url);
-      const wk = parseWellKnownFile(tryParse(siteResult.body), host);
-      if (wk.status === "malformed") malformedCount += 1;
-      siteEntries.push(...wk.entries);
-    } else {
-      siteState = status === 404 ? "absent" : "unchecked";
-    }
-  }
-
-  if (!domain) {
-    domain =
-      (siteResult ? hostOf(siteResult.url) : "") ||
-      domainHints.map((u) => (u ? hostOf(u) : "")).find((h) => h) ||
-      (dnsSnap ? hostOf(dnsSnap.url) : "");
-  }
-
-  return {
-    domain,
-    dnsEntries,
-    siteEntries,
-    malformedCount,
-    dnsState,
-    siteState,
-    liveRecheckDone,
-    pslStopped,
-    dnsHitName,
-  };
-}
-
 export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
   const dnsSnap = sources["x402_payto_dns"] ?? null;
   const siteSnap = sources["x402_payto_site"] ?? null;
@@ -207,7 +77,7 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
   let manifestDoc: unknown = null;
   let probes: X402DoubleProbe[] = [];
 
-  const x402Doc = tryParse(x402Snap?.body) as X402DiscoveryDoc | Record<string, unknown> | null;
+  const x402Doc = tryParseJson(x402Snap?.body) as X402DiscoveryDoc | Record<string, unknown> | null;
   if (x402Doc && typeof x402Doc === "object") {
     if ("manifest" in x402Doc || "probes" in x402Doc) {
       manifestDoc = (x402Doc as X402DiscoveryDoc).manifest ?? null;
@@ -230,12 +100,16 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
       suspect: boolean,
       probeId: string,
     ) => {
-      for (const a of acc ?? []) {
-        if (typeof a.payTo !== "string" || !a.payTo) continue;
+      for (const a of (acc ?? []).slice(0, MAX_ACCEPTS_PER_PROBE)) {
+        // Seller JSON is untrusted: entries may be null/non-object
+        // (arc-review M12 — a bare `null` threw TypeError here) and
+        // strings land in keys and summaries, so bound them.
+        if (!a || typeof a !== "object") continue;
+        if (typeof a.payTo !== "string" || !a.payTo || a.payTo.length > 256) continue;
         const o: PayToObservation = {
           payTo: normalizeAddress(a.payTo),
-          network: a.network,
-          asset: a.asset,
+          network: typeof a.network === "string" ? a.network.slice(0, 128) : undefined,
+          asset: typeof a.asset === "string" ? a.asset.slice(0, 64) : undefined,
           source: "live402",
           observedAt,
           probeId,
@@ -243,7 +117,18 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
           perPaymentSuspect: suspect || undefined,
         };
         const key = observationKey(o);
-        if (liveKeys.has(key)) continue;
+        if (liveKeys.has(key)) {
+          // A clean (non-suspect) quote of the same address beats a
+          // suspect row from a divergent endpoint — otherwise the
+          // suspect row would shield the real mismatch (arc-review H4).
+          if (!suspect) {
+            const idx = observations.findIndex(
+              (x) => observationKey(x) === key && x.perPaymentSuspect,
+            );
+            if (idx >= 0) observations[idx] = o;
+          }
+          continue;
+        }
         liveKeys.add(key);
         observations.push(o);
       }

@@ -83,13 +83,42 @@ describe("diffPaytoReports — stable classes", () => {
     expect(kinds(r)).toEqual(["still_absent"]);
   });
 
-  it("absent → proven → newly_proven (info)", () => {
+  it("absent → proven → newly_proven, signed add stays info (arc M7)", () => {
     const r = diffPaytoReports(
       snap({ observed_at: T1 }),
-      snap({ entries: [dns(A)] }),
+      snap({ entries: [dns(A, `_x402-payto.${D}`, { signature_status: "valid" })] }),
     );
     expect(kinds(r)).toEqual(["newly_proven"]);
-    if (r.comparable) expect(r.summary).toBe("unchanged_info");
+    if (r.comparable) {
+      expect(r.transitions[0]?.severity).toBe("info");
+      expect(r.summary).toBe("unchanged_info");
+    }
+  });
+
+  it("unsigned/invalid add → newly_proven but MEDIUM — add-only compromise shape (arc M7)", () => {
+    for (const sig of ["none", "invalid", "unverifiable", undefined] as const) {
+      const r = diffPaytoReports(
+        snap({ observed_at: T1 }),
+        snap({ entries: [dns(A, `_x402-payto.${D}`, { signature_status: sig })] }),
+      );
+      expect(kinds(r)).toEqual(["newly_proven"]);
+      if (r.comparable) {
+        expect(r.transitions[0]?.severity).toBe("medium");
+        expect(r.transitions[0]?.signature_status).toBe(sig);
+        expect(r.summary).toBe("changed");
+      }
+    }
+  });
+
+  it("valid → signature stripped/weakened → CONFLICT, not still_verified (arc M7)", () => {
+    for (const now of ["none", "unverifiable", "invalid"] as const) {
+      const r = diffPaytoReports(
+        snap({ observed_at: T1, entries: [dns(A, `_x402-payto.${D}`, { signature_status: "valid" })] }),
+        snap({ entries: [dns(A, `_x402-payto.${D}`, { signature_status: now })] }),
+      );
+      expect(kinds(r)).toEqual(["CONFLICT"]);
+      if (r.comparable) expect(r.summary).toBe("changed");
+    }
   });
 });
 
@@ -130,6 +159,40 @@ describe("diffPaytoReports — DROPPED only on confirmed absence", () => {
       snap({ dns_state: "unchecked", absence_confirmed: false }),
     );
     expect(kinds(r)).toEqual(["recheck_unchecked"]);
+  });
+
+  it("arc-H3: dns member + cache-hit ok (absence_confirmed false) → unchecked, NEVER dropped", () => {
+    const r = diffPaytoReports(
+      snap({ observed_at: T1, entries: [dns(A)] }),
+      snap({ dns_state: "ok", absence_confirmed: false }),
+    );
+    expect(kinds(r)).toEqual(["recheck_unchecked"]);
+    if (r.comparable) expect(r.summary).toBe("unchecked");
+  });
+
+  it("arc-C1: site member + fresh DNS absent but well-known fetch failed → unchecked, NEVER dropped", () => {
+    const r = diffPaytoReports(
+      snap({ observed_at: T1, entries: [site(A)], site_state: "ok" }),
+      snap({ site_state: "unchecked", absence_confirmed: true }),
+    );
+    expect(kinds(r)).toEqual(["recheck_unchecked"]);
+    expect(kinds(r)).not.toContain("DROPPED");
+  });
+
+  it("site member + DNS set now rules (site unreachable irrelevant) → DROPPED", () => {
+    const r = diffPaytoReports(
+      snap({ observed_at: T1, entries: [site(A)], site_state: "ok" }),
+      snap({ entries: [dns(B)], site_state: "unchecked", absence_confirmed: true }),
+    );
+    expect(kinds(r).sort()).toEqual(["ROTATED", "ROTATED"].sort());
+  });
+
+  it("site member + both tiers answered, member gone → DROPPED confirmed", () => {
+    const r = diffPaytoReports(
+      snap({ observed_at: T1, entries: [site(A)], site_state: "ok" }),
+      snap({ site_state: "ok", absence_confirmed: true }),
+    );
+    expect(kinds(r)).toEqual(["DROPPED"]);
   });
 });
 

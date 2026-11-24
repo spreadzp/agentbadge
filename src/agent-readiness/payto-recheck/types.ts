@@ -87,6 +87,9 @@ export interface ProofTransition {
   replaced_by?: string;
   /** ROTATED (new member): the payTo it replaced. */
   replaces?: string;
+  /** Signature status of the added/current entry, when known
+   *  (arc-review M7: unsigned and signed adds must not look identical). */
+  signature_status?: SignatureStatus;
   /** Human-readable line, e.g. "was proven 2026-11-20, absent 2026-11-24". */
   note: string;
 }
