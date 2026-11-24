@@ -170,11 +170,11 @@ export const checkerOauthRefreshGrant: SemanticChecker = (sources) => {
   }
 };
 
-const URL_TAG = /<url>/g;
+const LOC_TAG = /<loc>/g;
 
 function countSitemapUrls(body: string | null | undefined): number {
   if (!body) return 0;
-  const matches = body.match(URL_TAG);
+  const matches = body.match(LOC_TAG);
   return matches ? matches.length : 0;
 }
 
