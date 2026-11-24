@@ -56,6 +56,7 @@ export type CreateOperatorResult =
         | "invalid_id"
         | "invalid_principal_type"
         | "invalid_capability"
+        | "invalid_display_name"
         | "duplicate_id";
     };
 
@@ -65,8 +66,11 @@ export type IssueCredentialResult =
       ok: false;
       reason:
         | "invalid_id"
+        | "invalid_key_hash"
+        | "invalid_key_prefix"
         | "missing_operator"
         | "disabled_operator"
+        | "duplicate_id"
         | "duplicate_hash";
     };
 

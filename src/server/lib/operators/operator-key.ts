@@ -22,9 +22,10 @@ export function adminKeyPrefix(plaintext: string): string {
   return plaintext.slice(0, ADMIN_KEY_PLAINTEXT_PREFIX.length + 8);
 }
 
+const PLAINTEXT_RE = new RegExp(
+  `^${ADMIN_KEY_PLAINTEXT_PREFIX}[A-Za-z0-9_-]{32}$`,
+);
+
 export function isAdminKeyPlaintext(candidate: string): boolean {
-  return (
-    candidate.startsWith(ADMIN_KEY_PLAINTEXT_PREFIX) &&
-    candidate.length === ADMIN_KEY_PLAINTEXT_PREFIX.length + 32
-  );
+  return PLAINTEXT_RE.test(candidate);
 }

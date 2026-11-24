@@ -18,6 +18,9 @@ export function createMemoryOperatorRepos(fixture?: {
   return {
     operators: {
       async insert(o) {
+        // PG parity: PK violation throws, insert never upserts
+        if (operators.has(o.id))
+          throw new Error(`duplicate operator id: ${o.id}`);
         operators.set(o.id, o);
         return o;
       },
@@ -33,6 +36,9 @@ export function createMemoryOperatorRepos(fixture?: {
         );
       },
       async update(o) {
+        // PG parity: update of a missing row throws (repo "not found")
+        if (!operators.has(o.id))
+          throw new Error(`admin operator not found: ${o.id}`);
         operators.set(o.id, o);
         return o;
       },
@@ -44,7 +50,9 @@ export function createMemoryOperatorRepos(fixture?: {
     },
     credentials: {
       async insert(c) {
-        // mirror the PG @@unique(keyHash) — backends share invariants
+        // PG parity: PK violation + @@unique(keyHash) both throw
+        if (credentials.has(c.id))
+          throw new Error(`duplicate credential id: ${c.id}`);
         for (const existing of credentials.values())
           if (existing.keyHash === c.keyHash)
             throw new Error(`duplicate keyHash: ${c.keyHash}`);
@@ -65,6 +73,8 @@ export function createMemoryOperatorRepos(fixture?: {
         );
       },
       async update(c) {
+        if (!credentials.has(c.id))
+          throw new Error(`admin credential not found: ${c.id}`);
         credentials.set(c.id, c);
         return c;
       },

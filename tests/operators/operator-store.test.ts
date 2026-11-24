@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_CAPABILITIES,
   adminKeyPrefix,
+  createMemoryOperatorRepos,
   createMemoryOperatorStore,
   generateAdminKeyPlaintext,
   hashAdminKey,
@@ -121,6 +122,111 @@ describe("operator store contract (memory backend)", () => {
       ok: false,
       reason: "disabled_operator",
     });
+  });
+
+  it("issueCredential enforces hash-only storage + keyPrefix shape (DoD #4)", async () => {
+    const s = createMemoryOperatorStore();
+    const op = await mkOp(s);
+    if (!op.ok) throw new Error("seed failed");
+    const key = generateAdminKeyPlaintext();
+    // non-sha256 value as keyHash — refused at the store boundary
+    expect(
+      await s.issueCredential({
+        id: id("opc"),
+        operatorId: op.operator.id,
+        keyHash: "not-a-sha256-hex",
+        keyPrefix: adminKeyPrefix(key),
+      }),
+    ).toEqual({ ok: false, reason: "invalid_key_hash" });
+    // opk_ plaintext in the hash field — the exact leak DoD #4 forbids
+    expect(
+      await s.issueCredential({
+        id: id("opc"),
+        operatorId: op.operator.id,
+        keyHash: key,
+        keyPrefix: adminKeyPrefix(key),
+      }),
+    ).toEqual({ ok: false, reason: "invalid_key_hash" });
+    // keyPrefix is "opk_"+8 identification chars — arbitrary strings refused
+    expect(
+      await s.issueCredential({
+        id: id("opc"),
+        operatorId: op.operator.id,
+        keyHash: hashAdminKey(key),
+        keyPrefix: key, // full plaintext must never land in the column
+      }),
+    ).toEqual({ ok: false, reason: "invalid_key_prefix" });
+    // credential id is a PK too — reuse is refused honestly
+    const first = await issue(s, op.operator.id);
+    if (!first.ok) throw new Error("seed failed");
+    expect(
+      await s.issueCredential({
+        id: first.credential.id,
+        operatorId: op.operator.id,
+        keyHash: hashAdminKey(generateAdminKeyPlaintext()),
+        keyPrefix: "opk_abcdefgh",
+      }),
+    ).toEqual({ ok: false, reason: "duplicate_id" });
+  });
+
+  it("createOperator rejects empty/unbounded displayName (audit field)", async () => {
+    const s = createMemoryOperatorStore();
+    const base = {
+      id: id("op"),
+      principalType: "human",
+      capabilities: ["read"],
+    };
+    expect(
+      await s.createOperator({ ...base, displayName: "   " }),
+    ).toEqual({ ok: false, reason: "invalid_display_name" });
+    expect(
+      await s.createOperator({
+        ...base,
+        displayName: "x".repeat(201),
+      }),
+    ).toEqual({ ok: false, reason: "invalid_display_name" });
+    const ok = await s.createOperator({
+      ...base,
+      displayName: "  Alice  ",
+    });
+    expect(ok.ok && ok.operator.displayName).toBe("Alice");
+  });
+
+  it("memory repos mirror PG: duplicate-PK insert + update-miss throw", async () => {
+    const repos = createMemoryOperatorRepos();
+    const row = {
+      id: id("op"),
+      displayName: "x",
+      principalType: "human" as const,
+      capabilities: ["read"],
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      disabledAt: null,
+    };
+    await repos.operators.insert(row);
+    await expect(repos.operators.insert(row)).rejects.toThrow(
+      /duplicate/i,
+    );
+    await expect(
+      repos.operators.update({ ...row, id: id("op") }),
+    ).rejects.toThrow(/not found/i);
+    const cred = {
+      id: id("opc"),
+      operatorId: row.id,
+      keyHash: hashAdminKey(generateAdminKeyPlaintext()),
+      keyPrefix: "opk_abcdefgh",
+      status: "active" as const,
+      issuedAt: new Date().toISOString(),
+      revokedAt: null,
+      lastUsedAt: null,
+    };
+    await repos.credentials.insert(cred);
+    await expect(repos.credentials.insert(cred)).rejects.toThrow(
+      /duplicate/i,
+    );
+    await expect(
+      repos.credentials.update({ ...cred, id: id("opc") }),
+    ).rejects.toThrow(/not found/i);
   });
 
   it("getOperatorByKeyHash returns the (operator, credential) pair", async () => {
