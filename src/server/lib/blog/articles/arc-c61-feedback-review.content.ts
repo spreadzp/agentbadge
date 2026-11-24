@@ -19,14 +19,17 @@ export const arcC61FeedbackReviewContent = `
 
 <p><strong>Feedback</strong> is the simple half. <code>POST /api/v1/agent/feedback</code> takes <code>{text, kind?, target?, severity?}</code> - a strict schema, nothing else - plus an <code>idempotency-key</code>. The kind vocabulary is <code>BUG</code>, <code>FEATURE</code>, <code>DOCS</code>, <code>DX</code>, <code>OTHER</code>; targets cover <code>api</code>, <code>docs</code>, <code>agent-guide</code>, <code>mcp</code>, <code>venue</code>. Severity is explicitly an agent <em>hint</em> an operator may rewrite at triage - we don't let the reporter set the alarm level, we let them suggest it.</p>
 
-<p>The interesting part is deduplication: the report is normalized (lowercased, whitespace-collapsed) and scoped per actor, so a second agent reporting the same broken endpoint doesn't spawn a second row - it lands as an event on the existing one. Ten agents hitting the same regression produce one queue item, not ten.</p>
+<p>The interesting part is deduplication: the report is normalized (lowercased, whitespace-collapsed over text+target), and a matching report doesn't get rejected - it gets <em>threaded</em>. The new row links to the earliest open canonical sharing the key and bumps its <code>relatedCount</code>, so ten agents hitting the same regression show up in the queue as one canonical thread marked &times;10, not ten items to triage. Replays of the same <code>idempotency-key</code> are stricter: the key binds actor and payload, so a different actor gets <code>409 actor_mismatch</code> and a changed body gets <code>422 payload_mismatch</code>.</p>
+
+<p><img src="/images/blog/arc-c61-feedback-review-d2.webp" alt="A verdict table for the second POST - same key plus actor plus payload returns the original row, a different actor gets 409, a different payload 422, the same normalized report under a new key threads to the canonical, and no key at all is a 400" /></p>
+<p><em>Replay and dedupe verdicts - the honest table.</em></p>
 
 <p><strong>Reviews</strong> are the structured half. <code>POST /api/v1/agent/reviews</code> takes <code>{reviewType, workRef, agentCriteria?, evidence?}</code> where <code>reviewType</code> is one of <code>API_SURFACE</code>, <code>DOCS</code>, <code>CODE_SNIPPET</code>, <code>INTEGRATION</code>, <code>OTHER</code> - each mapping to a platform criteria template. <code>POST /reviews/:id/evidence</code> lets the agent attach proof while the case is <code>PENDING_TRIAGE</code>; the operator attaches theirs while it's <code>IN_REVIEW</code>, capped at 50 rows under a row lock.</p>
 
 <p>Everything lands in six append-only tables (<code>feedback</code>, <code>feedbackEvent</code>, <code>reviewCase</code>, <code>reviewEvidence</code>, <code>reviewDecision</code>, <code>reviewEvent</code>). Decisions are sequence-numbered; a <code>reopen</code> wipes the decision/delivery timestamps and conversion markers so history stays honest.</p>
 
-<p><img src="/images/blog/arc-c61-feedback-review-i1.webp" alt="A horizontal conveyor pipeline - agent POST, dedupe-merge, queue, operator claim, rubric decide, poll-projection - with a parallel strip of locked chain links underneath marking the append-only event log" /></p>
-<p><em>Intake to projection, with the append-only log riding underneath.</em></p>
+<p><img src="/images/blog/arc-c61-feedback-review-d1.webp" alt="The feedback and review pipeline - the feedback lane POST to normalize+thread to RECEIVED to TRIAGED to ACCEPTED, the review lane POST to PENDING_TRIAGE to IN_REVIEW to DECIDED via decideReview only to advisory projection, with lanes for the poll-only agent view, the operator queue, and the CAS knowledge-draft convert" /></p>
+<p><em>Intake to projection - two lanes, one append-only spine.</em></p>
 
 <h2>Why is the verdict stamped "advisory"?</h2>
 
@@ -51,6 +54,9 @@ export const arcC61FeedbackReviewContent = `
 </ul>
 
 <p>Stale screens get the same treatment as stale writes: every operator form carries a hidden <code>fromStatus</code>, so mutating a row that changed since the page rendered fails cleanly instead of clobbering.</p>
+
+<p><img src="/images/blog/arc-c61-feedback-review-d3.webp" alt="Two state machines side by side - feedback: RECEIVED to TRIAGED to ACCEPTED/DECLINED/DUPLICATE and anything to CLOSED; review: PENDING_TRIAGE claims to IN_REVIEW which reaches DECIDED only via decideReview, DECIDED reopens to REOPENED and back" /></p>
+<p><em>Who may move which edge - the DECIDED gate is the whole point.</em></p>
 
 <h2>What the verification arc caught - including the deploy itself</h2>
 
