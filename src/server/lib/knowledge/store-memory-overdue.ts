@@ -1,5 +1,8 @@
 import type { KnowledgeGapOverdueInsert } from "./store";
-import type { KnowledgeGapOverdueRecord } from "./gap-overdue";
+import type {
+  KnowledgeGapOverduePending,
+  KnowledgeGapOverdueRecord,
+} from "./gap-overdue";
 import type { KnowledgeGapRecord } from "./types";
 import { nowIso, type MemoryKnowledgeData } from "./memory-data";
 
@@ -59,5 +62,29 @@ export class MemoryKnowledgeOverdue {
       return d !== 0 ? d : a.id.localeCompare(b.id);
     });
     return rows;
+  }
+
+  /** The drain set — emittedAt IS NULL regardless of gap state
+   *  (kill-stranded rows still owe their signal). Gap fields come
+   *  off the live record; a vanished gap reports nulls (the PG
+   *  LEFT JOIN mirror). detectedAt ASC + id = FIFO order. */
+  async listPendingOverdueEmits() {
+    const pending = [...this.data.gapOverdues.values()].filter(
+      (o) => o.emittedAt === null,
+    );
+    pending.sort((a, b) => {
+      const d = Date.parse(a.detectedAt) - Date.parse(b.detectedAt);
+      return d !== 0 ? d : a.id.localeCompare(b.id);
+    });
+    return pending.map((o) => {
+      const gap = this.data.gaps.get(o.gapId);
+      return {
+        id: o.id,
+        gapId: o.gapId,
+        dueAt: o.dueAt,
+        normalizedQuery: gap?.normalizedQuery ?? null,
+        count: gap?.count ?? null,
+      } satisfies KnowledgeGapOverduePending;
+    });
   }
 }

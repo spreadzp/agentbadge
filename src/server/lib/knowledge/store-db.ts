@@ -26,6 +26,7 @@ import type {
 } from "./gap-events";
 import type {
   KnowledgeGapOverdueInsert,
+  KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
 } from "./gap-overdue";
 
@@ -251,6 +252,11 @@ export class DbKnowledgeStore implements KnowledgeStore {
   async listDueBreaches(now: string): Promise<KnowledgeGapRecord[]> {
     const rows = await this.taxonomy.listDueBreaches(now);
     return rows.map(mapGap);
+  }
+
+  listPendingOverdueEmits(): Promise<KnowledgeGapOverduePending[]> {
+    // Projection shape already matches — no mapping needed.
+    return this.taxonomy.listPendingOverdueEmits();
   }
 }
 

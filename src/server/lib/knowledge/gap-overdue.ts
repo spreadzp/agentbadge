@@ -33,6 +33,19 @@ export interface KnowledgeGapOverdueInsert {
   detectedAt?: string;
 }
 
+/** Pending-emit projection — the durable-intent drain set
+ *  (`emittedAt IS NULL`). Gap fields join current state; the row
+ *  is the fact — a gap that left the due set (RESOLVED, deadline
+ *  moved) still owes its signal. Nulls if the gap row vanished. */
+export interface KnowledgeGapOverduePending {
+  id: string;
+  gapId: string;
+  /** The breached deadline — NOT the gap's current dueAt. */
+  dueAt: string;
+  normalizedQuery: string | null;
+  count: number | null;
+}
+
 /** kgo_<ulid> — ULID keeps same-ms writes sortable under a
  *  time-keyed index (the 264-11 gapEventId lesson). */
 export const gapOverdueId = () => `kgo_${generateReportId()}`;

@@ -136,4 +136,5 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
     this.overdue.recordOverdue(input);
   markOverdueEmitted = (id: string) => this.overdue.markOverdueEmitted(id);
   listDueBreaches = (now: string) => this.overdue.listDueBreaches(now);
+  listPendingOverdueEmits = () => this.overdue.listPendingOverdueEmits();
 }

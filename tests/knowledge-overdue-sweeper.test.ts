@@ -139,6 +139,40 @@ describe("SLICE-264-13: overdue sweeper (memory)", () => {
     expect(r2.emitted).toBe(1); // gap2 only — gap already stamped.
   });
 
+  it("stranded row — gap resolved after record still emits (pending drain)", async () => {
+    const { store } = await mkGapStore();
+    const gap = await seedBreached(store, PAST);
+    // Record lands, tick dies before the emit — then the gap
+    // RESOLVES, leaving the due set entirely. The breach fact is
+    // durable; the signal must still go out (review High).
+    await store.recordOverdue({
+      id: gapOverdueId(),
+      gapId: gap.id,
+      dueAt: PAST,
+    });
+    await store.transitionGap(gap.id, {
+      from: "OPEN",
+      to: "TRIAGED",
+      resolvedAt: null,
+    });
+    await store.transitionGap(gap.id, {
+      from: "TRIAGED",
+      to: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+    });
+    const emitted: Record<string, unknown>[] = [];
+    const r = await sweepOverdueGaps({
+      store,
+      emit: (k, p) => emitted.push(p),
+    });
+    expect(r.scanned).toBe(0); // out of the due set…
+    expect(emitted).toHaveLength(1); // …but the signal still went
+    expect(emitted[0].gapId).toBe(gap.id);
+    // Stamped — a second tick doesn't re-emit.
+    const r2 = await sweepOverdueGaps({ store, emit: () => {} });
+    expect(r2.emitted).toBe(0);
+  });
+
   it("scan liveness — RESOLVED and future-due are not breaches", async () => {
     const { store } = await mkGapStore();
     const gap = await seedBreached(store, PAST);
@@ -215,6 +249,7 @@ describe.skipIf(!PG_URL)("overdue sweeper — PG backend", () => {
       emitted.push({ kind: k, ...p });
     const r1 = await sweepOverdueGaps({ store, emit: collect });
     expect(r1.recorded).toBeGreaterThanOrEqual(1);
+    expect(r1.errors).toEqual([]);
     expect(
       emitted.find((e) => e.gapId === gap.id)?.dueAt,
     ).toBe(PAST);
@@ -249,5 +284,27 @@ describe.skipIf(!PG_URL)("overdue sweeper — PG backend", () => {
     expect(
       e4.find((e) => e.gapId === gap.id)?.dueAt,
     ).toBe(PAST2);
+
+    // Stranded: record → RESOLVE → signal still fires (pending
+    // drain sees emittedAt=null regardless of due-set membership).
+    const gap3 = await seedBreached(store, PAST);
+    await store.recordOverdue({
+      id: gapOverdueId(),
+      gapId: gap3.id,
+      dueAt: PAST,
+    });
+    await store.transitionGap(gap3.id, {
+      from: "OPEN",
+      to: "TRIAGED",
+      resolvedAt: null,
+    });
+    await store.transitionGap(gap3.id, {
+      from: "TRIAGED",
+      to: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+    });
+    const e5: Record<string, unknown>[] = [];
+    await sweepOverdueGaps({ store, emit: (k, p) => e5.push(p) });
+    expect(e5.some((e) => e.gapId === gap3.id)).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ import type {
 } from "./gap-events";
 import type {
   KnowledgeGapOverdueInsert,
+  KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
 } from "./gap-overdue";
 import type {
@@ -229,11 +230,17 @@ export interface KnowledgeStore {
   recordOverdue(
     input: KnowledgeGapOverdueInsert,
   ): Promise<{ row: KnowledgeGapOverdueRecord | null; created: boolean }>;
-  /** Stamp the emit — idempotent (emittedAt IS NULL guard). */
+  /** Stamp the emit — idempotent (emittedAt IS NULL guard).
+   *  Semantics: emit INVOCATION was attempted — the bus is
+   *  fire-and-forget, hook delivery is out of scope (C8). */
   markOverdueEmitted(id: string): Promise<{ updated: boolean }>;
   /** Gaps breached at `now` — OPEN|TRIAGED only (isGapOverdue's
-   *  liveness rule; `dueAt < now` already excludes NULL). */
+   *  liveness rule; `dueAt < now` already excludes NULL). Paged
+   *  (500) — overflow drains on later ticks. */
   listDueBreaches(now: string): Promise<KnowledgeGapRecord[]>;
+  /** The durable-intent drain — emittedAt IS NULL rows regardless
+   *  of gap state (kill-stranded rows still owe their signal). */
+  listPendingOverdueEmits(): Promise<KnowledgeGapOverduePending[]>;
 }
 
 // SLICE-264-10/11: gap write-input shapes live in gap-events.ts.
@@ -247,6 +254,7 @@ export type {
 // SLICE-264-13: breach-row shapes live in gap-overdue.ts.
 export type {
   KnowledgeGapOverdueInsert,
+  KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
 } from "./gap-overdue";
 

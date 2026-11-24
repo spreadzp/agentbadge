@@ -70,10 +70,17 @@ export interface KnowledgeGapEventInsert {
 export const gapEventId = () => `kgev_${generateReportId()}`;
 
 /** Epoch-ms for either timestamp shape — PG codec stamps can arrive
- *  native ("YYYY-MM-DD HH:mm:ss+00"), so lexical compares and raw
- *  Date.parse both need the space→T normalize first. */
+ *  native ("YYYY-MM-DD HH:mm:ss+00"), which needs TWO fixes before
+ *  Date.parse: space→T, and the bare "+HH" offset → "+HH:00" (a
+ *  colon-less offset is invalid ISO — Date.parse returns NaN and
+ *  isGapOverdue silently dead-ends to false on the PG backend). */
 export const gapTsMs = (s: string) =>
-  Date.parse(s.includes("T") ? s : s.replace(" ", "T"));
+  Date.parse(
+    (s.includes("T") ? s : s.replace(" ", "T")).replace(
+      /([+-]\d{2})$/,
+      "$1:00",
+    ),
+  );
 
 /** Canonical overdue derivation (D-264-Q10): past-due ONLY while
  *  the gap still needs work — a RESOLVED row can't be "late".

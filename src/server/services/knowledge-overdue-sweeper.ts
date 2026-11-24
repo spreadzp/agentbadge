@@ -45,6 +45,9 @@ export function startKnowledgeOverdueSweeper(opts?: {
     opts?.intervalMs ??
     (Number(process.env.KNOWLEDGE_OVERDUE_INTERVAL_MS) ||
       DEFAULT_INTERVAL_MS);
+  logger.info("Knowledge overdue sweeper started", {
+    intervalMs: baseInterval,
+  });
   const tick = async () => {
     try {
       const store = pickKnowledgeStores(getDatabase());
@@ -62,8 +65,12 @@ export function startKnowledgeOverdueSweeper(opts?: {
         error: err instanceof Error ? err.message : String(err),
       });
     } finally {
-      const jitter = Math.random() * (JITTER_MS * 2) - JITTER_MS;
-      sweeperTimer = setTimeout(tick, Math.max(1000, baseInterval + jitter));
+      // stopKnowledgeOverdueSweeper() nulls the timer — a tick in
+      // flight must not resurrect it.
+      if (sweeperTimer !== null) {
+        const jitter = Math.random() * (JITTER_MS * 2) - JITTER_MS;
+        sweeperTimer = setTimeout(tick, Math.max(1000, baseInterval + jitter));
+      }
     }
   };
   sweeperTimer = setTimeout(tick, FIRST_TICK_MS);
