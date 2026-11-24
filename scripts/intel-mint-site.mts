@@ -1,7 +1,8 @@
 /**
  * Mint a site_key for a real site on the LIVE dev PG (262-17 path).
  * Usage: bun scripts/intel-mint-site.mts <domain>
- * Prints site_id + absk_ plaintext (shown once — paste into the WP plugin).
+ * Idempotent — reuses tenant/customer/site/operator when present;
+ * prints site_id + a FRESH absk_ plaintext each run (shown once).
  */
 import { getDatabase } from "../src/server/lib/database";
 import {
@@ -26,15 +27,40 @@ const entitlement = pickIntelEntitlementStore(db);
 const entEvents = pickIntelEntitlementEventStore(db);
 
 const slug = "pryme";
-let tenant = await stores.tenants.findBySlug?.(slug);
-if (!tenant) tenant = await registry.createTenant({ slug, name: "Pryme Studio" });
-const customer = await registry.createCustomer(tenant.id, { name: "Pryme Studio" });
-const site = await registry.createSite(customer.id, { domains: [domain] });
+const tenant =
+  (await stores.tenants.bySlug(slug)) ??
+  (await registry.createTenant({ slug, name: "Pryme Studio" }));
+
+// site lookup by domain first (partial-run safe), else create under
+// the first customer of the tenant.
+let site = null;
+const dom = await stores.domains.byHostname(domain);
+if (dom) site = await stores.sites.byId(dom.siteId);
+if (!site) {
+  const customers = await stores.customers.forTenant(tenant.id);
+  const customer =
+    customers[0] ??
+    (await registry.createCustomer(tenant.id, { name: "Pryme Studio" }));
+  site = await registry.createSite(customer.id, { domains: [domain] });
+}
 const siteKey = (await registry.mintSiteKey(site.id)).plaintext;
-const op = await inviteOperator(stores, tenant.id, { email: "op@pryme.dev", role: "operator" });
-// audit consent is granted inline by the plugin handshake; publication
-// is operator-gated — grant here so verify surface works if attested.
-await grantConsent(consent, site.id, "publication", { principal: "operator", id: op.record.id });
+
+const ops = await stores.operators.forTenant(tenant.id);
+const op =
+  ops.find((o) => o.email === "op@pryme.dev" && o.status === "active") ??
+  (await inviteOperator(stores, tenant.id, {
+    email: "op@pryme.dev",
+    role: "operator",
+  })).record;
+
+// publication consent is operator-gated — grant once so verify works.
+const existing = await consent.byScope(site.id, "publication");
+if (!existing || existing.status !== "granted") {
+  await grantConsent(consent, site.id, "publication", {
+    principal: "operator",
+    id: op.id,
+  });
+}
 await assignPlan(
   { entitlements: entitlement, events: entEvents },
   {
@@ -42,15 +68,14 @@ await assignPlan(
     planCode: "pilot",
     tenantSiteIds: [site.id],
     now: new Date().toISOString(),
-    actor: { principal: "operator", id: op.record.id },
+    actor: { principal: "operator", id: op.id },
   },
-);
+).catch(() => undefined);
 
 console.log(JSON.stringify({
   tenant_id: tenant.id,
-  customer_id: customer.id,
   site_id: site.id,
   site_key: siteKey,
-  operator_key: op.plaintext ?? "(not returned)",
+  operator_id: op.id,
 }, null, 2));
 process.exit(0);
