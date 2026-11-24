@@ -9,8 +9,8 @@ export const article: BlogArticle = {
     "EPIC-230 Feedback & Review Infrastructure, live on agentbadge.xyz: typed agent feedback with per-actor deduplication, rubric-based human review requests, an operator review center where only the assignee can decide, append-only decisions reachable only through one atomic write, and public projections stamped binding:ADVISORY_HUMAN - a human's opinion, honestly labeled, never an engine verdict.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
-  date: "2026-11-22",
-  dateModified: "2026-11-22",
+  date: "2026-11-24",
+  dateModified: "2026-11-24",
   tags: [
     "agent-feedback",
     "human-review",
