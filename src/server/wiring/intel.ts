@@ -20,7 +20,8 @@ import {
   pickIntelSecurityEventStore,
 } from "../lib/intel/pull/db-stores";
 import { createMemoryAttestationStore } from "../lib/intel/attestation";
-import { createMemoryEntitlementEventStore } from "../lib/intel/entitlement";
+import { pickIntelEntitlementEventStore } from "../lib/intel/entitlement";
+import { pickIntelBillingEventStore } from "../lib/intel/billing";
 import { INTEL_WP_PROFILE_V1 } from "../lib/intel/rules";
 import {
   createSafeScanFetch,
@@ -69,7 +70,8 @@ export function wireIntel(app: Hono): void {
       attestations,
       attestationValidityDays: cfg.attestationValidityDays,
       scanCooldownSeconds: cfg.scanCooldownSeconds,
-      entitlementEvents: createMemoryEntitlementEventStore(),
+      entitlementEvents: pickIntelEntitlementEventStore(db),
+      billingEvents: pickIntelBillingEventStore(db),
       billingSecrets: {
         stripe: cfg.billingStripeSecret,
         freemius: cfg.billingFreemiusSecret,

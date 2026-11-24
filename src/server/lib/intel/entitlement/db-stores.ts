@@ -4,7 +4,12 @@
 
 import type { Database } from "@agentbadge/database";
 import { createMemoryEntitlementStore } from "./memory";
+import { createMemoryEntitlementEventStore } from "./events-store";
 import type { IntelEntitlementStore } from "./store";
+import type {
+  IntelEntitlementEvent,
+  IntelEntitlementEventStore,
+} from "./events-store";
 import type { IntelEntitlement, IntelEntitlementStatus } from "./types";
 
 interface EntitlementRepoRecord {
@@ -48,4 +53,45 @@ export function pickIntelEntitlementStore(
     "intelEntitlement" in db ? db.intelEntitlement : undefined;
   if (repo) return adapt(repo);
   return (shared ??= createMemoryEntitlementStore());
+}
+
+// ---------- entitlement events (0.6.37 — intelEntitlementEvents table) ----------
+
+interface EntitlementEventRepoRecord {
+  id: string;
+  tenantId: string;
+  actor: string;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string;
+  plan: string;
+  reason: string | null;
+  at: string;
+}
+
+export interface IntelEntitlementEventRepository {
+  insert(e: EntitlementEventRepoRecord): Promise<EntitlementEventRepoRecord>;
+  forTenant(tenantId: string): Promise<EntitlementEventRepoRecord[]>;
+}
+
+const adaptEvents = (
+  repo: IntelEntitlementEventRepository,
+): IntelEntitlementEventStore => ({
+  backend: "postgres",
+  insert: async (e) => (await repo.insert(e)) as IntelEntitlementEvent,
+  forTenant: async (tenantId) =>
+    ((await repo.forTenant(tenantId)) as IntelEntitlementEvent[]),
+});
+
+let sharedEvents: IntelEntitlementEventStore | undefined;
+
+export function pickIntelEntitlementEventStore(
+  db: Database | {
+    intelEntitlementEvents?: IntelEntitlementEventRepository | null;
+  },
+): IntelEntitlementEventStore {
+  const repo =
+    "intelEntitlementEvents" in db ? db.intelEntitlementEvents : undefined;
+  if (repo) return adaptEvents(repo);
+  return (sharedEvents ??= createMemoryEntitlementEventStore());
 }

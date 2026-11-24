@@ -73,6 +73,8 @@ export interface IntelRouteDeps {
   entitlementEvents?: import("../../lib/intel/entitlement").IntelEntitlementEventStore;
   /** SLICE-262-21 — webhook secrets per provider; absent → 503. */
   billingSecrets?: { stripe?: string; freemius?: string };
+  /** 0.6.37 — webhook dedupe/audit; absent → every delivery is claimed. */
+  billingEvents?: import("../../lib/intel/billing").IntelBillingEventStore;
 }
 
 export const INTEL_KEY_MISSING = {

@@ -27,9 +27,8 @@ const ACTIONS: TransitionAction[] = [
   "cancel",
 ];
 
-// Process-local event log until @agentbadge/database ships the
-// table (same known-gap as consent events / scanId index — batches
-// into the next package bump).
+// Memory fallback for deps-less harnesses — wiring always passes
+// pickIntelEntitlementEventStore (PG-backed, memory inside).
 const fallbackEvents = createMemoryEntitlementEventStore();
 
 function bearerToken(c: { req: { header(name: string): string | undefined } }) {

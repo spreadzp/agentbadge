@@ -8,15 +8,18 @@ import {
   createStripeConnector,
   createFreemiusConnector,
   handleBillingSignal,
+  createMemoryBillingEventStore,
   type IntelBillingConnector,
 } from "../../lib/intel/billing";
 import { createMemoryEntitlementEventStore } from "../../lib/intel/entitlement";
+import { generateReportId } from "../../../agent-readiness/integrity/ulid";
 import type { IntelRouteDeps } from "./index";
 
 export function registerBillingRoutes(app: Hono, deps: IntelRouteDeps): void {
-  // process-local dedupe — retries inside one process converge;
-  // cross-instance dedupe lands with the events table (0.6.34 gap)
-  const seen = new Set<string>();
+  // dedupe = IntelBillingEvent insertOnce — the @@unique(provider,
+  // externalId) claim is cross-instance; memory fallback converges
+  // inside one process. markProcessed settles the row after handling.
+  const billingEvents = deps.billingEvents ?? createMemoryBillingEventStore();
   const fallbackEvents = createMemoryEntitlementEventStore();
 
   const connectorFor = (provider: string): IntelBillingConnector | null => {
@@ -51,12 +54,20 @@ export function registerBillingRoutes(app: Hono, deps: IntelRouteDeps): void {
     }
     const results = [];
     for (const signal of v.signals) {
-      const key = `${provider}:${signal.externalId}`;
-      if (seen.has(key)) {
+      const claim = await billingEvents.insertOnce({
+        id: `bev_${generateReportId()}`,
+        provider,
+        externalId: signal.externalId,
+        tenantId: signal.tenantId || null,
+        effect: signal.effect,
+        applied: false,
+        reason: null,
+        processedAt: new Date().toISOString(),
+      });
+      if (!claim.inserted) {
         results.push({ external_id: signal.externalId, applied: false, reason: "duplicate" });
         continue;
       }
-      seen.add(key);
       const tenantSiteIds = async (tenantId: string) => {
         const customers = await deps.registryStores!.customers.forTenant(tenantId);
         const ids: string[] = [];
@@ -75,6 +86,11 @@ export function registerBillingRoutes(app: Hono, deps: IntelRouteDeps): void {
         },
         provider,
         signal,
+      );
+      await billingEvents.markProcessed(
+        claim.record.id,
+        r.applied,
+        r.applied ? null : r.reason,
       );
       results.push({
         external_id: signal.externalId,
