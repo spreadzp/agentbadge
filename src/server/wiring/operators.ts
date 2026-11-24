@@ -1,8 +1,9 @@
 /**
- * EPIC-264 (SLICE-264-3): operator wiring — boot-time env seed
- * (D-264-Q15, C9). Routes for operator management land in 264-4;
- * this hook exists so the FIRST human credential can exist before
- * any surface consumes operatorAuth.
+ * EPIC-264: operator wiring — boot-time env seed (D-264-Q15, C9,
+ * SLICE-264-3) + the admin surfaces (SLICE-264-4). The seed hook
+ * exists so the FIRST human credential can exist before any surface
+ * consumes operatorAuth; the routes are the only operator-admin
+ * boundary — no shared-key bypass by design.
  */
 
 import type { Hono } from "hono";
@@ -11,10 +12,16 @@ import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import { getDatabase } from "../lib/database";
 import { pickOperatorStores, seedOperatorsFromEnv } from "../lib/operators";
+import { createAdminOperatorsApi } from "../routes/admin-operators-api";
+import { createAdminOperatorsUi } from "../routes/admin-operators-ui";
 
 export async function wireOperators(app: Hono): Promise<void> {
-  void app; // routes arrive in SLICE-264-4
   const store = pickOperatorStores(getDatabase());
+
+  // 264-4: JSON API /admin/api/operators/* (operatorAuth + cap) and
+  // SSR console /admin/operators (operatorBrowserAuth + Origin gate).
+  app.route("/", createAdminOperatorsApi(store));
+  app.route("/", createAdminOperatorsUi(store));
 
   // Honest posture check: DATABASE_ENABLED=true with a memory backend
   // means the installed @agentbadge/database predates the

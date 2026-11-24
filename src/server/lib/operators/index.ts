@@ -5,6 +5,7 @@ export * from "./operator-key";
 export * from "./store";
 export { createOperatorStore } from "./ops";
 export { createMemoryOperatorRepos } from "./memory";
+export { consumeKeyReveal, mintKeyReveal } from "./key-reveal";
 export { createMemoryOperatorStore, pickOperatorStores } from "./db-stores";
 export {
   applyOperatorSeed,
