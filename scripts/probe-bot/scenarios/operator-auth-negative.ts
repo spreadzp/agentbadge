@@ -22,6 +22,10 @@
  * Env: PROBE_KEY_A (valid), PROBE_KEY_NOFLOW (probe-only cap),
  * PROBE_KEY_REVOKED, PROBE_KEY_DISABLED; ADMIN_API_KEY — для
  * legacy-кейса (если не задан — кейс просто не собирается).
+ * Env-gate целиком: любой из PROBE_KEY_* отсутствует → applies
+ * = false → сценарий молча даёт 0 кейсов (ни одной строки в
+ * отчёте, включая inconclusive) — то же, что у lifecycle на
+ * A/B/C; для battery это сознательный trade-off.
  * Внимание: заведённый ADMIN_BREAK_GLASS_ENABLED делает legacy
  * окно открытым → break-glass кейс покраснеет — это честный
  * сигнал об открытом окне, не флаки.

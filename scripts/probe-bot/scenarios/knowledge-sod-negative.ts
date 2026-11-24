@@ -62,9 +62,12 @@ const scenario: Scenario = {
       expect: { statusIn: [403, 409], statusNotIn: [500, 502, 503, 504] },
     });
     // Arc R3 M-11 pins: VERIFIED/PUBLISHED требуют expectedVersionId
-    // (+expectedEvidence для VERIFIED) — без них отказ был бы
-    // precondition_required (400), а не SoD: pins делают 403
-    // однозначно атрибутированным separation-of-duties.
+    // (+expectedEvidence для VERIFIED) — без них легальный verify(b)
+    // на step5 отказал бы precondition_required (400), item остался
+    // бы PENDING и publish-шаг ушёл бы в 409 не по SoD. На самих
+    // SoD-шагах pins — для in-lock атрибуции, если lib fast-path
+    // (SoD до store-вызова) обойдён; сегодня fast-path отдаёт 403
+    // и без pins.
     const verifyPins = {
       expectedVersionId: "{step1.version.id}",
       expectedEvidence: "{step2.evidence.id}",

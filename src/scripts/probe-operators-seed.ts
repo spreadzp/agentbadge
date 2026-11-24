@@ -20,7 +20,10 @@
  * operator — those states ARE the fixture. A key ROTATION (env key
  * differs from the stored hash) issues a second credential rather
  * than overwriting — old creds are never touched here (revoke by
- * hand if a rotation must retire them).
+ * hand if a rotation must retire them). Rotation edge on
+ * PROBE_KEY_DISABLED: issueCredential on a disabled operator →
+ * disabled_operator → FAIL — converge by hand: re-enable → issue
+ * → re-disable (a seed rerun must never resurrect the fixture).
  *
  * svc_* displayNames are refused by AGENT_NAME_DENY (service
  * principals must not look agent-shaped in audit, Arc R1 H2) —
@@ -32,7 +35,7 @@
  *     console.log(generateAdminKeyPlaintext())'   # ×6
  */
 
-import { loadConfig } from "../config/env";
+import { getConfig, loadConfig } from "../config/env";
 import { getDatabase } from "../server/lib/database";
 import {
   createOperator,
@@ -122,7 +125,7 @@ async function seedOne(
   return `${op.id} ${note}`;
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const missing = SPECS.filter((s) => {
     const k = process.env[s.env];
     return k === undefined || k === "" || !isAdminKeyPlaintext(k);
@@ -132,17 +135,22 @@ async function main(): Promise<void> {
       `missing/malformed env: ${missing.join(", ")} — mint via\n` +
         '  bun -e \'import {generateAdminKeyPlaintext} from "./src/server/lib/operators/operator-key.ts"; console.log(generateAdminKeyPlaintext())\'',
     );
-    process.exit(2);
+    return 2;
   }
 
   loadConfig();
   const store = pickOperatorStores(getDatabase());
   if (store.backend === "memory") {
+    // operator-create parity: distinguish "off" from "on but the
+    // installed package lacks the group" — the second refuses until
+    // a publish, and the message must say so.
+    const enabled = getConfig().database?.enabled === true;
     console.error(
-      "operators:seed-probe refused — memory backend: rows die with " +
-        "this process and never reach the running server.",
+      enabled
+        ? "operators:seed-probe refused — DATABASE_ENABLED=true but adminOperators group is absent in the installed @agentbadge/database. Publish the package first."
+        : "operators:seed-probe refused — DATABASE_ENABLED is off: rows die with this process and never reach the running server.",
     );
-    process.exit(3);
+    return 3;
   }
   let failed = false;
   for (const spec of SPECS) {
@@ -150,11 +158,13 @@ async function main(): Promise<void> {
     console.log(`${spec.displayName.padEnd(15)} ${out}`);
     if (out.startsWith("FAIL")) failed = true;
   }
-  if (failed) process.exit(4);
+  return failed ? 4 : 0;
 }
 
+let code = 0;
 try {
-  await main();
+  code = await main();
 } finally {
   await getDatabase().close();
 }
+if (code !== 0) process.exit(code);
