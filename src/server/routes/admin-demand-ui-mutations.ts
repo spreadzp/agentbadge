@@ -16,6 +16,11 @@ import {
   triageDemandCluster,
   updateDemandOpportunity,
 } from "../lib/demand/operator-ops";
+import {
+  defaultBacklogWriter,
+  linkDemandBacklog,
+  type BacklogTaskWriter,
+} from "../lib/demand/backlog-export";
 import type { DemandStore } from "../lib/demand/store";
 import {
   DEMAND_CLUSTER_STATUSES,
@@ -32,6 +37,7 @@ import { backWithDemand } from "./admin-demand-ui";
 export function registerDemandUiMutations(
   app: Hono,
   store: DemandStore,
+  deps: { backlogWriter?: () => BacklogTaskWriter } = {},
 ): void {
   app.post("/admin/demand/clusters/:id/triage", async (c) => {
     const id = c.req.param("id") ?? "";
@@ -153,6 +159,30 @@ export function registerDemandUiMutations(
       backWithDemand(
         "/admin/demand/opportunities",
         r.ok ? { ok: "saved" } : { err: r.reason },
+      ),
+      303,
+    );
+  });
+
+  app.post("/admin/demand/opportunities/:id/backlog", async (c) => {
+    const id = c.req.param("id") ?? "";
+    const b = await c.req.parseBody();
+    const bad = rejectCtrl(c, id);
+    if (bad) return bad;
+    if (!tokenConsumed(b)) {
+      return c.redirect(
+        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
+        303,
+      );
+    }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
+    const writer = deps.backlogWriter ?? defaultBacklogWriter;
+    const r = await linkDemandBacklog(store, id, actor, { writer: writer() });
+    return c.redirect(
+      backWithDemand(
+        "/admin/demand/opportunities",
+        r.ok ? { ok: `linked_${r.taskId}` } : { err: r.reason },
       ),
       303,
     );

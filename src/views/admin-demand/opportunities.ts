@@ -80,7 +80,21 @@ const transitionForm = (o: DemandOpportunityRecord) => {
             >move</button
           >
         </form>`;
-  return html`${moves}${edit}`;
+  const link =
+    o.status === "ACCEPTED"
+      ? html`<form
+          method="post"
+          action="/admin/demand/opportunities/${o.id}/backlog"
+        >
+          ${tokenField()}
+          <button
+            type="submit"
+            class="rounded bg-emerald-800 px-2 py-0.5 text-[11px] text-emerald-100 hover:bg-emerald-700"
+            >→ Backlog task</button
+          >
+        </form>`
+      : html``;
+  return html`${moves}${link}${edit}`;
 };
 
 const row = (o: DemandOpportunityRecord) => {

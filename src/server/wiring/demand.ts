@@ -10,6 +10,7 @@ import type { Hono } from "hono";
 
 import { getDatabase } from "../lib/database";
 import { pickDemandStore } from "../lib/demand/db-stores";
+import { defaultBacklogWriter } from "../lib/demand/backlog-export";
 import { pickOperatorStores } from "../lib/operators";
 import { createAdminDemandRoutes } from "../routes/admin-demand-api";
 import { createAdminDemandUi } from "../routes/admin-demand-ui";
@@ -17,6 +18,18 @@ import { createAdminDemandUi } from "../routes/admin-demand-ui";
 export function wireDemand(app: Hono): void {
   const store = pickDemandStore(getDatabase());
   const operatorStore = pickOperatorStores(getDatabase());
-  app.route("/", createAdminDemandRoutes({ store, operatorStore }));
-  app.route("/", createAdminDemandUi(store, operatorStore));
+  app.route(
+    "/",
+    createAdminDemandRoutes({
+      store,
+      operatorStore,
+      backlogWriter: defaultBacklogWriter,
+    }),
+  );
+  app.route(
+    "/",
+    createAdminDemandUi(store, operatorStore, {
+      backlogWriter: defaultBacklogWriter,
+    }),
+  );
 }

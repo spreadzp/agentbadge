@@ -62,6 +62,7 @@ export const backWithDemand = (
 export function createAdminDemandUi(
   store: DemandStore,
   operatorStore: OperatorStore,
+  deps: { backlogWriter?: () => import("../lib/demand/backlog-export").BacklogTaskWriter } = {},
 ): Hono {
   const app = new Hono();
   const browserAuth = operatorBrowserAuth(operatorStore);
@@ -176,6 +177,6 @@ export function createAdminDemandUi(
     );
   });
 
-  registerDemandUiMutations(app, store);
+  registerDemandUiMutations(app, store, deps);
   return app;
 }

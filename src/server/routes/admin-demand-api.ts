@@ -41,7 +41,10 @@ import {
 import type { OperatorStore } from "../lib/operators";
 import { rejectCtrl } from "./admin-operator-guard";
 import { registerDemandAdminMutations } from "./admin-demand-api-mutations";
-import { registerDemandOpportunityMutations } from "./admin-demand-api-mutations-opportunities";
+import {
+  registerDemandOpportunityMutations,
+  type DemandOpportunityRouteDeps,
+} from "./admin-demand-api-mutations-opportunities";
 
 const LIST_LIMIT_MAX = 200;
 const METRICS_LIMIT = 5000;
@@ -49,6 +52,8 @@ const METRICS_LIMIT = 5000;
 export interface AdminDemandDeps {
   store: DemandStore;
   operatorStore: OperatorStore;
+  /** 231-8: «→ Backlog task» writer factory (default: FS/env). */
+  backlogWriter?: DemandOpportunityRouteDeps["backlogWriter"];
 }
 
 const listLimit = (c: Context, fallback = 50): number => {
@@ -262,7 +267,9 @@ export function createAdminDemandRoutes(deps: AdminDemandDeps): Hono {
   );
 
   registerDemandAdminMutations(app, store);
-  registerDemandOpportunityMutations(app, store);
+  registerDemandOpportunityMutations(app, store, {
+    backlogWriter: deps.backlogWriter,
+  });
 
   return app;
 }
