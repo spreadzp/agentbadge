@@ -76,7 +76,10 @@ describe("linkDemandBacklog (op)", () => {
   it("exports card from snapshot, links taskId, → LINKED, emits event", async () => {
     const store = createMemoryDemandStores();
     const { opp } = await seedAcceptedOpp(store);
-    const captured = { cards: [] as { description: string }[], rolledBack: 0 };
+    const captured = {
+      cards: [] as { title: string; description: string }[],
+      rolledBack: 0,
+    };
     const r = await linkDemandBacklog(store, opp.id, "op_wf", {
       writer: fakeWriter(captured),
     });
