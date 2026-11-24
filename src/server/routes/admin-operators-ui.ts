@@ -107,18 +107,22 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
         credentials: await store.listCredentialsForOperator(o.id),
       })),
     );
-    return page(
+    const revealParam = c.req.query("reveal");
+    const res = page(
       c,
       operatorsPage({
         rows,
         capabilities: ADMIN_CAPABILITIES,
         principalTypes: ADMIN_PRINCIPAL_TYPES,
-        reveal: consumeKeyReveal(
-          c.req.query("reveal") ?? "", actor.id,
-        ),
+        reveal: consumeKeyReveal(revealParam ?? "", actor.id),
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
     );
+    // a reveal page suppresses Referer on outbound navigations — the
+    // (already spent) token must not land in durable traffic logs via
+    // the next same-origin click's referer field.
+    if (revealParam) res.headers.set("Referrer-Policy", "no-referrer");
+    return res;
   });
 
   app.post("/admin/operators/create", async (c) => {
@@ -126,13 +130,19 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
     if (deny) return deny;
     const actor = getPrincipal(c)!;
     const b = await c.req.parseBody();
+    const str = (k: string) =>
+      typeof b[k] === "string" ? (b[k] as string).trim() : "";
+    // ctrl-chars checked BEFORE the token is consumed — a poisoned
+    // field must not burn the single-use token; and the answer rides
+    // the same 303+flash channel as every sibling, not a bare JSON
+    // 400 on an HTML surface.
+    const bad = rejectCtrl(c, str("displayName"), str("principalType"));
+    if (bad) {
+      return c.redirect(backWith({ err: "bad_input" }), 303);
+    }
     if (!tokenConsumed(b)) {
       return c.redirect(backWith({ err: FORM_TOKEN_ERR }), 303);
     }
-    const str = (k: string) =>
-      typeof b[k] === "string" ? (b[k] as string).trim() : "";
-    const bad = rejectCtrl(c, str("displayName"));
-    if (bad) return bad;
     const principalType = str("principalType");
     if (!ADMIN_PRINCIPAL_TYPES.includes(principalType as never)) {
       return c.redirect(backWith({ err: "bad_principal_type" }), 303);
@@ -191,7 +201,15 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
         );
         if (!cred) return c.redirect(backWith({ err: "missing" }), 303);
         const r = await store.revokeCredential(cid);
-        if (!r.ok) return c.redirect(backWith({ err: r.reason }), 303);
+        if (!r.ok) {
+          // refused lockout attempts ARE the audit signal
+          if (r.reason === "last_operator") {
+            auditOperatorAdmin(actor, "credential_revoke_refused", cid, {
+              operatorId: id, reason: r.reason, via: "ui",
+            });
+          }
+          return c.redirect(backWith({ err: r.reason }), 303);
+        }
         auditOperatorAdmin(actor, "credential_revoke", cid, {
           operatorId: id, via: "ui",
         });
@@ -233,7 +251,14 @@ export function createAdminOperatorsUi(store: OperatorStore): Hono {
         verb === "disable"
           ? await store.disableOperator(id)
           : await store.enableOperator(id);
-      if (!r.ok) return c.redirect(backWith({ err: r.reason }), 303);
+      if (!r.ok) {
+        if (r.reason === "last_operator") {
+          auditOperatorAdmin(actor, `operator_${verb}_refused`, id, {
+            reason: r.reason, via: "ui",
+          });
+        }
+        return c.redirect(backWith({ err: r.reason }), 303);
+      }
       auditOperatorAdmin(actor, `operator_${verb}`, id, { via: "ui" });
       return c.redirect(backWith({ ok: `${verb}d_${id}` }), 303);
     });

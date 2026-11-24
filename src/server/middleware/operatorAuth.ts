@@ -197,7 +197,11 @@ export function operatorBrowserAuth(store: OperatorStore) {
   ): Promise<Response | void> {
     const res = await inner(c, next);
     if (res instanceof Response && res.status === 401) {
-      res.headers.set("WWW-Authenticate", 'Basic realm="admin"');
+      // DISTINCT realm (adminBrowserAuth owns "admin"): browsers key
+      // the Basic credential cache on (origin, realm) — during the
+      // dual-auth window cached ADMIN_API_KEY and opk_ creds must not
+      // transpose across old/new surfaces into 401 ping-pong.
+      res.headers.set("WWW-Authenticate", 'Basic realm="operators"');
     }
     return res;
   };

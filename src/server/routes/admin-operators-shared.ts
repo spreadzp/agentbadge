@@ -60,7 +60,14 @@ export function auditOperatorAdmin(
   });
 }
 
-/** Idempotency-key + canonical body fingerprint; failures NOT cached. */
+/** Idempotency-key + canonical body fingerprint; failures NOT cached.
+ *  Asymmetry accepted (review): a SUCCESS body — incl. the one-time
+ *  opk_ plaintext of an issue/rotate — sits in dedupeStore for the
+ *  24h replay window and is re-served on replay; that IS the contract
+ *  a retried caller needs (retry must get the SAME key, not a fresh
+ *  orphan). The window is in-process memory behind the same
+ *  credential that minted it — a leaked idempotency-key alone
+ *  reaches nothing without the operator key. */
 export async function runOperatorWrite(
   c: Context,
   scope: string,
@@ -97,12 +104,16 @@ export const operatorAdminGate = async (c: Context, next: Next) => {
   await next();
 };
 
-/** Store-reason → HTTP status shared by both surfaces. */
+/** Store-reason → HTTP status shared by both surfaces. State-conflict
+ *  refusals are 409 (matches the advertised OpenAPI docs); shape and
+ *  name errors are 400. */
 export const reasonStatus = (reason: string): number =>
   reason === "missing" ||
   reason === "missing_operator" ||
   reason === "missing_credential"
     ? 404
-    : reason === "last_operator"
+    : reason === "last_operator" ||
+        reason === "disabled_operator" ||
+        reason === "already_revoked"
       ? 409
       : 400;

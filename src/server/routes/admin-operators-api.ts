@@ -166,6 +166,12 @@ export function createAdminOperatorsApi(store: OperatorStore): Hono {
                 ? await store.disableOperator(id)
                 : await store.enableOperator(id);
             if (!r.ok) {
+              if (r.reason === "last_operator") {
+                auditOperatorAdmin(
+                  actor, `operator_${verb}_refused`, id,
+                  { reason: r.reason },
+                );
+              }
               return {
                 status: reasonStatus(r.reason),
                 body: { error: { code: r.reason, message: r.reason } },

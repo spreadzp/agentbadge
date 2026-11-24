@@ -13,7 +13,16 @@ import { logger } from "@agentbadge/passport/logger";
 import { httpRequestTotal, httpDurationMs } from "../metrics/metrics";
 import { redactSecrets } from "../lib/redact";
 
-const SENSITIVE_HEADERS = ["authorization", "x-payment", "cookie", "x-api-key"];
+// x-admin-key joined the list when EPIC-264 made opk_ credentials a
+// live transport — an unredacted entry writes a WORKING operator key
+// verbatim into the request log.
+const SENSITIVE_HEADERS = [
+  "authorization",
+  "x-payment",
+  "cookie",
+  "x-api-key",
+  "x-admin-key",
+];
 
 function redactHeaders(headers: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};

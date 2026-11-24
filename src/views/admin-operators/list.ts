@@ -37,11 +37,13 @@ const credLine = (o: AdminOperator, cred: AdminOperatorCredential) => html`
       >issued ${fmtMs(Date.parse(cred.issuedAt) || null)} · used
       ${cred.lastUsedAt ? fmtMs(Date.parse(cred.lastUsedAt)) : "never"}</span
     >
-    ${cred.status === "active" && o.status === "active"
-      ? html`${actionForm(
-          `/admin/operators/${o.id}/credentials/${cred.id}/rotate`,
-          "rotate",
-        )}${actionForm(
+    ${cred.status === "active"
+      ? html`${o.status === "active"
+          ? actionForm(
+              `/admin/operators/${o.id}/credentials/${cred.id}/rotate`,
+              "rotate",
+            )
+          : ""}${actionForm(
           `/admin/operators/${o.id}/credentials/${cred.id}/revoke`,
           "revoke",
           true,

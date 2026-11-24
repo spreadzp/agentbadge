@@ -22,7 +22,11 @@ const STRIPE_KEY = /sk_(live|test)_[0-9a-zA-Z]{16,}/g;
 // JSON field values for *PrivateKey* keys: "fieldName":"value"
 const PRIVATE_KEY_JSON_FIELD = /"(?:[a-zA-Z]*[Pp]rivate[Kk]ey)"\s*:\s*"[^"]*"/g;
 
-const ALL_PATTERNS = [ED25519_DER_KEY, ECDSA_HEX_KEY, BEARER_TOKEN, STRIPE_KEY, PRIVATE_KEY_JSON_FIELD];
+// EPIC-264 operator credentials: opk_ + 32 base64url — wherever one
+// lands (paths, bodies, pasted URLs) it must never survive a log line.
+const OPERATOR_KEY = /opk_[A-Za-z0-9_-]{20,}/g;
+
+const ALL_PATTERNS = [ED25519_DER_KEY, ECDSA_HEX_KEY, BEARER_TOKEN, STRIPE_KEY, PRIVATE_KEY_JSON_FIELD, OPERATOR_KEY];
 
 // ─── String redaction ──────────────────────────────────────────────
 

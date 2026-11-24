@@ -103,6 +103,11 @@ export function registerOperatorCredentialRoutes(
           }
           const r = await store.revokeCredential(cid);
           if (!r.ok) {
+            if (r.reason === "last_operator") {
+              auditOperatorAdmin(actor, "credential_revoke_refused", cid, {
+                operatorId: id, reason: r.reason,
+              });
+            }
             return {
               status: r.reason === "last_operator" ? 409 : 404,
               body: { error: { code: r.reason, message: r.reason } },
@@ -141,9 +146,23 @@ export function registerOperatorCredentialRoutes(
         async () => {
           const r = await rotateOperatorCredential(store, id, cid);
           if (!r.ok) {
+            // issue_failed/revoke_failed can carry a minted-but-unrevoked
+            // key — the union exists so it is NEVER stranded; surface it
+            // once here (same contract as issue) so the caller keeps it
+            // or revokes it — a retry otherwise mints another orphan.
             return {
               status: reasonStatus(r.reason),
-              body: { error: { code: r.reason, message: r.reason } },
+              body: {
+                error: { code: r.reason, message: r.reason },
+                ...("key" in r && r.key
+                  ? {
+                      strandedKey: r.key,
+                      strandedCredential: r.credential
+                        ? credMeta(r.credential)
+                        : undefined,
+                    }
+                  : {}),
+              },
             };
           }
           auditOperatorAdmin(actor, "credential_rotate", cid, {
