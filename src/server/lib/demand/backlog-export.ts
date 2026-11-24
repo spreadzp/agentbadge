@@ -44,11 +44,14 @@ const ORDINAL_STEP = 1000;
 const ALLOC_ATTEMPTS = 8;
 
 const slugify = (title: string): string =>
-  title
-    .replace(/[\p{Cc}\p{Cf}]/gu, "")
-    .replace(/[/\\:*?"<>|]/g, "")
-    .replace(/\s+/g, "-")
-    .slice(0, 80);
+  [
+    ...title
+      .replace(/[\p{Cc}\p{Cf}]/gu, "")
+      .replace(/[/\\:*?"<>|]/g, "")
+      .replace(/\s+/g, "-"),
+  ]
+    .slice(0, 80)
+    .join("");
 
 /** Arc 231 R1 M6: scan+write serialised under a mkdir mutex — two
  *  concurrent exports with different slugs could otherwise both

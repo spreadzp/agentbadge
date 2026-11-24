@@ -76,7 +76,9 @@ export function normalizeClusterKey(
  */
 export function clampDeclaredLevel(declared: DemandLevel): DemandLevel {
   if (declared === "VERIFIED_DEMAND") return "PURCHASE_INTENT";
-  return declared in DEMAND_LEVEL_RANK ? declared : "INTEREST";
+  // Arc 231 R2 L-10: hasOwn — `in` would pass prototype keys like
+  // "constructor"/"toString" through the allowlist.
+  return Object.hasOwn(DEMAND_LEVEL_RANK, declared) ? declared : "INTEREST";
 }
 
 /** Higher of two levels by rank — the monotone-max helper for

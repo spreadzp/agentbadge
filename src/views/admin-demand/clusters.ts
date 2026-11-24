@@ -69,7 +69,8 @@ const opportunityForm = (cl: DemandClusterRecord) =>
   );
 
 /** §16.1 VERIFIED gesture — the operator's explicit level set;
- *  the only path a cluster ever reaches VERIFIED_DEMAND. */
+ *  the only path a cluster ever reaches VERIFIED_DEMAND. Arc 231 R2
+ *  N3: the reason rides the event payload — required for VERIFIED. */
 const levelForm = (cl: DemandClusterRecord) => html`<form
     method="post"
     action="/admin/demand/clusters/${cl.id}/level"
@@ -85,6 +86,7 @@ const levelForm = (cl: DemandClusterRecord) => html`<form
           html`<option value="${l}" ${l === cl.level ? "selected" : ""}>${l}</option>`,
       )}
     </select>
+    ${textInput("reason", "reason (req. for VERIFIED)")}
     <button
       type="submit"
       class="rounded bg-slate-700 px-2 py-0.5 text-[11px] text-slate-100 hover:bg-slate-600"

@@ -6,7 +6,7 @@
  * credential-resolved principal.id (never form data).
  */
 
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 
 import { principalId } from "../middleware/operatorAuth";
 import {
@@ -43,6 +43,29 @@ import {
 } from "./admin-knowledge-ui-mutations-shared";
 import { backWithDemand } from "./admin-demand-ui";
 
+/** Arc 231 R2 L-3: the three pre-write checks every mutation
+ *  shares — NUL/C0 reject on id + text fields, JSON-parity length
+ *  caps, single-use formToken. Returns the response to send, or
+ *  null when the write may proceed. */
+const formGuard = (
+  c: Context,
+  dest: string,
+  id: string,
+  b: Record<string, unknown>,
+  fields: string[] = [],
+  caps: [string, number][] = [],
+): Response | null => {
+  const bad = rejectCtrl(c, id, ...fields.map((f) => formStr(b, f)));
+  if (bad) return bad;
+  if (caps.some(([name, max]) => formStr(b, name).length > max)) {
+    return c.redirect(backWithDemand(dest, { err: "field_too_long" }), 303);
+  }
+  if (!tokenConsumed(b)) {
+    return c.redirect(backWithDemand(dest, { err: FORM_TOKEN_ERR }), 303);
+  }
+  return null;
+};
+
 export function registerDemandUiMutations(
   app: Hono,
   store: DemandStore,
@@ -51,11 +74,10 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/clusters/:id/triage", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id);
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(backWithDemand("/admin/demand", { err: FORM_TOKEN_ERR }), 303);
-    }
+    const guard = formGuard(
+      c, "/admin/demand", id, b, ["reason"], [["reason", 500]],
+    );
+    if (guard) return guard;
     const to = formStr(b, "to");
     // LINKED is not operator-targetable — a bare link carries no
     // linkRef (Arc 231 R1 M10).
@@ -82,11 +104,10 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/clusters/:id/opportunity", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id);
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(backWithDemand("/admin/demand", { err: FORM_TOKEN_ERR }), 303);
-    }
+    const guard = formGuard(
+      c, "/admin/demand/opportunities", id, b, ["title"], [["title", 200]],
+    );
+    if (guard) return guard;
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
     const r = await createDemandOpportunity(
@@ -109,18 +130,19 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/clusters/:id/level", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id);
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(backWithDemand("/admin/demand", { err: FORM_TOKEN_ERR }), 303);
-    }
+    const guard = formGuard(
+      c, "/admin/demand", id, b, ["reason"], [["reason", 500]],
+    );
+    if (guard) return guard;
     const to = formStr(b, "to");
     if (!DEMAND_LEVELS.includes(to as DemandLevel)) {
       return c.redirect(backWithDemand("/admin/demand", { err: "bad_target" }), 303);
     }
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
-    const r = await setDemandClusterLevel(store, id, to as DemandLevel, actor);
+    const r = await setDemandClusterLevel(
+      store, id, to as DemandLevel, actor, formStr(b, "reason") || null,
+    );
     return c.redirect(
       backWithDemand(
         "/admin/demand",
@@ -133,14 +155,12 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/opportunities/:id/transition", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id, formStr(b, "declineReason"));
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
-        303,
-      );
-    }
+    const guard = formGuard(
+      c, "/admin/demand/opportunities", id, b,
+      ["declineReason", "reason"],
+      [["declineReason", 500], ["reason", 500]],
+    );
+    if (guard) return guard;
     const to = formStr(b, "to");
     if (!DEMAND_OPPORTUNITY_STATUSES.includes(to as never)) {
       return c.redirect(
@@ -173,14 +193,12 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/opportunities/:id/edit", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id);
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
-        303,
-      );
-    }
+    const guard = formGuard(
+      c, "/admin/demand/opportunities", id, b,
+      ["title", "hypothesis", "expectedValue"],
+      [["title", 200], ["hypothesis", 2000], ["expectedValue", 500]],
+    );
+    if (guard) return guard;
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
     // The edit form always renders all three fields — empty = clear
@@ -207,14 +225,8 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/opportunities/:id/backlog", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id);
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWithDemand("/admin/demand/opportunities", { err: FORM_TOKEN_ERR }),
-        303,
-      );
-    }
+    const guard = formGuard(c, "/admin/demand/opportunities", id, b);
+    if (guard) return guard;
     const actor = principalId(c);
     if (actor instanceof Response) return actor;
     const writer = deps.backlogWriter ?? defaultBacklogWriter;
@@ -231,14 +243,10 @@ export function registerDemandUiMutations(
   app.post("/admin/demand/signals/:id/retag", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, id, formStr(b, "category"), formStr(b, "feature"));
-    if (bad) return bad;
-    if (!tokenConsumed(b)) {
-      return c.redirect(
-        backWithDemand("/admin/demand/signals", { err: FORM_TOKEN_ERR }),
-        303,
-      );
-    }
+    const guard = formGuard(
+      c, "/admin/demand/signals", id, b, ["category", "feature"],
+    );
+    if (guard) return guard;
     const category = formStr(b, "category") || null;
     const feature = formStr(b, "feature") || null;
     // Arc 231 R1: retag picks FROM the dictionary — free-form

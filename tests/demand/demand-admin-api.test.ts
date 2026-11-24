@@ -342,12 +342,12 @@ describe("metrics", () => {
     const j = await r.json();
     expect(j.sampledRequests).toBe(3);
     expect(j.canonicalSignals).toBe(3);
-    expect(j.actors.identified).toBe(2);
-    expect(j.actors.anonymous).toBe(1);
-    expect(j.actors.sessions).toBe(2);
+    expect(j.sampledActorSignals.identified).toBe(2);
+    expect(j.sampledActorSignals.anonymous).toBe(1);
+    expect(j.sampledActorSignals.sessions).toBe(2);
     expect(j.clusters.total).toBe(2);
     expect(j.clusters.byStatus.OPEN).toBe(2);
-    expect(j.topCapabilities[0].count).toBe(2);
+    expect(j.sampledTopCapabilities[0].count).toBe(2);
     expect(j.demandToFeatures.total).toBe(0);
   });
 });

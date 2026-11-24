@@ -71,6 +71,7 @@ flowchart LR
   mcp["mcp"] --> server_lib["server/lib"]
   mcp["mcp"] --> server_routes["server/routes"]
   scripts["scripts"] --> agent_readiness["agent-readiness"]
+  scripts["scripts"] --> agent_readiness_integrity["agent-readiness/integrity"]
   scripts["scripts"] --> config["config"]
   scripts["scripts"] --> server_lib["server/lib"]
   server["server"] --> config["config"]

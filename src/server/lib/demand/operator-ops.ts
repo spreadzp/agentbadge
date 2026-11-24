@@ -87,10 +87,13 @@ export async function retagDemandSignal(
   // Arc 231 R1 M9: the target cluster gained a canonical signal —
   // re-evaluate unique-actor floors (source can never demote via
   // rules; operator applyClusterLevel covers demotion if needed).
-  const cluster = r.cluster
-    ? (await applyLevelRules(store, r.cluster)).cluster
-    : r.cluster;
-  return { ok: true, signal: r.signal!, cluster };
+  // Arc 231 R2 L-5: the retag already committed — a rules failure is
+  // best-effort, not a 500 that lies about the write (same pattern
+  // as pipeline:233).
+  const rules = r.cluster
+    ? await applyLevelRules(store, r.cluster).catch(() => null)
+    : null;
+  return { ok: true, signal: r.signal!, cluster: rules?.cluster ?? r.cluster };
 }
 
 export type TriageResult =
@@ -153,17 +156,29 @@ export async function setDemandClusterLevel(
   clusterId: string,
   to: DemandLevel,
   actor: string,
+  reason: string | null = null,
 ): Promise<SetLevelResult> {
-  if (!(to in DEMAND_LEVEL_RANK)) return { ok: false, reason: "illegal" };
+  // Arc 231 R2 L-10: `in` consults the prototype chain — "toString",
+  // "constructor" would pass the allowlist. hasOwn is the real test.
+  if (!Object.hasOwn(DEMAND_LEVEL_RANK, to)) {
+    return { ok: false, reason: "illegal" };
+  }
   const cluster = await store.getCluster(clusterId);
   if (!cluster) return { ok: false, reason: "missing" };
   if (cluster.level === to) return { ok: false, reason: "no_change" };
+  // Arc 231 R2 N3: VERIFIED_DEMAND asserts a payment/escrow fact —
+  // mint it without an operator-supplied reason and the audit row
+  // carries no evidence.
+  if (to === "VERIFIED_DEMAND" && !reason) {
+    return { ok: false, reason: "illegal" };
+  }
   const event = buildDemandEvent(
     "demand.cluster.updated",
     "INTERNAL",
     {
       clusterId: cluster.id,
       reason: "operator_level",
+      note: reason,
       from: cluster.level,
       to,
       actor,

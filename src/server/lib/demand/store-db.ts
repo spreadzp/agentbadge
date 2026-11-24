@@ -101,7 +101,10 @@ export function createDbDemandStore(repo: DemandRepository): DemandStore {
           clusterKey: patch.clusterKey,
           category: patch.category ?? null,
           feature: patch.feature ?? null,
-          capabilityKey: patch.capabilityKey ?? null,
+          // Arc 231 R2 N1: pass capabilityKey THROUGH — the repo
+          // treats `undefined` as keep; `?? null` here collapsed
+          // keep into clear on every operator retag.
+          capabilityKey: patch.capabilityKey,
         },
         events
           ? {

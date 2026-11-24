@@ -229,6 +229,7 @@ export function registerDemandAdminMutations(
             c.req.param("id"),
             body.data.to,
             actor,
+            body.data.reason ?? null,
           );
           if (!r.ok) {
             const missing = r.reason === "missing";

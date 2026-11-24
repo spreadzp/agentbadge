@@ -166,48 +166,45 @@ describe("SLICE-46-12/231-3: Demand API + pipeline + aggregation + agent docs", 
       expect(j2.count).toBe(1);
     });
 
-    it("priority=candidate at 5 requests", async () => {
-      for (let i = 0; i < 4; i++) {
-        await app.request("/api/demand/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ capability_query: "solidity audit" }),
-        });
-      }
-      const res = await app.request("/api/demand/request", {
+    // Arc 231 R1 M3: priority derives from cluster.uniqueActors —
+    // one actor repeating can't self-inflate. Distinct actors are
+    // minted via XFF under TRUST_PROXY_HEADERS (same shim as
+    // tests/demand/demand-adapter.test.ts); each IP gets its own
+    // 10/hr limiter bucket so no reset is needed.
+    const postAs = (ip: string) =>
+      app.request("/api/demand/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-forwarded-for": ip,
+        },
         body: JSON.stringify({ capability_query: "solidity audit" }),
       });
-      const json = await res.json();
-      expect(json.count).toBe(5);
-      expect(json.priority).toBe("candidate");
+
+    it("priority=candidate at 5 unique actors", async () => {
+      process.env.TRUST_PROXY_HEADERS = "true";
+      try {
+        for (let i = 0; i < 4; i++) await postAs(`10.0.0.${i + 1}`);
+        const res = await postAs("10.0.0.5");
+        const json = await res.json();
+        expect(json.count).toBe(5);
+        expect(json.priority).toBe("candidate");
+      } finally {
+        delete process.env.TRUST_PROXY_HEADERS;
+      }
     });
 
-    it("priority=priority at 20 requests", async () => {
-      for (let i = 0; i < 10; i++) {
-        await app.request("/api/demand/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ capability_query: "solidity audit" }),
-        });
+    it("priority=priority at 20 unique actors", async () => {
+      process.env.TRUST_PROXY_HEADERS = "true";
+      try {
+        for (let i = 0; i < 19; i++) await postAs(`10.0.0.${i + 1}`);
+        const res = await postAs("10.0.0.20");
+        const json = await res.json();
+        expect(json.count).toBe(20);
+        expect(json.priority).toBe("priority");
+      } finally {
+        delete process.env.TRUST_PROXY_HEADERS;
       }
-      resetDemandRateLimits(); // reset to allow next batch
-      for (let i = 0; i < 9; i++) {
-        await app.request("/api/demand/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ capability_query: "solidity audit" }),
-        });
-      }
-      const res = await app.request("/api/demand/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ capability_query: "solidity audit" }),
-      });
-      const json = await res.json();
-      expect(json.count).toBe(20);
-      expect(json.priority).toBe("priority");
     });
   });
 

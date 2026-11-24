@@ -47,6 +47,14 @@ export async function transitionDemandOpportunity(
   if (to === "LINKED") return { ok: false, reason: "illegal" };
   const cur = await store.getOpportunity(opportunityId);
   if (!cur) return { ok: false, reason: "missing" };
+  // Arc 231 R2 L-4: the transition patch would bypass the
+  // EDITABLE_OPPORTUNITY_STATUSES guard — LINKED→SHIPPED with a
+  // patch.title used to rewrite an exported row. Only declineReason
+  // is a transition effect, and only on the DECLINED leg.
+  const patch =
+    to === "DECLINED" && input.patch?.declineReason !== undefined
+      ? { declineReason: input.patch.declineReason }
+      : undefined;
   const event = buildDemandEvent(
     "demand.opportunity.updated",
     "INTERNAL",
@@ -56,7 +64,7 @@ export async function transitionDemandOpportunity(
       to,
       actor,
       reason: input.reason ?? null,
-      patch: input.patch ?? null,
+      patch: patch ?? null,
     },
     `opp-transition:${cur.id}:${cur.status}:${to}:${generateReportId()}`,
   );
@@ -67,7 +75,7 @@ export async function transitionDemandOpportunity(
       to,
       actor,
       reason: input.reason ?? null,
-      patch: input.patch,
+      patch,
     },
     event,
   );

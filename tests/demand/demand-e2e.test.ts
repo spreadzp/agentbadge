@@ -200,11 +200,11 @@ describe("SLICE-231-9: e2e request→signal→cluster→opportunity→backlog→
     expect(m.sampledRepeatDemand).toBe(1);
     // identified: 3 api_key canon + 1 dup + 1 niche + 1 DID seam = 6;
     // anonymous: 7.
-    expect(m.actors.identified).toBe(6);
-    expect(m.actors.anonymous).toBe(7);
-    expect(m.actors.sessions).toBe(1);
+    expect(m.sampledActorSignals.identified).toBe(6);
+    expect(m.sampledActorSignals.anonymous).toBe(7);
+    expect(m.sampledActorSignals.sessions).toBe(1);
     expect(m.clusters.byStatus.TRIAGED).toBe(1);
-    expect(m.topCapabilities[0].count).toBe(10);
+    expect(m.sampledTopCapabilities[0].count).toBe(10);
     expect(m.highIntent.purchaseIntent).toBe(1);
     expect(m.highIntent.verifiedDemand).toBe(0); // VERIFIED never by rules
     expect(m.demandToFeatures.total).toBe(1);

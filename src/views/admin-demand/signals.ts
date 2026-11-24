@@ -28,7 +28,7 @@ import {
 } from "./shared";
 
 const excerpt = (s: string, n = 80) =>
-  s.length > n ? `${s.slice(0, n)}…` : s;
+  [...s].length > n ? `${[...s].slice(0, n).join("")}…` : s;
 
 const retagForm = (s: DemandSignalRecord) => {
   if (s.relatedSignalId !== null) {

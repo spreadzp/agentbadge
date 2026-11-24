@@ -158,11 +158,14 @@ export interface DemandClassification {
   capabilityKey: string | null;
 }
 
-// `s?` plural tolerance — the vocab uses singular terms ("refund")
-// but callers write plurals ("refunds"); substring-era parity.
+// Inflection tolerance — the vocab uses singular base terms
+// ("refund") but callers write plurals/tenses ("refunds",
+// "refunded", "paying"). Arc 231 R2 L-8: bare `s?` missed every
+// non-plural inflection; (s|es|d|ed|ing) restores substring-era
+// recall without reopening inside-word false positives.
 const termRe = (t: string): RegExp =>
   new RegExp(
-    `(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?(?:[^a-z0-9]|$)`,
+    `(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es|d|ed|ing)?(?:[^a-z0-9]|$)`,
     "i",
   );
 

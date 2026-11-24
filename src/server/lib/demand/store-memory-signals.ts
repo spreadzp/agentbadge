@@ -113,12 +113,24 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
               : 1,
         )[0];
 
-      const cluster = upsertCluster({
-        clusterKey,
-        category: input.category,
-        feature: input.feature,
-        capabilityKey: input.capabilityKey,
-      });
+      // Arc 231 R2 L-11: a burst-dup folds into its CANONICAL's
+      // cluster — upserting by this request's own clusterKey would
+      // mint a ghost cluster and recount/return the wrong one
+      // (visible when the canonical was retagged into a dict key).
+      const cluster = canonical?.clusterId
+        ? (clusters.get(canonical.clusterId) ??
+          upsertCluster({
+            clusterKey,
+            category: input.category,
+            feature: input.feature,
+            capabilityKey: input.capabilityKey,
+          }))
+        : upsertCluster({
+            clusterKey,
+            category: input.category,
+            feature: input.feature,
+            capabilityKey: input.capabilityKey,
+          });
       const signal: DemandSignalRecord = {
         id: input.id,
         source: input.source,
@@ -139,7 +151,7 @@ export function memorySignalOps(core: MemoryDemandCore): SignalOps {
         dedupeKey: input.dedupeKey,
         relatedCount: 1,
         relatedSignalId: canonical?.id ?? null,
-        clusterId: canonical ? canonical.clusterId : cluster.id,
+        clusterId: cluster.id,
         createdAtMs: Math.trunc(input.createdAtMs),
         createdAt: now(),
       };

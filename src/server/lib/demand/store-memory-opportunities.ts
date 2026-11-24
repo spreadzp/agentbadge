@@ -221,9 +221,12 @@ export function memoryEventOps(core: MemoryDemandCore): EventOps {
 
     async listEvents(entityType, entityId, opts) {
       const lim = Math.min(opts?.limit ?? 500, 1000);
+      // Arc 231 R2 N2: the cap keeps the NEWEST window — slicing the
+      // head hid fresh triage/level/retag audit behind the oldest
+      // 500 burst-ingest events.
       return eventsOf(entityType, entityId)
         .filter((e) => !opts?.visibility || e.visibility === opts.visibility)
-        .slice(0, lim)
+        .slice(-lim)
         .map(cloneEvent);
     },
   };
