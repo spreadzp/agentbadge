@@ -115,6 +115,7 @@ import { createBoardReadRoutes } from "./board/board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests/agent-requests-api";
 import { wireAgentInteraction } from "../wiring/agent-interaction";
 import { wireFeedbackReview } from "../wiring/feedback-review";
+import { wireDemand } from "../wiring/demand";
 import { wireKnowledge } from "../wiring/knowledge";
 import { createAgentRequestOpsRoutes } from "./agent-requests/agent-requests-ops-api";
 import { createInboxOpsDigestRoutes } from "./agent-requests/agent-requests-ops-digest";
@@ -303,6 +304,9 @@ export function registerApiRoutes(app: Hono): void {
   // EPIC-229: knowledge engine — admin JSON API (229-3). Public
   // search/ask + SSR join here in later slices — wiring/knowledge.
   wireKnowledge(app);
+  // EPIC-231: demand intelligence — operator JSON API (231-5);
+  // SSR console joins in 231-6 — wiring/demand.
+  wireDemand(app);
   // EPIC-230: feedback + review public API (230-4); admin Review
   // Center and TG-notify join in later slices — wiring/feedback-review.
   wireFeedbackReview(app);
