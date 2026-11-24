@@ -5,9 +5,8 @@
  *
  * SLICE-264-6: attribution moved to the credential-resolved principal
  * (principalId in middleware/operatorAuth); x-operator-id is a typed
- * 400 at the operatorAuth boundary. requireOperatorRef was removed —
- * review-center + agent-interaction keep their own header handling
- * until their 264-8 migration.
+ * 400 at the operatorAuth boundary. requireOperatorRef was removed;
+ * 264-8 finished the review-center + agent-interaction migration.
  */
 
 import type { Context } from "hono";

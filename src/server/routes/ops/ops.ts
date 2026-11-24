@@ -1,13 +1,17 @@
 // EPIC-140 (SLICE-140-7): ops routes extracted from index.ts.
 // Health (deduped — one handler, two mounts), /api/* → root redirects,
-// /market → /services/marketplace, POST /api/indexnow (adminAuth).
+// /market → /services/marketplace, POST /api/indexnow (operatorAuth).
 
 import { Hono, type Context } from "hono";
 import { listTools } from "@agentbadge/mcp";
 import { logger } from "@agentbadge/passport/logger";
 import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "../../lib/build-info";
 import { isStripeConfigured } from "../../lib/stripe-client";
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores } from "../../lib/operators";
+import {
+  capabilityGate,
+  lazyOperatorAuth,
+} from "../../middleware/operator-gate";
 import { getDatabase } from "../../lib/database";
 import { getCache } from "../../lib/cache";
 import { getArcRpcHealth } from "../../lib/arc-rpc-health";
@@ -97,7 +101,13 @@ const INDEXNOW_BASE = "https://agentbadge.xyz";
 const INDEXNOW_ALLOWED_HOSTS = (process.env.INDEXNOW_ALLOWED_HOSTS ?? "agentbadge.xyz").split(",");
 const INDEXNOW_MAX_URLS = 10;
 
-opsRoutes.post("/api/indexnow", adminAuth, async (c) => {
+// 264-8: singleton module — the store resolves on first request,
+// not at import (lazyOperatorAuth).
+opsRoutes.post(
+  "/api/indexnow",
+  lazyOperatorAuth(() => pickOperatorStores(getDatabase())),
+  capabilityGate(),
+  async (c) => {
   try {
     const body = await c.req.json<{ urls?: string[] }>();
     const urls = body.urls ?? [`${INDEXNOW_BASE}/`];
@@ -135,4 +145,5 @@ opsRoutes.post("/api/indexnow", adminAuth, async (c) => {
   } catch (e) {
     return c.json({ ok: false, error: String(e) }, 500);
   }
-});
+},
+);

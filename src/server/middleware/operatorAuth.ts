@@ -33,22 +33,17 @@
  * after it a break-glass-only fallback (SLICE-264-9 retire).
  */
 
-import { timingSafeEqual } from "node:crypto";
 import type { Context, Next } from "hono";
 
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
-import {
-  hashAdminKey,
-  type AdminCapability,
-  type AdminOperator,
-  type OperatorStore,
-  type Principal,
+import type {
+  AdminCapability,
+  AdminOperator,
+  OperatorStore,
+  Principal,
 } from "../lib/operators";
-import { tryLegacySharedKey } from "./operator-legacy";
-
-/** Minimum gap between lastUsedAt writes (D-264-Q6 — diagnostics, not auth). */
-const LAST_USED_MIN_INTERVAL_MS = 5 * 60 * 1000;
+import { authenticateOperatorKey } from "./operator-verify";
 
 /** adminAuth transport contract: X-Admin-Key → Bearer → Basic password. */
 function extractOperatorKey(c: Context): string | null {
@@ -75,12 +70,6 @@ function unauthorized(c: Context): Response {
   return errorResponse(c, 401, ErrorCodes.UNAUTHORIZED, "Unauthorized");
 }
 
-// Constant-work pad for the unknown-key path: the digest compare runs
-// even when the lookup missed — the oracle buys nothing against
-// 192-bit keys behind a byte-identical envelope.
-const DUMMY_DIGEST = Buffer.alloc(32);
-const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
-
 export function operatorAuth(store: OperatorStore) {
   return async function operatorAuthMiddleware(
     c: Context,
@@ -100,87 +89,14 @@ export function operatorAuth(store: OperatorStore) {
     const provided = extractOperatorKey(c);
     if (!provided) return unauthorized(c);
 
-    const keyHash = hashAdminKey(provided);
-    let pair;
-    try {
-      pair = await store.getOperatorByKeyHash(keyHash);
-    } catch {
-      // store failure is a typed 500 — never folded into a 401.
-      return errorResponse(
-        c,
-        500,
-        ErrorCodes.INTERNAL_ERROR,
-        "Operator store unavailable",
-      );
+    // The verdict lives in operator-verify (264-8) — upgrade's
+    // DID-or-admin path consumes the same logic without a mount.
+    const verdict = await authenticateOperatorKey(store, provided, c.req.path);
+    if (!verdict.ok) {
+      return errorResponse(c, verdict.status, verdict.code, verdict.message);
     }
-
-    const stored = pair?.credential.keyHash;
-    if (pair === null || stored === undefined) {
-      timingSafeEqual(Buffer.from(keyHash, "hex"), DUMMY_DIGEST);
-      // SLICE-264-5 dual-auth window: no credential row → the shared
-      // ADMIN_API_KEY gets exactly one more verdict — a MARKED
-      // break_glass principal, never a personal identity.
-      const legacy = tryLegacySharedKey(provided, c.req.path);
-      if (!legacy.accepted) return unauthorized(c);
-      c.set("principal", legacy.principal);
-      c.set("operator", legacy.operator);
-      await next();
-      return;
-    }
-    // A non-sha256 stored row is a data-integrity failure — loud 500.
-    if (!SHA256_HEX_RE.test(stored)) {
-      return errorResponse(
-        c,
-        500,
-        ErrorCodes.INTERNAL_ERROR,
-        "Credential store returned malformed keyHash",
-      );
-    }
-    if (
-      !timingSafeEqual(
-        Buffer.from(stored, "hex"),
-        Buffer.from(keyHash, "hex"),
-      )
-    ) {
-      return unauthorized(c);
-    }
-    // revoked credential / disabled operator — identical refusal.
-    if (
-      pair.credential.status !== "active" ||
-      pair.operator.status !== "active"
-    ) {
-      return unauthorized(c);
-    }
-
-    // Throttled fire-and-forget touch; NaN/future lastUsedAt self-heals.
-    const nowMs = Date.now();
-    const lastMs =
-      pair.credential.lastUsedAt === null
-        ? NaN
-        : Date.parse(pair.credential.lastUsedAt);
-    if (
-      !Number.isFinite(lastMs) ||
-      lastMs > nowMs ||
-      nowMs - lastMs >= LAST_USED_MIN_INTERVAL_MS
-    ) {
-      try {
-        void store
-          .touchLastUsed(pair.credential.id, new Date(nowMs).toISOString())
-          .catch(() => {});
-      } catch {
-        // diagnostics column never fails the request — even a
-        // synchronously-throwing store impl is swallowed here
-      }
-    }
-
-    const { operator, credential } = pair;
-    const principal: Principal = {
-      id: operator.id,
-      principalType: operator.principalType,
-      keyPrefix: credential.keyPrefix,
-    };
-    c.set("principal", principal);
-    c.set("operator", operator);
+    c.set("principal", verdict.principal);
+    c.set("operator", verdict.operator);
     await next();
   };
 }
@@ -271,8 +187,11 @@ export const CAPABILITY_BY_SURFACE: ReadonlyArray<{
   // operator lifecycle management (SLICE-264-3/4 own these prefixes)
   { prefix: "/admin/api/operators", capability: "operator-admin" },
   { prefix: "/admin/operators", capability: "operator-admin" },
-  // probe-scoped service surfaces register here during 264-8's
-  // inventory — their creds hold "probe" on the credential record.
+  // SLICE-264-8 (O-264-8): the interaction admin surfaces — API +
+  // SSR + mutations — are workflow-scoped wholesale; payload-bearing
+  // queues are not a read-cap surface.
+  { prefix: "/api/admin/interactions", capability: "workflow" },
+  { prefix: "/admin/interactions", capability: "workflow" },
 ];
 
 /**

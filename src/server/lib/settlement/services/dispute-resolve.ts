@@ -202,6 +202,7 @@ export async function resolveDispute(
       subjectType: "settlement_dispute",
       subjectId: dispute.id,
       operator,
+      principalId: input.principalId,
       evidence: {
         resolution: input.resolution,
         note: input.note ?? null,

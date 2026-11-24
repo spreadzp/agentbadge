@@ -1,5 +1,5 @@
 /**
- * SLICE-227-3 — admin settlement mutations behind adminAuth.
+ * SLICE-227-3 — admin settlement mutations; 264-8 → operatorAuth.
  *
  *   POST /admin/settlement/intents/:id/mark-paid   {operator, txHash, legId?}
  *   POST /admin/settlement/disputes/:id/resolve    {operator, resolution,
@@ -10,23 +10,29 @@
  * `no-store` for free (D-227-9 — the /api/admin/* cache bug A4 of 226).
  * Every successful effect writes an append-only AdminAction through the
  * shared finops repo and surfaces `auditRecorded` in the response;
- * failed negatives write nothing. `operator` is a self-declared label
- * (documented residual, review-1911 §3.1).
+ * failed negatives write nothing.
+ *
+ * SLICE-264-8: operatorAuth — the actor is the credential principal;
+ * a self-declared `operator` body field is a typed 400 (same posture
+ * as the credential principal at the middleware boundary).
  */
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 
 import { getDatabase } from "../../lib/database";
+import { pickOperatorStores } from "../../lib/operators";
 import {
   createSettlementCtx,
   markLegPaid,
   resolveDispute,
 } from "../../lib/settlement/index.js";
-import { adminAuth } from "../../middleware/adminAuth";
-import { readBody } from "../finops/helpers";
+import { operatorAuth, principalId } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
+import { readBody, rejectOperatorField } from "../finops/helpers";
 import { jsonBody } from "../commerce/schemas";
 import { respond, type SettlementRouteDeps } from "./helpers";
+import type { SettlementResult } from "../../lib/settlement/index.js";
 import { settlementMilestoneAdminRoutes } from "./settlement-admin-milestones";
 
 const TAG = { tags: ["Admin Settlement"] };
@@ -40,12 +46,10 @@ const splitLeg = z.object({
 // M8: the declared schemas also validate — a malformed body is a 400,
 // never a TypeError bubbling to a 500.
 const markPaidBody = z.object({
-  operator: z.string().min(1).max(128),
   txHash: z.string(),
   legId: z.string().max(128).optional(),
 });
 const resolveBody = z.object({
-  operator: z.string().min(1).max(128),
   resolution: z.enum(["FOR_BUYER", "FOR_PROVIDER", "SPLIT"]),
   splitLegs: z.array(splitLeg).max(32).optional(),
   note: z.string().max(4000).optional(),
@@ -56,6 +60,11 @@ export function createSettlementAdminRoutes(
 ): Hono {
   const r = new Hono();
   const getDb = deps.getDb ?? getDatabase;
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDb());
+
+  // 264-8: the whole admin settlement surface is workflow-scoped —
+  // credential → principal, capability from the record (never body).
+  r.use("/admin/settlement/*", operatorAuth(opStore), capabilityGate());
 
   r.post(
     "/admin/settlement/intents/:id/mark-paid",
@@ -80,24 +89,19 @@ export function createSettlementAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator / bad txHash" },
+        400: { description: "Bad body / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Intent/leg not found" },
         409: { description: "Invalid state / txHash replay" },
         503: { description: "Verifier unavailable" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const raw = await readBody(c);
-      // operator absence keeps its dedicated code (OPERATOR_REQUIRED)
-      // — schema validation covers the rest of the shape.
-      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
-        return respond(c, {
-          ok: false,
-          error: { code: "OPERATOR_REQUIRED", message: "operator label required" },
-        });
-      }
+      const opf = rejectOperatorField(raw);
+      if (opf) return respond(c, opf as SettlementResult<never>);
       const b = markPaidBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
@@ -114,7 +118,8 @@ export function createSettlementAdminRoutes(
           intentId: c.req.param("id"),
           legId: b.data.legId,
           txHash: b.data.txHash,
-          operator: b.data.operator,
+          operator: actor,
+          principalId: actor,
         },
         {
           verifyTx: deps.verifyTx,
@@ -153,21 +158,18 @@ export function createSettlementAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator / bad resolution" },
+        400: { description: "Bad body / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Dispute not found" },
         409: { description: "Invalid state" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const raw = await readBody(c);
-      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
-        return respond(c, {
-          ok: false,
-          error: { code: "OPERATOR_REQUIRED", message: "operator label required" },
-        });
-      }
+      const opf = rejectOperatorField(raw);
+      if (opf) return respond(c, opf as SettlementResult<never>);
       const b = resolveBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
@@ -180,7 +182,8 @@ export function createSettlementAdminRoutes(
       }
       const res = await resolveDispute(createSettlementCtx(getDb()), {
         disputeId: c.req.param("id"),
-        operator: b.data.operator,
+        operator: actor,
+        principalId: actor,
         resolution: b.data.resolution,
         splitLegs: b.data.splitLegs,
         note: b.data.note,

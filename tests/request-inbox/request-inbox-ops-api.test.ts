@@ -5,6 +5,10 @@ import { createAgentRequestOpsRoutes } from "../../src/server/routes/agent-reque
 import { createAgentRequestRoutes } from "../../src/server/routes/agent-requests/agent-requests-api";
 import { createMemoryRequestInboxStores } from "../../src/server/lib/request-inbox/db-stores";
 import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
+import {
   buildDigestMessage,
   sendInboxDigest,
 } from "../../src/server/lib/request-inbox/tg-digest";
@@ -25,18 +29,22 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-function mkApp() {
+async function mkApp() {
   const stores = createMemoryRequestInboxStores();
+  const opStore = createMemoryOperatorStore();
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   app.route(
     "/",
     createAgentRequestRoutes({ stores, env: ENV, submitMax: 100 }),
   );
-  app.route("/", createAgentRequestOpsRoutes({ stores }));
-  return { app, stores };
+  app.route(
+    "/",
+    createAgentRequestOpsRoutes({ stores, operatorStore: opStore }),
+  );
+  // 264-8: ops surface rides a real opk_ credential.
+  const { key } = await seedOperator(opStore);
+  return { app, stores, opsHeaders: { "X-Admin-Key": key } };
 }
-
-const opsHeaders = { "X-Admin-Key": ADMIN };
 const post = (app: Hono<{ Variables: Record<string, unknown> }>, body: unknown) =>
   app.request("/api/requests", {
     method: "POST",
@@ -46,7 +54,7 @@ const post = (app: Hono<{ Variables: Record<string, unknown> }>, body: unknown) 
 
 describe("ops auth (SLICE-252-3)", () => {
   it("anon and wrong key → 401; agent header doesn't help", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const badHeaders: Record<string, string>[] = [
       {},
       { "X-Admin-Key": "nope" },
@@ -61,7 +69,7 @@ describe("ops auth (SLICE-252-3)", () => {
 
 describe("GET /api/ops/requests (SLICE-252-3)", () => {
   it("pull: state filter + payload+fingerprint (fpHash, no raw ip)", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     // kind must be a documented REQUEST_KINDS value — bogus kinds 400 at the
     // schema edge (re-audit fix) and never reach the store.
     await post(app, { kind: "question", payload: { prompt: "p1" } });
@@ -84,7 +92,7 @@ describe("GET /api/ops/requests (SLICE-252-3)", () => {
   });
 
   it("since + limit filters", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const p1 = await post(app, { payload: "a" });
     const { request_id: id1 } = await p1.json();
     await new Promise((r) => setTimeout(r, 5));
@@ -107,7 +115,7 @@ describe("GET /api/ops/requests (SLICE-252-3)", () => {
 
 describe("POST respond/state + e2e (SLICE-252-3)", () => {
   it("e2e: POST → pull → respond → agent GET → 200 + response", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const p = await post(app, { payload: { prompt: "deploy howto?" } });
     const { request_id } = await p.json();
     // pull
@@ -131,7 +139,7 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
   });
 
   it("bare-string response → wrapped {answer} (pg/json top-level-string decode guard)", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const p = await post(app, { payload: { prompt: "q" } });
     const { request_id } = await p.json();
     const resp = await app.request(`/api/ops/requests/${request_id}/respond`, {
@@ -147,7 +155,7 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
   });
 
   it("respond without mark_completed → working; completed → QA pair materializes", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, opsHeaders } = await mkApp();
     // QA materialization requires publish-consent (D-256-Q13).
     const p = await post(app, {
       payload: { prompt: "q-materialize" },
@@ -172,7 +180,7 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
   });
 
   it("state transitions: submitted→working, working→failed; terminal → 409", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const p = await post(app, { payload: "x" });
     const { request_id } = await p.json();
     const state = async (s: string) =>
@@ -197,7 +205,7 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
   });
 
   it("respond on missing id → 404; on completed → 409", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const miss = await app.request("/api/ops/requests/rq_nope/respond", {
       method: "POST",
       headers: { "content-type": "application/json", ...opsHeaders },

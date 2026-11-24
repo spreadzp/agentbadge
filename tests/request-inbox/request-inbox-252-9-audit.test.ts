@@ -17,6 +17,10 @@ import { createAgentRequestOpsRoutes } from "../../src/server/routes/agent-reque
 import { createAgentSurveyRoutes } from "../../src/server/routes/agent-surveys/agent-surveys-api";
 import { canonicalJson } from "../../src/server/lib/request-inbox/qa";
 import { adminAuth } from "../../src/server/middleware/adminAuth";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 import type { ReputationWriteRecord } from "../../src/server/lib/board/types";
 
 /**
@@ -59,8 +63,13 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
 
   it("ops read re-sanitizes legacy rows (header-carried IP stripped, fingerprint.ip served)", async () => {
     const stores = createMemoryRequestInboxStores();
+    const opStore = createMemoryOperatorStore();
+    const { key: opKey } = await seedOperator(opStore);
     const app = new Hono<{ Variables: Record<string, unknown> }>();
-    app.route("/", createAgentRequestOpsRoutes({ stores }));
+    app.route(
+      "/",
+      createAgentRequestOpsRoutes({ stores, operatorStore: opStore }),
+    );
     await stores.requests.submit({
       id: "r1",
       state: "submitted",
@@ -82,7 +91,7 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
       createdAtMs: Date.now(),
     });
     const res = await app.request("/api/ops/requests", {
-      headers: { "X-Admin-Key": ADMIN },
+      headers: { "X-Admin-Key": opKey },
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -260,12 +269,15 @@ describe("H-7 round-2: empty run doesn't fake an error", () => {
 describe("route validation round-2", () => {
   it("scalar answers → 400 (only objects/arrays count)", async () => {
     const stores = createMemoryRequestInboxStores();
+    const opStore = createMemoryOperatorStore();
+    const { key: opKey } = await seedOperator(opStore);
     const app = new Hono<{ Variables: Record<string, unknown> }>();
     app.route(
       "/",
       createAgentSurveyRoutes({
         stores,
         env: ENV,
+        operatorStore: opStore,
         writeReputation: (r: ReputationWriteRecord) => {
           void r;
         },
@@ -273,7 +285,7 @@ describe("route validation round-2", () => {
     );
     const create = await app.request("/api/ops/surveys", {
       method: "POST",
-      headers: { "content-type": "application/json", "X-Admin-Key": ADMIN },
+      headers: { "content-type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ title: "t", questions: [{ q: "x" }] }),
     });
     expect(create.status).toBe(201);
@@ -386,26 +398,32 @@ describe("C-1 round-3: snapshot is an allowlist", () => {
   });
 });
 
-const mkSurveyApp3 = (opts?: { answerMax?: number }) => {
+const mkSurveyApp3 = async (opts?: { answerMax?: number }) => {
   process.env.ADMIN_API_KEY = ADMIN;
   const stores = createMemoryRequestInboxStores();
+  const opStore = createMemoryOperatorStore();
+  const { key } = await seedOperator(opStore);
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   app.route(
     "/",
     createAgentSurveyRoutes({
       stores,
       env: ENV,
+      operatorStore: opStore,
       writeReputation: () => { },
       ...opts,
     }),
   );
-  return { app, stores };
+  return { app, stores, opKey: key };
 };
 
-const seedSurvey = async (app: ReturnType<typeof mkSurveyApp3>["app"]) => {
+const seedSurvey = async (
+  app: Hono<{ Variables: Record<string, unknown> }>,
+  opKey: string,
+) => {
   const create = await app.request("/api/ops/surveys", {
     method: "POST",
-    headers: { "content-type": "application/json", "X-Admin-Key": ADMIN },
+    headers: { "content-type": "application/json", "X-Admin-Key": opKey },
     body: JSON.stringify({ title: "t", questions: [{ q: "x" }] }),
   });
   expect(create.status).toBe(201);
@@ -415,8 +433,8 @@ const seedSurvey = async (app: ReturnType<typeof mkSurveyApp3>["app"]) => {
 
 describe("M-8 round-3: survey-side jsonb-unsafe rejection", () => {
   it("answers containing NUL → 400 before any lane slot", async () => {
-    const { app } = mkSurveyApp3();
-    const id = await seedSurvey(app);
+    const { app, opKey } = await mkSurveyApp3();
+    const id = await seedSurvey(app, opKey);
     const res = await app.request(`/api/surveys/${id}/answer`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -426,10 +444,10 @@ describe("M-8 round-3: survey-side jsonb-unsafe rejection", () => {
   });
 
   it("survey create with NUL title → 400", async () => {
-    const { app } = mkSurveyApp3();
+    const { app, opKey } = await mkSurveyApp3();
     const res = await app.request("/api/ops/surveys", {
       method: "POST",
-      headers: { "content-type": "application/json", "X-Admin-Key": ADMIN },
+      headers: { "content-type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ title: "t\u0000bad", questions: [{ q: "x" }] }),
     });
     expect(res.status).toBe(400);
@@ -440,8 +458,8 @@ describe("H-4 round-3: leaf-empty answers rejected", () => {
   it.each(["[null]", '[{"q":""}]', "[[], {}]", '{"a":{"b":""}}'])(
     "answers=%s → 400",
     async (answersJson) => {
-      const { app } = mkSurveyApp3();
-      const id = await seedSurvey(app);
+      const { app, opKey } = await mkSurveyApp3();
+      const id = await seedSurvey(app, opKey);
       const res = await app.request(`/api/surveys/${id}/answer`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -452,8 +470,8 @@ describe("H-4 round-3: leaf-empty answers rejected", () => {
   );
 
   it("a real leaf is accepted", async () => {
-    const { app } = mkSurveyApp3();
-    const id = await seedSurvey(app);
+    const { app, opKey } = await mkSurveyApp3();
+    const id = await seedSurvey(app, opKey);
     const res = await app.request(`/api/surveys/${id}/answer`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -466,8 +484,8 @@ describe("H-4 round-3: leaf-empty answers rejected", () => {
 describe("N-1 round-3: survey path refunds lanes on store failure", () => {
   it("putAnswer failure → 503 and retry is not 429", async () => {
     // answerMax:1 → a second post 429s unless the lane was refunded.
-    const { app, stores } = mkSurveyApp3({ answerMax: 1 });
-    const id = await seedSurvey(app);
+    const { app, stores, opKey } = await mkSurveyApp3({ answerMax: 1 });
+    const id = await seedSurvey(app, opKey);
     stores.surveys.putAnswer = async () => {
       throw new Error("store down");
     };

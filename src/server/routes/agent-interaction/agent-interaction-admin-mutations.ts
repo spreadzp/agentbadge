@@ -5,7 +5,8 @@
  *   POST /api/admin/interactions/:id/reject   → REJECTED (INTERNAL event)
  *
  * Split out of agent-interaction-admin-api.ts (300-line guard).
- * operatorRef comes from the X-Operator-Id header — never the body.
+ * operatorRef = the credential-resolved principal.id (264-8) — never
+ * a header claim or body field.
  * Terminal replays are honest 409s (INTERACTION_TERMINAL): the store
  * wrote nothing, the row keeps its first outcome.
  */
@@ -14,7 +15,7 @@ import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { principalId } from "../../middleware/operatorAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { getDatabase } from "../../lib/database";
@@ -23,15 +24,6 @@ import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 import { statusOfState } from "../../lib/request-inbox/interaction-types";
 import { classify, reject, respond } from "../../lib/agent-interaction";
-
-const OPERATOR_MAX = 128;
-
-/** Operator label — a header claim within the adminAuth boundary. */
-export function operatorRefOf(c: Context): string {
-  const raw = c.req.header("x-operator-id")?.trim();
-  if (!raw) return "admin";
-  return raw.slice(0, OPERATOR_MAX);
-}
 
 const classifyBodySchema = z.object({
   intent: z.string().nullish(),
@@ -69,7 +61,6 @@ export function registerInteractionMutationRoutes(
 ): void {
   app.post(
     "/api/admin/interactions/:id/classify",
-    adminAuth,
     describeRoute({
       summary: "Classify an interaction — vocabulary-validated patch → IN_REVIEW",
       tags: ["Admin Interactions"],
@@ -89,13 +80,11 @@ export function registerInteractionMutationRoutes(
       if (!REQUEST_ID_RE.test(id)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
       }
-      const r = await classify(
-        stores,
-        id,
-        body.data,
-        operatorRefOf(c),
-        { demand: pickDemandStore(getDatabase()) },
-      );
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
+      const r = await classify(stores, id, body.data, actor, {
+        demand: pickDemandStore(getDatabase()),
+      });
       if (!r.ok && r.error === "not_found") return notFound(c);
       if (!r.ok) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, r.error);
@@ -110,7 +99,6 @@ export function registerInteractionMutationRoutes(
 
   app.post(
     "/api/admin/interactions/:id/respond",
-    adminAuth,
     describeRoute({
       summary: "Answer an interaction — InteractionResponse + ANSWERED",
       tags: ["Admin Interactions"],
@@ -131,12 +119,9 @@ export function registerInteractionMutationRoutes(
       if (!REQUEST_ID_RE.test(id)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
       }
-      const r = await respond(
-        stores,
-        id,
-        operatorRefOf(c),
-        body.data.body,
-      );
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
+      const r = await respond(stores, id, actor, body.data.body);
       if (!r.ok && "reason" in r) {
         return r.reason === "missing" ? notFound(c)
           : r.reason === "expired" ? expired410(c) : terminal409(c);
@@ -154,7 +139,6 @@ export function registerInteractionMutationRoutes(
 
   app.post(
     "/api/admin/interactions/:id/reject",
-    adminAuth,
     describeRoute({
       summary: "Reject an interaction — REJECTED + internal event",
       tags: ["Admin Interactions"],
@@ -174,12 +158,9 @@ export function registerInteractionMutationRoutes(
       if (!REQUEST_ID_RE.test(id)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
       }
-      const r = await reject(
-        stores,
-        id,
-        operatorRefOf(c),
-        body.data.reason,
-      );
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
+      const r = await reject(stores, id, actor, body.data.reason);
       if (!r.ok && "reason" in r) {
         return r.reason === "missing" ? notFound(c)
           : r.reason === "expired" ? expired410(c) : terminal409(c);

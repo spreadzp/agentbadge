@@ -12,7 +12,6 @@ import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestStore } from "../../lib/request-inbox/store";
@@ -28,7 +27,6 @@ export function registerQaOpsRoutes(
 ): void {
   app.post(
     "/api/ops/requests/qa/:id/retract",
-    adminAuth,
     describeRoute({
       summary: "Soft-retract a QA pair — audit kept, idempotent (D-256-Q14)",
       tags: ["Ops"],

@@ -3,6 +3,10 @@ import { Hono } from "hono";
 
 import { createAgentRequestRoutes } from "../../src/server/routes/agent-requests/agent-requests-api";
 import { createAgentRequestOpsRoutes } from "../../src/server/routes/agent-requests/agent-requests-ops-api";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 import { createMemoryRequestInboxStores } from "../../src/server/lib/request-inbox/db-stores";
 import { transitionWithQa } from "../../src/server/lib/request-inbox/qa";
 import {
@@ -32,17 +36,21 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-const opsHeaders = { "X-Admin-Key": ADMIN };
-
-function mkApp() {
+async function mkApp() {
   const stores = createMemoryRequestInboxStores();
+  const opStore = createMemoryOperatorStore();
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   app.route(
     "/",
     createAgentRequestRoutes({ stores, env: ENV, submitMax: 100 }),
   );
-  app.route("/", createAgentRequestOpsRoutes({ stores }));
-  return { app, stores };
+  app.route(
+    "/",
+    createAgentRequestOpsRoutes({ stores, operatorStore: opStore }),
+  );
+  // 264-8: ops surface rides a real opk_ credential.
+  const { key } = await seedOperator(opStore);
+  return { app, stores, opsHeaders: { "X-Admin-Key": key } };
 }
 
 const post = (
@@ -57,6 +65,7 @@ const post = (
 
 const respond = (
   app: Hono<{ Variables: Record<string, unknown> }>,
+  opsHeaders: Record<string, string>,
   id: string,
   body: unknown,
 ) =>
@@ -68,6 +77,7 @@ const respond = (
 
 const setState = (
   app: Hono<{ Variables: Record<string, unknown> }>,
+  opsHeaders: Record<string, string>,
   id: string,
   state: string,
 ) =>
@@ -91,18 +101,18 @@ const mkSubmit = (over: Partial<SubmitInput> = {}): SubmitInput => ({
 // ── D-256-Q13: publish-consent gate ──────────────────────────────
 describe("publish-consent gate (D-256-Q13)", () => {
   it("completed WITHOUT publish_to_qa → no QA pair materializes", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, opsHeaders } = await mkApp();
     const p = await post(app, { payload: { prompt: "private question?" } });
     const { request_id } = await p.json();
     const { record } = await stores.requests.get(request_id);
     expect(record?.publishToQa).toBe(false); // privacy-safe default
-    const resp = await respond(app, request_id, { response: { a: 1 } });
+    const resp = await respond(app, opsHeaders, request_id, { response: { a: 1 } });
     expect(resp.status).toBe(200);
     expect(await stores.requests.searchQa("private question", 10)).toHaveLength(0);
   });
 
   it("publish_to_qa=true persists + ops respond → pair with qa_<uuid> id", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, opsHeaders } = await mkApp();
     const p = await post(app, {
       payload: { prompt: "public question?" },
       publish_to_qa: true,
@@ -110,7 +120,7 @@ describe("publish-consent gate (D-256-Q13)", () => {
     const { request_id } = await p.json();
     const { record } = await stores.requests.get(request_id);
     expect(record?.publishToQa).toBe(true);
-    await respond(app, request_id, { response: { a: 1 } });
+    await respond(app, opsHeaders, request_id, { response: { a: 1 } });
     const pairs = await stores.requests.searchQa("public question", 10);
     expect(pairs).toHaveLength(1);
     // public qa_id is a fresh uuid — NEVER derived from the bearer id.
@@ -144,20 +154,20 @@ describe("publish-consent gate (D-256-Q13)", () => {
   });
 
   it("manual state→completed with stored response + consent → pair (gate covers both callers)", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, opsHeaders } = await mkApp();
     const p = await post(app, {
       payload: { prompt: "manual path question?" },
       publish_to_qa: true,
     });
     const { request_id } = await p.json();
     // respond with mark_completed:false → working + response stored
-    await respond(app, request_id, {
+    await respond(app, opsHeaders, request_id, {
       response: { a: 2 },
       mark_completed: false,
     });
     // manual transition → completed — the gate lives inside
     // transitionWithQa, so this path materializes too.
-    await setState(app, request_id, "completed");
+    await setState(app, opsHeaders, request_id, "completed");
     expect(
       await stores.requests.searchQa("manual path question", 10),
     ).toHaveLength(1);
@@ -204,7 +214,7 @@ describe("QA retract (D-256-Q14)", () => {
   });
 
   it("POST /api/ops/requests/qa/:id/retract — auth, 404, idempotent 200", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, opsHeaders } = await mkApp();
     await stores.requests.upsertQaPair({
       id: "qa_route",
       questionHash: "h3",
@@ -253,7 +263,7 @@ describe("QA retract (D-256-Q14)", () => {
   });
 
   it("retracted pair excluded from fast-path — same question creates a request", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores } = await mkApp();
     const question = "retract fast-path question?";
     const qHash = questionHashFor(normalizeQuestion(question));
     await stores.requests.upsertQaPair({
@@ -275,7 +285,7 @@ describe("QA retract (D-256-Q14)", () => {
 // ── D-256-Q14/Q15: /qa response shape + fast-path provenance ─────
 describe("QA response shape + provenance", () => {
   it("GET /api/requests/qa → qa_id/published_at/provenance; no sourceRequestId", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores } = await mkApp();
     const nowMs = Date.now();
     // legacy pair — id minted pre-gate as qa_{requestId}
     await stores.requests.upsertQaPair({
@@ -317,7 +327,7 @@ describe("QA response shape + provenance", () => {
   });
 
   it("fast-path hit → qa_match provenance + request_created:false", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores } = await mkApp();
     const question = "provenance fast-path question?";
     const qHash = questionHashFor(normalizeQuestion(question));
     const publishedAt = Date.now() - 5000;
@@ -345,7 +355,7 @@ describe("QA response shape + provenance", () => {
 // ── D-256-Q16: GET /:id lifecycle fields ─────────────────────────
 describe("GET /api/requests/:id lifecycle fields (D-256-Q16)", () => {
   it("202 pending → created_at/expires_at/retry_after; 200 completed → same fields", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores } = await mkApp();
     const expiresAtMs = Date.now() + 60_000;
     await stores.requests.submit(
       mkSubmit({ id: "rq_life", expiresAtMs }),

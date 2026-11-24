@@ -170,11 +170,14 @@ export const str = (v: unknown): string | undefined =>
  * identity comes from the credential, never the request body. A body
  * still carrying `operator`/`operatorLabel` is a typed 400, mirroring
  * the x-operator-id rejection at the operatorAuth layer.
+ * 264-8: `extra` names the domain's own self-asserted actor field
+ * (payments used `refundedBy`).
  */
 export function rejectOperatorField(
   b: Record<string, unknown>,
+  extra: readonly string[] = [],
 ): FinOpsResult<never> | null {
-  return "operator" in b || "operatorLabel" in b
+  return "operator" in b || "operatorLabel" in b || extra.some((k) => k in b)
     ? fail(
         "BAD_INPUT",
         "operator is not accepted — identity comes from the credential",

@@ -4,11 +4,13 @@
  * Admin-gated, projected (no raw internals beyond exception details),
  * 501 when the persistence backend lacks the exceptions port.
  */
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createPaymentsReadRoutes } from "../../src/server/routes/payments/payments-read-routes";
 import type { PaymentsCheckout } from "../../src/server/lib/payments-api";
-
-const ADMIN_KEY = "test-admin-key-2224";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 function fakeCheckout(exceptions: unknown[] | null) {
   return {
@@ -16,8 +18,17 @@ function fakeCheckout(exceptions: unknown[] | null) {
   } as unknown as PaymentsCheckout;
 }
 
-function app(exceptions: unknown[] | null) {
-  return createPaymentsReadRoutes(() => fakeCheckout(exceptions));
+// 264-8: exceptions read rides an operator credential (read cap).
+async function app(exceptions: unknown[] | null) {
+  const opStore = createMemoryOperatorStore();
+  const { key } = await seedOperator(opStore, "Reader", ["read"]);
+  return {
+    routes: createPaymentsReadRoutes(
+      () => fakeCheckout(exceptions),
+      opStore,
+    ),
+    opKey: key,
+  };
 }
 
 const exceptionRow = {
@@ -34,26 +45,18 @@ const exceptionRow = {
 };
 
 describe("GET /api/v1/payments/exceptions", () => {
-  const prev = process.env.ADMIN_API_KEY;
-  beforeEach(() => {
-    process.env.ADMIN_API_KEY = ADMIN_KEY;
-  });
-  afterEach(() => {
-    if (prev === undefined) delete process.env.ADMIN_API_KEY;
-    else process.env.ADMIN_API_KEY = prev;
-  });
 
-  it("401 without admin key", async () => {
-    const res = await app([exceptionRow]).request(
-      "/api/v1/payments/exceptions",
-    );
+  it("401 without an operator credential", async () => {
+    const { routes } = await app([exceptionRow]);
+    const res = await routes.request("/api/v1/payments/exceptions");
     expect(res.status).toBe(401);
   });
 
-  it("200 with admin key — projected exception rows", async () => {
-    const res = await app([exceptionRow]).request(
+  it("200 with an operator credential — projected exception rows", async () => {
+    const { routes, opKey } = await app([exceptionRow]);
+    const res = await routes.request(
       "/api/v1/payments/exceptions",
-      { headers: { "X-Admin-Key": ADMIN_KEY } },
+      { headers: { "X-Admin-Key": opKey } },
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -73,10 +76,12 @@ describe("GET /api/v1/payments/exceptions", () => {
         return [];
       },
     } as unknown as PaymentsCheckout;
-    const routes = createPaymentsReadRoutes(() => checkout);
+    const opStore = createMemoryOperatorStore();
+    const { key } = await seedOperator(opStore, "Reader", ["read"]);
+    const routes = createPaymentsReadRoutes(() => checkout, opStore);
     const res = await routes.request(
       "/api/v1/payments/exceptions?status=OPEN&kind=UNDERPAID&limit=5",
-      { headers: { Authorization: `Bearer ${ADMIN_KEY}` } },
+      { headers: { Authorization: `Bearer ${key}` } },
     );
     expect(res.status).toBe(200);
     expect(calls[0]).toMatchObject({
@@ -87,8 +92,9 @@ describe("GET /api/v1/payments/exceptions", () => {
   });
 
   it("503 when exceptions port is absent", async () => {
-    const res = await app(null).request("/api/v1/payments/exceptions", {
-      headers: { "X-Admin-Key": ADMIN_KEY },
+    const { routes, opKey } = await app(null);
+    const res = await routes.request("/api/v1/payments/exceptions", {
+      headers: { "X-Admin-Key": opKey },
     });
     expect(res.status).toBe(503);
   });

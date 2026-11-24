@@ -46,8 +46,12 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   revokePassport: vi.fn(),
 }));
 
-import { upgradeRoutes } from "../src/server/routes/upgrade";
+import { createUpgradeRoutes } from "../src/server/routes/upgrade";
 import { passportRoutes } from "../src/server/routes/identity/passport";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "./helpers/operators";
 import {
   issuePassport,
   upgradeTier,
@@ -78,21 +82,34 @@ describe("SLICE-7-14: Edge Case Test Coverage", () => {
   // ---------------------------------------------------------------------------
   describe("AC #1: Tier upgrade with failure returns 500", () => {
     let app: Hono;
+    let opKey: string;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       vi.clearAllMocks();
+      // 264-8: the admin path rides an operator credential (workflow).
+      const opStore = createMemoryOperatorStore();
+      ({ key: opKey } = await seedOperator(opStore));
+      vi.mocked(getPassportInfo).mockResolvedValue({
+        owner: "0.0.456",
+      } as never);
       app = new Hono();
-      app.route("/", upgradeRoutes);
+      app.route("/", createUpgradeRoutes({ operatorStore: opStore }));
     });
+
+    const upgradeReq = () =>
+      app.request("/passport/0.0.123/1/upgrade", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Key": opKey,
+        },
+        body: JSON.stringify({ newTier: "gold" }),
+      });
 
     it("returns 500 when upgradeTier throws IPFS error", async () => {
       vi.mocked(upgradeTier).mockRejectedValueOnce(new Error("IPFS upload timeout"));
 
-      const res = await app.request("/passport/0.0.123/1/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
-      });
+      const res = await upgradeReq();
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -104,11 +121,7 @@ describe("SLICE-7-14: Edge Case Test Coverage", () => {
         new Error("Hedera RPC error: insufficient balance"),
       );
 
-      const res = await app.request("/passport/0.0.123/1/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
-      });
+      const res = await upgradeReq();
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -119,11 +132,7 @@ describe("SLICE-7-14: Edge Case Test Coverage", () => {
     it("returns 500 when upgradeTier throws HCS audit error", async () => {
       vi.mocked(upgradeTier).mockRejectedValueOnce(new Error("HCS topic submission failed"));
 
-      const res = await app.request("/passport/0.0.123/1/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
-      });
+      const res = await upgradeReq();
 
       expect(res.status).toBe(500);
     });

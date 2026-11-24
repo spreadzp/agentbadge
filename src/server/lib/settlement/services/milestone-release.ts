@@ -27,6 +27,8 @@ export async function forceReleaseMilestone(
   opts: {
     operator: string;
     reason: string;
+    /** 264-8 — credential principal id for the audit row (D-264-Q13). */
+    principalId?: string;
     /** R13-M2: explicit opt-in required to cancel an APPROVED payout
      *  under a COMPLETED agreement — that state is usually an owed
      *  payout, and the cancel path is unrecoverable. A CANCELLED
@@ -208,6 +210,7 @@ export async function forceReleaseMilestone(
       subjectType: "milestone",
       subjectId: milestone.id,
       operator,
+      principalId: opts.principalId,
       evidence: {
         milestoneId: milestone.milestoneId,
         planId: milestone.planId,

@@ -54,13 +54,6 @@ const formBtn = (label: string, cls = "") => html`<button
 const tokenField = (token: string) =>
   html`<input type="hidden" name="formToken" value="${token}" />`;
 
-const opField = () =>
-  html`<label class="block text-xs text-slate-500">
-    operator
-    <input name="operator" maxlength="80" class="${inputCls}"
-      placeholder="admin-browser (default) or your operator id" />
-  </label>`;
-
 function metaSection(r: FeedbackRecord) {
   return html`<section
       class="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-3"
@@ -137,7 +130,7 @@ function actionsSection(r: FeedbackRecord, token: string) {
               <input name="suggestion" maxlength="1000" class="${inputCls}"
                 value="${r.suggestion ?? ""}" />
             </label>
-            ${opField()} ${formBtn("Triage →")}
+            ${formBtn("Triage →")}
           </form>
         </section>`
       : "";
@@ -159,7 +152,7 @@ function actionsSection(r: FeedbackRecord, token: string) {
               <input name="suggestion" maxlength="1000" class="${inputCls}"
                 value="${r.suggestion ?? ""}" />
             </label>
-            ${opField()} ${formBtn("Resolve →")}
+            ${formBtn("Resolve →")}
           </form>
         </section>`
       : "";
@@ -173,7 +166,6 @@ function actionsSection(r: FeedbackRecord, token: string) {
           <form method="post" action="${base}/close">
             ${tokenField(token)}
             <input type="hidden" name="fromStatus" value="${r.status}" />
-            ${opField()}
             ${formBtn("Close →", "bg-slate-700 hover:bg-slate-600")}
           </form>
         </section>`
@@ -187,8 +179,7 @@ function actionsSection(r: FeedbackRecord, token: string) {
             → Knowledge draft (creates a DRAFT — 229 approval stays human)
           </h3>
           <form method="post" action="${base}/convert">
-            ${tokenField(token)} ${opField()}
-            ${formBtn("Convert →")}
+            ${tokenField(token)} ${formBtn("Convert →")}
             <a
               href="${base}/draft.json"
               class="ml-3 text-xs text-slate-400 underline"

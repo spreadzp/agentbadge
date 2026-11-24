@@ -43,7 +43,7 @@ const NO_STORE_PREFIXES = [
   "/api/ops/requests",
   "/api/ops/surveys",
   // EPIC-226 prod-verify A4: admin surfaces are operator-scoped — the
-  // default `public, max-age=300` also leaked onto adminAuth 401s.
+  // default `public, max-age=300` also leaked onto operator-credential 401s.
   "/admin/",
   // EPIC-228: agent-interaction polls are participant-scoped state
   // (capability-URL or identity-gated); /api/admin/* is operator-scoped

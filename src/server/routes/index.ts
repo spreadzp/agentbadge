@@ -17,10 +17,10 @@ import { verifyRoutes } from "./verify/verify";
 import { didRoutes } from "./identity/did";
 import { authChallengeRoutes } from "./identity/auth-challenge";
 import { agentRoutes } from "./agents/agents";
-import { adminRoutes } from "./ops/admin";
+import { createAdminRoutes } from "./ops/admin";
 import { createFinopsRoutes } from "./finops/finops";
 import { registerSettlementRoutes } from "./settlement/register";
-import { upgradeRoutes } from "./upgrade";
+import { createUpgradeRoutes } from "./upgrade";
 import { auditRoutes } from "./observability/audit";
 import { eventsRoutes } from "./observability/events";
 import { catalogRoutes } from "./services/catalog";
@@ -39,7 +39,7 @@ import { agentCardRoutes } from "./a2a/agent-card";
 import { feedRoutes } from "./discovery/feed";
 import { feedDirectoryRoutes } from "./discovery/feed-directory";
 import { mcpRoutes } from "./mcp/mcp";
-import { mcpOpsRoutes } from "./mcp/mcp-ops";
+import { createMcpOpsRoutes } from "./mcp/mcp-ops";
 import { riskRoutes } from "./scan/risk-api";
 import { econLedgerRoutes } from "./econ-ledger/econ-ledger-api";
 import { econLedgerRevenueRoutes } from "./econ-ledger/econ-ledger-revenue-api";
@@ -124,6 +124,7 @@ import { wireIntel } from "../wiring/intel";
 import { createAgentSurveyOpsRoutes } from "./agent-surveys/agent-surveys-ops-api";
 import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
 import { getDatabase } from "../lib/database";
+import { pickOperatorStores } from "../lib/operators";
 import { createBoardQaRoutes } from "./board/board-api-qa";
 import { createReceiptRoutes } from "./board/board-api-receipt";
 import { createReceiptSigner } from "../lib/board/task-receipt";
@@ -139,10 +140,10 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", didRoutes);
   app.route("/", authChallengeRoutes);
   app.route("/", agentRoutes);
-  app.route("/", adminRoutes);
+  app.route("/", createAdminRoutes()); // EPIC-264: /admin/{revoke,rebuild-cache}
   app.route("/", createFinopsRoutes()); // EPIC-226 SLICE-226-3: /admin/finance/*
   registerSettlementRoutes(app); // EPIC-227: settlement domain (227-3/4)
-  app.route("/", upgradeRoutes);
+  app.route("/", createUpgradeRoutes());
   app.route("/", auditRoutes);
   app.route("/", eventsRoutes);
   app.route("/", catalogRoutes);
@@ -188,8 +189,8 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", feedDirectoryRoutes);
   app.route("/", mcpRoutes);
   // EPIC-259 (SLICE-259-5): operator MCP surface — admin-exposure tools
-  // behind ADMIN_API_KEY (adminAuth inside mcp-ops).
-  app.route("/mcp/ops", mcpOpsRoutes);
+  // behind an operator credential (operatorAuth inside mcp-ops).
+  app.route("/mcp/ops", createMcpOpsRoutes());
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);
   app.route("/", econLedgerRevenueRoutes); // 242-9: /api/ledger/revenue (ops)
@@ -291,16 +292,24 @@ export function registerApiRoutes(app: Hono): void {
       env: getConfig().requestInbox,
     }),
   );
-  // 252-3: ops-pull channel — admin-gated respond/state + QA materialization.
+  // 264-8: one credential store for every migrated ops surface below.
+  const operatorStore = pickOperatorStores(getDatabase());
+  // 252-3: ops-pull channel — operator-gated respond/state + QA materialization.
   app.route(
     "/",
     createAgentRequestOpsRoutes({
       stores: requestInboxStores,
+      operatorStore,
     }),
   );
   // EPIC-228: agent interaction surfaces (228-3 public + 228-4 admin
   // API + 228-5 admin SSR) + TG-notify hook — wiring/agent-interaction.
-  wireAgentInteraction(app, requestInboxStores, getConfig().requestInbox);
+  wireAgentInteraction(
+    app,
+    requestInboxStores,
+    getConfig().requestInbox,
+    operatorStore,
+  );
   // EPIC-229: knowledge engine — admin JSON API (229-3). Public
   // search/ask + SSR join here in later slices — wiring/knowledge.
   wireKnowledge(app);
@@ -316,18 +325,21 @@ export function registerApiRoutes(app: Hono): void {
     createAgentSurveyRoutes({
       stores: requestInboxStores,
       env: getConfig().requestInbox,
+      operatorStore,
     }),
   );
   app.route(
     "/",
     createAgentSurveyOpsRoutes({
       stores: requestInboxStores,
+      operatorStore,
     }),
   );
   app.route(
     "/",
     createInboxOpsDigestRoutes({
       stores: requestInboxStores,
+      operatorStore,
     }),
   );
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations

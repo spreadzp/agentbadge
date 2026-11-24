@@ -1,12 +1,8 @@
 /**
  * EPIC-252 (SLICE-252-4, D-252-Q6): survey → rating lane —
  *   GET  /api/surveys/open           — public active survey list
- *   POST /api/surveys/:id/answer     — verified → ReputationWrite
- *                                      (namespace `surveys`, metric
- *                                      answers_rated_count, status
- *                                      "skipped" = milestone counter,
- *                                      no mint) ; anon → unrated
- *   POST /api/ops/surveys            — adminAuth create (ops-only v1)
+ *   POST /api/surveys/:id/answer     — verified → rated; anon → unrated
+ *   POST /api/ops/surveys            — operatorAuth create (ops-only v1)
  *
  * Dedupe: (surveyId,agentId) verified / (surveyId,fpHash) anon → 409.
  * Answer rate-limit same lane model (agentId|fpHash). Untrusted input:
@@ -17,7 +13,10 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { resolveClientIp } from "../../middleware/rate-limit";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
@@ -46,14 +45,15 @@ export interface AgentSurveyRoutesDeps {
   /** Soft-lane cap for anonymous answers (IP-rotation brake,
    *  SLICE-252-7). Default: max(answerMax*8, 8). */
   answerSoftMax?: number;
+  /** SLICE-264-8: credential store for operatorAuth on /api/ops/*. */
+  operatorStore?: OperatorStore;
 }
 
 const ANSWERS_MAX = 64 * 1024;
 
 const answerSchema = z.object({ answers: z.unknown() });
 
-// Re-audit H-4: an answers blob counts only if some leaf is a real
-// value — [null], {"q":""}, [[], {}] all fail.
+// Re-audit H-4: [null], {"q":""}, [[], {}] blobs aren't answers.
 const hasNonEmptyLeaf = (v: unknown): boolean => {
   if (typeof v === "string") return v.trim().length > 0;
   if (typeof v === "number" || typeof v === "boolean") return true;
@@ -95,6 +95,10 @@ export function createAgentSurveyRoutes(
   }
   const app = new Hono();
   const { stores, env } = deps;
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+
+  // 264-8: the ops lane under this surface — POST create → workflow.
+  app.use("/api/ops/*", operatorAuth(opStore), capabilityGate());
   const now = deps.now ?? (() => Date.now());
   const writeReputation =
     deps.writeReputation ??
@@ -130,7 +134,6 @@ export function createAgentSurveyRoutes(
 
   app.post(
     "/api/ops/surveys",
-    adminAuth,
     describeRoute({
       summary: "Create an agent survey (ops-only, D-252-Q6)",
       tags: ["Ops"],
@@ -232,8 +235,7 @@ export function createAgentSurveyRoutes(
         );
       }
       // D-252-A: same UA+headers identity on a rotated IP keeps the
-      // softFpHash — accept but flag for ops (no hard 409: curl clients
-      // can legitimately share that fingerprint).
+      // softFpHash — accept but flag for ops (no hard 409).
       const softDup = await stores.surveys.findAnswerBySoftFp(survey.id, softFpHash);
       const flag = softDup ? "soft_fp_dup" : null;
       // Same dual-lane model as intake: soft + IP lanes stop rotation.
@@ -285,8 +287,7 @@ export function createAgentSurveyRoutes(
             },
           });
         } catch (err) {
-          // Re-audit H-5: credit-write failure must not 500 — the
-          // answer is stored + rated; log and still return success.
+          // H-5: credit-write failure must not 500 — log + still 202.
           console.error("[surveys] writeReputation failed:", err);
         }
       }

@@ -6,6 +6,10 @@ import {
   pickRequestInboxStores,
 } from "../../src/server/lib/request-inbox";
 import { wireAgentInteraction } from "../../src/server/wiring/agent-interaction";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 /**
  * SLICE-228-6 DoD — end-to-end through the real wiring: anon agent
@@ -26,13 +30,13 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-const ADMIN = { "x-admin-key": "test-admin-key" };
-const OP = { ...ADMIN, "x-operator-id": "ops_e2e" };
-
-function mkApp(stores = createMemoryRequestInboxStores()) {
+async function mkApp(stores = createMemoryRequestInboxStores()) {
   const app = new Hono();
-  wireAgentInteraction(app, stores, ENV);
-  return { app, stores };
+  const opStore = createMemoryOperatorStore();
+  wireAgentInteraction(app, stores, ENV, opStore);
+  // 264-8: the operator actor is the credential principal.
+  const { key } = await seedOperator(opStore, "E2E Ops");
+  return { app, stores, adminH: { "x-admin-key": key } };
 }
 
 const post = (app: Hono, body: unknown, headers: Record<string, string>) =>
@@ -46,7 +50,7 @@ const adminPost = (
   app: Hono,
   path: string,
   body: unknown,
-  headers = OP,
+  headers: Record<string, string>,
 ) =>
   app.request(path, {
     method: "POST",
@@ -56,7 +60,7 @@ const adminPost = (
 
 describe("e2e: full interaction cycle", () => {
   it("anon submit → queue → classify → respond → agent polls ANSWERED", async () => {
-    const { app } = mkApp();
+    const { app, adminH } = await mkApp();
     // 1. agent submits (no creds at all)
     const r = await post(
       app,
@@ -69,7 +73,7 @@ describe("e2e: full interaction cycle", () => {
 
     // 2. operator sees it in the queue
     const q = await app.request("/api/admin/interactions", {
-      headers: ADMIN,
+      headers: adminH,
     });
     expect((await q.json()).items[0].id).toBe(requestId);
 
@@ -78,6 +82,7 @@ describe("e2e: full interaction cycle", () => {
       app,
       `/api/admin/interactions/${requestId}/classify`,
       { intent: "INTEGRATION_HELP", topics: ["x402"] },
+      adminH,
     );
     expect(cls.status).toBe(200);
     expect((await cls.json()).status).toBe("IN_REVIEW");
@@ -90,6 +95,7 @@ describe("e2e: full interaction cycle", () => {
       app,
       `/api/admin/interactions/${requestId}/respond`,
       { body: "yes — x402 settles on-chain via the gateway" },
+      adminH,
     );
     expect((await rsp.json()).status).toBe("ANSWERED");
 
@@ -112,7 +118,7 @@ describe("e2e: full interaction cycle", () => {
   });
 
   it("two requests under one sessionId → requestCount=2, thread shows both", async () => {
-    const { app, stores } = mkApp();
+    const { app, stores, adminH } = await mkApp();
     const ctx = { sessionId: "sess-e2e", channel: "mcp" };
     const a = await post(
       app,
@@ -132,7 +138,7 @@ describe("e2e: full interaction cycle", () => {
     expect(session?.requestCount).toBe(2);
     const detail = await app.request(
       `/api/admin/interactions/${bj.requestId}`,
-      { headers: ADMIN },
+      { headers: adminH },
     );
     const dj = await detail.json();
     expect(dj.thread).toHaveLength(2);
@@ -147,7 +153,7 @@ describe("e2e: full interaction cycle", () => {
       agentSurveys: null,
       agentInteractions: null,
     } as unknown as Parameters<typeof pickRequestInboxStores>[0]);
-    const { app } = mkApp(stores);
+    const { app, adminH } = await mkApp(stores);
     const r = await post(
       app,
       { text: "still works without a database" },
@@ -159,6 +165,7 @@ describe("e2e: full interaction cycle", () => {
       app,
       `/api/admin/interactions/${requestId}/respond`,
       { body: "memory-mode answer" },
+      adminH,
     );
     expect(rsp.status).toBe(200);
     const poll = await app.request(`/api/v1/agent/requests/${requestId}`);
@@ -170,7 +177,7 @@ describe("e2e: full interaction cycle", () => {
     // creds is invisible — the hook no-ops and intake still 202s.
     expect(process.env.TELEGRAM_BOT_TOKEN).toBeUndefined();
     expect(process.env.TELEGRAM_CHAT_ID).toBeUndefined();
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const r = await post(
       app,
       { text: "notify is fire-and-forget" },

@@ -14,7 +14,7 @@
  *   (network, hash) → 409; requireVerification without adapter → 503.
  * - dispute raise → legs/intent FROZEN → resolve SPLIT → legs replaced.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hex } from "viem";
@@ -34,6 +34,10 @@ import { listAdminActions } from "../../src/server/lib/finops/index.js";
 import { drainSettlementAnchors } from "../../src/server/lib/settlement/services/anchor.js";
 import { createSettlementReceiptRoutes } from "../../src/server/routes/settlement/settlement-receipts";
 import { createSettlementAdminRoutes } from "../../src/server/routes/settlement/settlement-admin";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { cacheHeadersMiddleware } from "../../src/server/middleware/cache-headers";
 
@@ -52,15 +56,15 @@ const provider = privateKeyToAccount(PROVIDER_KEY);
 const stranger = privateKeyToAccount(STRANGER_KEY);
 const CHAIN_ID = 421614;
 const signer = createSettlementReceiptSigner(SIGNER_KEY, CHAIN_ID);
-const ADMIN_KEY = "test-e2e-admin";
-const OPS = "ops-e2e";
 const RUN = randomUUID().slice(0, 8);
 const TX_A = `0x${"a".repeat(63)}${RUN.slice(0, 1)}`;
 const TX_B = `0x${"b".repeat(64)}`;
 
 let db: Database;
 let app: Hono;
+let opKey: string;
 let anchorSends: { to: string; memo: string }[];
+let opStore: ReturnType<typeof createMemoryOperatorStore>;
 
 type Deps = Parameters<typeof createSettlementAdminRoutes>[0];
 
@@ -81,18 +85,25 @@ function makeApp(admin: Partial<Deps> = {}) {
       },
     }),
   );
-  app.route("/", createSettlementAdminRoutes({ getDb: () => db, ...admin }));
+  app.route(
+    "/",
+    createSettlementAdminRoutes({
+      getDb: () => db,
+      operatorStore: opStore,
+      ...admin,
+    }),
+  );
 }
 
-beforeEach(() => {
-  process.env.ADMIN_API_KEY = ADMIN_KEY;
+beforeEach(async () => {
   db = createDatabase({ enabled: false });
+  // 264-8: admin surface rides a real opk_ credential; the actor
+  // recorded on AdminActions is the credential principal.id.
+  opStore = createMemoryOperatorStore();
+  const seeded = await seedOperator(opStore, "E2E Ops");
+  opKey = seeded.key;
   anchorSends = [];
   makeApp();
-});
-
-afterEach(() => {
-  delete process.env.ADMIN_API_KEY;
 });
 
 type Account = ReturnType<typeof privateKeyToAccount>;
@@ -139,7 +150,7 @@ async function req(
 }
 
 const adminReq = (method: string, path: string, body?: unknown) =>
-  req(method, path, { body, headers: { "x-admin-key": ADMIN_KEY } });
+  req(method, path, { body, headers: { "x-admin-key": opKey } });
 
 /** Seed: plan with provider+fee leg template → submit → approve → OPEN intent. */
 async function seedIntent() {
@@ -198,14 +209,14 @@ describe("e2e: plan → paid legs → released → receipt → anchor", () => {
     const p1 = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_A, legId: legs[0]!.id },
+      { txHash: TX_A, legId: legs[0]!.id },
     );
     expect(p1.status).toBe(200);
     expect(p1.body.auditRecorded).toBe(true);
     const p2 = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_B, legId: legs[1]!.id },
+      { txHash: TX_B, legId: legs[1]!.id },
     );
     expect(p2.status).toBe(200);
     expect(p2.body.intent.status).toBe("COMPLETED");
@@ -277,7 +288,6 @@ describe("e2e: dispute freeze → resolve SPLIT", () => {
       "POST",
       `/admin/settlement/disputes/${d.value.dispute.id}/resolve`,
       {
-        operator: OPS,
         resolution: "SPLIT",
         splitLegs: [
           { payee: provider.address, amountUsdc: "6.00", role: "PROVIDER" },
@@ -307,7 +317,7 @@ describe("contract guards", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS },
+      {},
     );
     expect(r.status).toBe(400);
     expect(r.body.error.code).not.toBe("INTERNAL_ERROR");
@@ -337,7 +347,7 @@ describe("contract guards", () => {
       const r = await adminReq(
         "POST",
         `/admin/settlement/intents/${intentId}/mark-paid`,
-        { operator: OPS, txHash: TX_A, legId: leg.id },
+        { txHash: TX_A, legId: leg.id },
       );
       expect(r.status).toBe(200);
       expect(r.body.auditRecorded).toBe(false);
@@ -356,7 +366,7 @@ describe("contract guards", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_A, legId: leg.id },
+      { txHash: TX_A, legId: leg.id },
     );
     expect(r.status).toBeGreaterThanOrEqual(400);
     expect((await legsOf(intentId))[0]!.status).toBe("OPEN");
@@ -369,7 +379,7 @@ describe("contract guards", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_A, legId: leg.id },
+      { txHash: TX_A, legId: leg.id },
     );
     expect(r.status).toBe(503);
     expect(r.body.error.code).toBe("VERIFIER_UNAVAILABLE");
@@ -381,13 +391,13 @@ describe("contract guards", () => {
     const r1 = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_A, legId: legs[0]!.id },
+      { txHash: TX_A, legId: legs[0]!.id },
     );
     expect(r1.status).toBe(200);
     const r2 = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX_A, legId: legs[1]!.id },
+      { txHash: TX_A, legId: legs[1]!.id },
     );
     expect(r2.status).toBe(409);
     expect((await legsOf(intentId))[1]!.status).toBe("OPEN");
@@ -470,7 +480,6 @@ describe("audit round-1 regressions (227-8)", () => {
       "POST",
       `/admin/settlement/disputes/${d.value.dispute.id}/resolve`,
       {
-        operator: OPS,
         resolution: "SPLIT",
         splitLegs: [
           { payee: provider.address, amountUsdc: "6.00", role: "PROVIDER" },
@@ -487,7 +496,6 @@ describe("audit round-1 regressions (227-8)", () => {
         "POST",
         `/admin/settlement/intents/${intentId}/mark-paid`,
         {
-          operator: OPS,
           txHash: `0x${String(i + 7).repeat(64)}`,
           legId: leg.id,
         },

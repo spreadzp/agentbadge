@@ -11,6 +11,10 @@ import { createInMemoryIdentityStores } from "@agentbadge/database";
 import { createIdentityService } from "../../src/server/lib/identity/index.js";
 import { createIdentityRoutes } from "../../src/server/routes/identity/identity-api.js";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 const OWNER_KEY =
   "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"; // secret-scan:allow: anvil test fixture
@@ -24,8 +28,9 @@ const ADMIN_KEY = "test-admin-key-2253"; // secret-scan:allow: test fixture
 
 let app: Hono;
 let service: ReturnType<typeof createIdentityService>;
+let opKey: string;
 
-beforeEach(() => {
+beforeEach(async () => {
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   service = createIdentityService({
     identity: createInMemoryIdentityStores(),
@@ -33,8 +38,11 @@ beforeEach(() => {
     // source verifier — tests stub it.
     verifySource: async () => true,
   });
+  // 264-8: the revoke route rides an operator credential (workflow).
+  const opStore = createMemoryOperatorStore();
+  ({ key: opKey } = await seedOperator(opStore));
   app = new Hono();
-  app.route("/", createIdentityRoutes(service));
+  app.route("/", createIdentityRoutes(service, { operatorStore: opStore }));
 });
 
 async function sigHeaders(
@@ -338,7 +346,7 @@ describe("POST /api/v1/entitlements/:wallet/revoke", () => {
       `/api/v1/entitlements/${owner.address}/revoke`,
       {
         body: { productCode: "PASSPORT_BRONZE" },
-        headers: { "X-Admin-Key": ADMIN_KEY },
+        headers: { "X-Admin-Key": opKey },
       },
     );
     expect(res.status).toBe(404);
@@ -355,7 +363,7 @@ describe("POST /api/v1/entitlements/:wallet/revoke", () => {
       `/api/v1/entitlements/${owner.address}/revoke`,
       {
         body: { productCode: "PASSPORT_BRONZE" },
-        headers: { "X-Admin-Key": ADMIN_KEY },
+        headers: { "X-Admin-Key": opKey },
       },
     );
     expect(res.status).toBe(200);
@@ -367,7 +375,7 @@ describe("POST /api/v1/entitlements/:wallet/revoke", () => {
       `/api/v1/entitlements/${owner.address}/revoke`,
       {
         body: { productCode: "PASSPORT_BRONZE" },
-        headers: { Authorization: `Bearer ${ADMIN_KEY}` },
+        headers: { Authorization: `Bearer ${opKey}` },
       },
     );
     expect(res2.status).toBe(404); // already revoked — no ACTIVE left

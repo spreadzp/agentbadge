@@ -31,6 +31,7 @@ import {
   type PaymentsCheckout,
 } from "../../lib/payments-api";
 import { CONTRACT_LIMITS } from "../../lib/machine-entry";
+import type { OperatorStore } from "../../lib/operators";
 import { createPaymentsReadRoutes } from "./payments-read-routes";
 import { createPaymentsRefundRoutes } from "./payments-refund-route";
 
@@ -71,6 +72,7 @@ function checkoutError(c: Context, err: unknown): Response {
 
 export function createPaymentsApiRoutes(
   getCheckout: () => PaymentsCheckout,
+  operatorStore?: OperatorStore,
 ): Hono {
   const routes = new Hono();
 
@@ -242,8 +244,8 @@ export function createPaymentsApiRoutes(
     },
   );
 
-  routes.route("/", createPaymentsRefundRoutes(getCheckout));
-  routes.route("/", createPaymentsReadRoutes(getCheckout));
+  routes.route("/", createPaymentsRefundRoutes(getCheckout, operatorStore));
+  routes.route("/", createPaymentsReadRoutes(getCheckout, operatorStore));
 
   return routes;
 }

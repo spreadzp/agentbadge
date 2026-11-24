@@ -9,6 +9,7 @@ import type { Hono } from "hono";
 import type { FeedbackStore } from "../../lib/feedback/store";
 import type { ReviewStore } from "../../lib/reviews/store";
 import type { KnowledgeDraftPort } from "../../lib/knowledge-draft/port";
+import type { OperatorStore } from "../../lib/operators";
 import { createAgentFeedbackRoutes } from "./agent-feedback-api";
 import { createAgentReviewsRoutes } from "./agent-reviews-api";
 import { createReviewCenter } from "./review-center";
@@ -23,10 +24,11 @@ export interface FeedbackReviewStores {
 export function mountFeedbackReviewRoutes(
   app: Hono,
   stores: FeedbackReviewStores,
+  operatorStore?: OperatorStore,
 ): void {
   // 230-4: public — POST/GET /api/v1/agent/feedback|reviews.
   app.route("/", createAgentFeedbackRoutes({ store: stores.feedback }));
   app.route("/", createAgentReviewsRoutes({ store: stores.reviews }));
-  // 230-5: operator SSR — /admin/review-center?queue= behind adminBrowserAuth.
-  app.route("/", createReviewCenter({ stores }));
+  // 230-5: operator SSR — /admin/review-center?queue= behind operatorBrowserAuth.
+  app.route("/", createReviewCenter({ stores, operatorStore }));
 }

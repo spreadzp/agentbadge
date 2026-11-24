@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
@@ -14,6 +17,8 @@ import type { RequestInboxStores } from "../../lib/request-inbox/store";
 
 export interface AgentSurveyOpsRoutesDeps {
   stores: RequestInboxStores;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 export function createAgentSurveyOpsRoutes(
@@ -21,10 +26,12 @@ export function createAgentSurveyOpsRoutes(
 ): Hono {
   const app = new Hono();
   const { stores } = deps;
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+
+  app.use("/api/ops/surveys/*", operatorAuth(opStore), capabilityGate());
 
   app.get(
     "/api/ops/surveys/:id/answers",
-    adminAuth,
     describeRoute({
       summary: "Ops pull - survey answers with voter fingerprints (hashes only)",
       tags: ["Ops"],

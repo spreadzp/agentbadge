@@ -54,8 +54,8 @@ vi.mock(
 import { Hono, type Context, type Next } from "hono";
 import { registerPassportTools } from "@agentbadge/mcp";
 import { mcpRoutes } from "../../src/server/routes/mcp/mcp";
-import { mcpOpsRoutes } from "../../src/server/routes/mcp/mcp-ops";
-import { upgradeRoutes } from "../../src/server/routes/upgrade";
+import { createMcpOpsRoutes } from "../../src/server/routes/mcp/mcp-ops";
+import { createUpgradeRoutes } from "../../src/server/routes/upgrade";
 import { didAuthEnrich } from "../../src/server/middleware/did-enrich";
 import {
   configureDidAuthForTesting,
@@ -107,8 +107,8 @@ function makeApp(setAgent?: (c: Context) => void): Hono {
   app.use("/mcp", didAuthEnrich());
   app.use("/mcp/*", didAuthEnrich());
   app.route("/", mcpRoutes);
-  app.route("/mcp/ops", mcpOpsRoutes);
-  app.route("/", upgradeRoutes);
+  app.route("/mcp/ops", createMcpOpsRoutes());
+  app.route("/", createUpgradeRoutes());
   return app;
 }
 
@@ -118,6 +118,7 @@ const agentApp = makeApp((c) => c.set("agentId", "eip155:1:0xabc:1"));
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.ADMIN_API_KEY = ADMIN_KEY;
+  process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   configureDidAuthForTesting({ verifier: verifySigMock, nonceStore });
   getPassportInfoMock.mockResolvedValue({ owner: OWNER_ACCT, active: true });
   upgradeTierMock.mockResolvedValue({ ok: true, tier: "silver" });

@@ -1,5 +1,5 @@
 /**
- * SLICE-227-8 — admin milestone mutations behind adminAuth (300-line
+ * SLICE-227-8 — admin milestone mutations behind operatorAuth (300-line
  * split from settlement-admin.ts).
  *
  *   POST /admin/settlement/milestones/:id/approve  {operator, reason,
@@ -15,7 +15,7 @@
  * not touch). Every landed effect writes an append-only AdminAction
  * and surfaces `auditRecorded` in the response.
  */
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 
@@ -26,10 +26,11 @@ import {
   forceReleaseMilestone,
   forceReopenMilestone,
 } from "../../lib/settlement/index.js";
-import { adminAuth } from "../../middleware/adminAuth";
-import { readBody } from "../finops/helpers";
+import { principalId } from "../../middleware/operatorAuth";
+import { readBody, rejectOperatorField } from "../finops/helpers";
 import { jsonBody } from "../commerce/schemas";
 import { respond, type SettlementRouteDeps } from "./helpers";
+import type { SettlementResult } from "../../lib/settlement/index.js";
 
 const TAG = { tags: ["Admin Settlement"] };
 
@@ -38,7 +39,6 @@ const TAG = { tags: ["Admin Settlement"] };
 // serialized evidence row under its 4 KB cap next to the forensic
 // fields (the service enforces the same serialized bound).
 const approveBody = z.object({
-  operator: z.string().min(1).max(128),
   reason: z.string().min(1).max(2000),
   submissionRef: z.string().max(128).optional(),
 });
@@ -46,7 +46,6 @@ const approveBody = z.object({
 // R6 nit 8: the reopen endpoint takes no submissionRef — a shared
 // schema would silently drop it, so reopen gets its own.
 const reopenBody = z.object({
-  operator: z.string().min(1).max(128),
   reason: z.string().min(1).max(2000),
 });
 
@@ -57,19 +56,6 @@ const releaseBody = reopenBody.extend({
   confirmCancel: z.boolean().optional(),
   acknowledgeInFlight: z.boolean().optional(),
 });
-
-const requireOperatorLabel = async (
-  c: Context,
-  raw: Record<string, unknown>,
-) => {
-  if (typeof raw.operator !== "string" || raw.operator.length === 0) {
-    return respond(c, {
-      ok: false,
-      error: { code: "OPERATOR_REQUIRED", message: "operator label required" },
-    });
-  }
-  return null;
-};
 
 export function settlementMilestoneAdminRoutes(
   deps: SettlementRouteDeps = {},
@@ -106,17 +92,18 @@ export function settlementMilestoneAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator / reason" },
+        400: { description: "Bad body / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
         409: { description: "Invalid state / open dispute" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const raw = await readBody(c);
-      const bad = await requireOperatorLabel(c, raw);
-      if (bad) return bad;
+      const opf = rejectOperatorField(raw);
+      if (opf) return respond(c, opf as SettlementResult<never>);
       const b = approveBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
@@ -131,7 +118,8 @@ export function settlementMilestoneAdminRoutes(
         createSettlementCtx(getDb()),
         c.req.param("id"),
         {
-          operator: b.data.operator,
+          operator: actor,
+          principalId: actor,
           reason: b.data.reason,
           submissionRef: b.data.submissionRef,
         },
@@ -169,7 +157,7 @@ export function settlementMilestoneAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator / reason" },
+        400: { description: "Bad body / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
         409: {
@@ -182,11 +170,12 @@ export function settlementMilestoneAdminRoutes(
         503: { description: "Cannot verify agreement/submission state" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const raw = await readBody(c);
-      const bad = await requireOperatorLabel(c, raw);
-      if (bad) return bad;
+      const opf = rejectOperatorField(raw);
+      if (opf) return respond(c, opf as SettlementResult<never>);
       const b = reopenBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
@@ -200,7 +189,7 @@ export function settlementMilestoneAdminRoutes(
       const res = await forceReopenMilestone(
         createSettlementCtx(getDb()),
         c.req.param("id"),
-        { operator: b.data.operator, reason: b.data.reason },
+        { operator: actor, principalId: actor, reason: b.data.reason },
       );
       return respond(c, res);
     },
@@ -248,7 +237,7 @@ export function settlementMilestoneAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator / reason" },
+        400: { description: "Bad body / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
         409: {
@@ -258,11 +247,12 @@ export function settlementMilestoneAdminRoutes(
         503: { description: "Cannot verify agreement/submission state" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const raw = await readBody(c);
-      const bad = await requireOperatorLabel(c, raw);
-      if (bad) return bad;
+      const opf = rejectOperatorField(raw);
+      if (opf) return respond(c, opf as SettlementResult<never>);
       const b = releaseBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
@@ -277,7 +267,8 @@ export function settlementMilestoneAdminRoutes(
         createSettlementCtx(getDb()),
         c.req.param("id"),
         {
-          operator: b.data.operator,
+          operator: actor,
+          principalId: actor,
           reason: b.data.reason,
           confirmCancel: b.data.confirmCancel,
           acknowledgeInFlight: b.data.acknowledgeInFlight,

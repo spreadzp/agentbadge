@@ -198,6 +198,9 @@ export interface RaiseDisputeInput {
 export interface ResolveDisputeInput {
   disputeId: string;
   operator: string;
+  /** 264-8 — credential principal id for the typed AdminAction column;
+   *  absent on non-operatorAuth callers → NULL = old format (D-264-Q13). */
+  principalId?: string;
   resolution: DisputeResolution;
   /** SPLIT only — the replacement legs; sum must equal the milestone
    *  amount. Existing non-completed legs are CANCELLED and replaced. */
@@ -214,6 +217,8 @@ export interface MarkPaidInput {
   legId?: string;
   txHash: string;
   operator: string;
+  /** 264-8 — credential principal id (D-264-Q13, see ResolveDisputeInput). */
+  principalId?: string;
 }
 
 /** Injected verification seam — see verify-payout-tx.ts. */

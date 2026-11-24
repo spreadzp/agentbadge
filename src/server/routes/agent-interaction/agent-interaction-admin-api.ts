@@ -7,19 +7,21 @@
  *     — mutations live in agent-interaction-admin-mutations.ts
  *       (300-line guard)
  *
- * All behind adminAuth. operatorRef = `X-Operator-Id` header claim
- * (fallback "admin") — self-declared inside the shared-key trust
- * boundary, never taken from the body (C55-review Q5 cross-check:
- * attribution can't be spoofed by the request payload itself).
- * Every mutation leaves an append-only event carrying operatorRef —
- * the AdminAction-style who/when trail.
+ * All behind operatorAuth (SLICE-264-8, workflow cap — O-264-8).
+ * operatorRef = the credential-resolved principal.id — never a header
+ * claim or body field; x-operator-id is a typed 400 at the boundary.
+ * Every mutation leaves an append-only event carrying it — the
+ * AdminAction-style who/when trail.
  */
 
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
@@ -60,6 +62,8 @@ const badId = (c: Context) =>
 
 export interface AgentInteractionAdminDeps {
   stores: RequestInboxStores;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 export function createAgentInteractionAdminRoutes(
@@ -67,10 +71,18 @@ export function createAgentInteractionAdminRoutes(
 ): Hono {
   const app = new Hono();
   const { stores } = deps;
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+
+  // 264-8: one mount covers GETs + the mutations registered below —
+  // the whole surface is workflow-cap (CAPABILITY_BY_SURFACE).
+  app.use(
+    "/api/admin/interactions/*",
+    operatorAuth(opStore),
+    capabilityGate(),
+  );
 
   app.get(
     "/api/admin/interactions",
-    adminAuth,
     describeRoute({
       summary: "Operator queue — FIFO, default status PENDING_REVIEW",
       tags: ["Admin Interactions"],
@@ -141,7 +153,6 @@ export function createAgentInteractionAdminRoutes(
 
   app.get(
     "/api/admin/interactions/:id",
-    adminAuth,
     describeRoute({
       summary: "Full interaction detail — payload, classification, thread, events",
       tags: ["Admin Interactions"],
@@ -195,7 +206,6 @@ export function createAgentInteractionAdminRoutes(
 
   app.get(
     "/api/admin/interactions/:id/events",
-    adminAuth,
     describeRoute({
       summary: "Full internal event log — both visibilities (audit)",
       tags: ["Admin Interactions"],

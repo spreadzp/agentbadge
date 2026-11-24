@@ -5,21 +5,27 @@
  *   POST /admin/interactions/:id/{classify,respond,reject}
  *        → form-encoded PRG back to the detail page
  *
- * Browser auth (O-228-3): `adminBrowserAuth` — HTTP Basic prompt,
- * password = ADMIN_API_KEY (no cookies/sessions added). Form
+ * Browser auth (O-228-3): `operatorBrowserAuth` (264-8) — HTTP Basic
+ * prompt, password = opk_ credential (no cookies/sessions added). Form
  * mutations call the domain lib directly and redirect 303 — the
  * JSON API at /api/admin/interactions/* stays the programmatic
- * surface for the same operations.
+ * surface for the same operations. The actor is the credential
+ * principal — no operator form field.
  */
 
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { adminBrowserAuth } from "../../middleware/adminAuth";
-import { errorResponse } from "../../lib/error-response";
-import { ErrorCodes } from "../../lib/error-codes";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
 import { getDatabase } from "../../lib/database";
 import { pickDemandStore } from "../../lib/demand/db-stores";
+import {
+  operatorBrowserAuth,
+  principalId,
+} from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import { wrapFragment } from "../ui/helpers";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
@@ -86,6 +92,8 @@ const csvToList = (v: unknown): string[] | undefined => {
 
 export interface AgentInteractionAdminUiDeps {
   stores: RequestInboxStores;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 export function createAgentInteractionAdminUi(
@@ -93,8 +101,14 @@ export function createAgentInteractionAdminUi(
 ): Hono {
   const app = new Hono();
   const { stores } = deps;
-  app.use("/admin/interactions", adminBrowserAuth);
-  app.use("/admin/interactions/*", adminBrowserAuth);
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+  // Hono 4: path/* already matches the bare path — one mount covers
+  // /admin/interactions and everything under it (workflow cap).
+  app.use(
+    "/admin/interactions/*",
+    operatorBrowserAuth(opStore),
+    capabilityGate(),
+  );
   // B-3 prod-verify: browsers auto-attach cached Basic credentials to
   // cross-site form POSTs (no cookies needed) — require Origin to match
   // the request host when the header is present (non-browser clients
@@ -184,20 +198,17 @@ export function createAgentInteractionAdminUi(
     );
   });
 
-  // ── Form mutations (PRG) — operator label is a required form field
-  //    (the browser-flow equivalent of the API's X-Operator-Id claim).
+  // ── Form mutations (PRG) — the actor is the credential principal;
+  //    no operator form field (264-8).
 
   app.post("/admin/interactions/:id/classify", async (c) => {
     const id = c.req.param("id");
     if (!REQUEST_ID_RE.test(id)) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
     }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
     const b = await c.req.parseBody();
-    const operator =
-      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
-    if (!operator) {
-      return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
-    }
     const r = await classify(
       stores,
       id,
@@ -213,7 +224,7 @@ export function createAgentInteractionAdminUi(
         entities: csvToList(b.entities),
         demandSignals: csvToList(b.demandSignals),
       },
-      operator,
+      actor,
       { demand: pickDemandStore(getDatabase()) },
     );
     if (!r.ok) {
@@ -232,13 +243,10 @@ export function createAgentInteractionAdminUi(
     if (!REQUEST_ID_RE.test(id)) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
     }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
     const b = await c.req.parseBody();
-    const operator =
-      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
-    if (!operator) {
-      return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
-    }
-    const r = await respond(stores, id, operator, b.body);
+    const r = await respond(stores, id, actor, b.body);
     if (!r.ok) {
       const msg =
         "reason" in r
@@ -258,13 +266,10 @@ export function createAgentInteractionAdminUi(
     if (!REQUEST_ID_RE.test(id)) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
     }
+    const actor = principalId(c);
+    if (actor instanceof Response) return actor;
     const b = await c.req.parseBody();
-    const operator =
-      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
-    if (!operator) {
-      return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
-    }
-    const r = await reject(stores, id, operator, b.reason);
+    const r = await reject(stores, id, actor, b.reason);
     if (!r.ok) {
       const msg =
         "reason" in r

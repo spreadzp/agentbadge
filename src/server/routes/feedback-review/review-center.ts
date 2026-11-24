@@ -4,8 +4,8 @@
  *   GET /admin/review-center/feedback/:id
  *   GET /admin/review-center/reviews/:id
  *
- * Browser auth: adminBrowserAuth (HTTP Basic, ADMIN_API_KEY) — same
- * posture as /admin/interactions. Form mutations live in
+ * Browser auth: operatorBrowserAuth (HTTP Basic, opk_ credential) —
+ * same posture as /admin/interactions. Form mutations live in
  * review-center-mutations.ts; every rendered form mints a
  * single-use formToken (Arc R2 H-1 lesson).
  */
@@ -13,7 +13,10 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { adminBrowserAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorBrowserAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { mintFormToken } from "../../lib/knowledge/form-tokens";
@@ -57,11 +60,19 @@ const QUEUE_PAGE = 50;
 
 export function createReviewCenter(deps: {
   stores: FeedbackReviewStores;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }): Hono {
   const app = new Hono();
   const { stores } = deps;
-  app.use("/admin/review-center", adminBrowserAuth);
-  app.use("/admin/review-center/*", adminBrowserAuth);
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+  // 264-8: one mount (path/* covers the bare path in Hono 4) —
+  // GETs → read cap, form POSTs → workflow.
+  app.use(
+    "/admin/review-center/*",
+    operatorBrowserAuth(opStore),
+    capabilityGate(),
+  );
   // B-3 prod-verify (228 precedent): browsers auto-attach cached
   // Basic credentials to cross-site form POSTs — require Origin to
   // match the request host when the header is present.

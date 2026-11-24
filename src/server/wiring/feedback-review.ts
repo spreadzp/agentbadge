@@ -37,6 +37,7 @@ import {
   reviewsReopenedTotal,
   reviewsSubmittedTotal,
 } from "../metrics/metrics";
+import { pickOperatorStores } from "../lib/operators";
 import { mountFeedbackReviewRoutes } from "../routes/feedback-review/mount";
 
 const ADMIN_BASE =
@@ -204,6 +205,6 @@ export function wireFeedbackReview(app: Hono): void {
     // the draft lands in the same seam the admin knowledge UI reads.
     draftPort: knowledgeDraftPort(pickKnowledgeStores(db)),
   };
-  mountFeedbackReviewRoutes(app, stores);
+  mountFeedbackReviewRoutes(app, stores, pickOperatorStores(db));
   registerHooks(stores.reviews);
 }

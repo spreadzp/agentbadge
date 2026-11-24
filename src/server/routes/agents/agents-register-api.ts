@@ -2,8 +2,7 @@
 //  POST   /api/v1/agents/register — name → ERC-8004 mint + agb_ key (once)
 //  GET    /api/v1/agents/me       — registration record by Bearer key
 //  DELETE /api/v1/agents/me       — self-revoke (instant, cache-bust)
-// Legacy POST /agents/register (Hedera passport-required) is untouched —
-// the v1 prefix is the new path (D-184-5).
+// Legacy POST /agents/register untouched — v1 prefix is the new path (D-184-5).
 
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -18,7 +17,10 @@ import {
   revokeApiKey,
 } from "../../lib/agent-registration/api-keys";
 import { bustAgentKeyCache } from "../../middleware/agent-key-auth";
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import {
   createDailyBucket,
   createDailyLimiter,
@@ -48,14 +50,16 @@ export interface AgentRegisterRoutesDeps {
   registryAddress: `0x${string}`;
   /** Observer-tier keyed free limit advertised to callers (req/min). */
   keyRpm: number;
-  /** Max registrations per IP per UTC day (regcap:<ip>:<day> bucket). */
+  /** Max registrations per IP per UTC day (regcap:<ip>:<day>). */
   dailyLimit: number;
   /** Cache backend for the shared regcap counter — default tryGetCache(). */
   cache?: CacheProvider | null;
-  /** SLICE-184-5: sponsored relayer — wired only when REGISTER_SPONSORED=1; {owner, signature} requests 400 when absent. */
+  /** SLICE-184-5: sponsored relayer — REGISTER_SPONSORED=1 only; {owner, signature} requests 400 when absent. */
   sponsoredMint?: SponsoredMintFn;
   /** Treasury-budget cap for sponsored mints per UTC day (sponcap:<day>). */
   sponsoredDailyLimit?: number;
+  /** SLICE-264-8: credential store for operatorAuth on the admin DELETE. */
+  operatorStore?: OperatorStore;
 }
 
 const bearerKey = (c: Context): string | undefined => {
@@ -72,8 +76,7 @@ export function createAgentRegisterRoutes(
     deps.dailyLimit,
     deps.cache === undefined ? tryGetCache() : deps.cache,
   );
-  // Financial boundary → strict: cache backend down = deny, not
-  // unlimited treasury spend (Arc Studio review H-1).
+  // Financial boundary → strict: cache down = deny (Arc review H-1).
   const sponcap = createDailyBucket(
     "sponcap",
     deps.sponsoredDailyLimit ?? 50,
@@ -88,9 +91,8 @@ export function createAgentRegisterRoutes(
         "Self-serve agent registration — mints into the canonical ERC-8004 " +
         "identity registry and returns a single-use-shown agb_ api key " +
         "(observer tier, keyed free-tier limits).",
-      // SLICE-259-40 (AB-148): real requestBody + response `example`
-      // media-type fields — scanner checkers read these, `x-examples`
-      // alone doesn't count.
+      // SLICE-259-40 (AB-148): real `example` media-type fields —
+      // scanner checkers read these, `x-examples` doesn't count.
       requestBody: {
         required: true,
         content: { "application/json": { examples: {
@@ -114,10 +116,8 @@ export function createAgentRegisterRoutes(
       if (!deps.enabled || !deps.mint)
         return errorResponse(c, 503, ErrorCodes.EXECUTION_FAILED, "agent registration is unavailable", { retryable: true });
       // SLICE-184-4: per-IP daily cap regcap:<ip>:<day> (sybil guard).
-      // H-2 (Arc Studio review): first XFF element is attacker-set.
-      // Trust only headers our proxies own (CF → fly edge); else the
-      // LAST XFF hop (closest proxy appended it); else a shared
-      // "anonymous" bucket — spoofing degrades to the tightest pool.
+      // H-2: first XFF element is attacker-set — trust headers our
+      // proxies own, else the last hop, else a shared bucket.
       const xff = c.req.header("x-forwarded-for");
       const ip = c.req.header("cf-connecting-ip") ??
         c.req.header("fly-client-ip") ??
@@ -211,8 +211,8 @@ export function createAgentRegisterRoutes(
               e.message,
             );
           }
-          // H-1: the gate reserved a sponsored slot — give it back so
-          // failed mints can't drain the daily treasury budget.
+          // H-1: refund the reserved sponcap slot — failed mints
+          // can't drain the daily treasury budget.
           if (body.owner) await sponcap.release("global").catch(() => {});
           return errorResponse(
             c,
@@ -268,22 +268,22 @@ export function createAgentRegisterRoutes(
   );
 
   // SLICE-184-4: admin kill-switch — revoke agent + bust the 60s
-  // auth-cache so the key fails closed immediately. agentId is
-  // URL-encoded (eip155:chain:registry:token).
+  // auth-cache so the key fails closed immediately.
+  // 264-8: operator credential, workflow cap.
   routes.delete(
     "/api/v1/admin/agents/:agentId{.+}",
     describeRoute({
       description:
         "Admin-revoke a registered agent — instant, auth-cache busted. " +
-        "Requires X-Admin-Key or Bearer ADMIN_API_KEY.",
+        "Requires an operator credential (X-Admin-Key or Bearer opk_).",
       responses: {
         200: { description: "Agent revoked (idempotent)" },
-        401: { description: "Missing/invalid admin key" },
+        401: { description: "Missing/invalid operator credential" },
         404: { description: "Unknown agentId" },
-        500: { description: "ADMIN_API_KEY not configured" },
       },
     }),
-    adminAuth,
+    operatorAuth(deps.operatorStore ?? pickOperatorStores(getDatabase())),
+    capabilityGate(),
     async (c) => {
       const agentId = decodeURIComponent(c.req.param("agentId"));
       const rec = await deps.store.get(agentId);

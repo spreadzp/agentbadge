@@ -29,7 +29,7 @@ import type {
  *   `publishedVersionId` (domain lib 229-2 never sets it).
  * - §16.5 + Arc R1 H2: verify/publish require an OPERATOR actor —
  *   isOperatorRef (allowlist shape + agent-prefix denylist) at the
- *   lib edge, on top of the adminAuth route boundary. Separation of
+ *   lib edge, on top of the operatorAuth route boundary. Separation of
  *   duties: verifier ≠ submitter, publisher ≠ verifier — one ref can
  *   no longer walk an item through the whole machine alone.
  * - Arc R1 H4: entering VERIFIED requires ≥1 evidence ref on the
@@ -96,7 +96,7 @@ export async function transitionKnowledgeItem(
 
   // §16.5 — only operator actors may move an item INTO VERIFIED or
   // PUBLISHED (submit/reject/withdraw are operator-only anyway via
-  // the adminAuth boundary, but the verify/publish guard is the
+  // the operatorAuth boundary, but the verify/publish guard is the
   // security-critical one). Checked BEFORE legality: an agent actor
   // gets the same refusal regardless of current status — the error
   // doesn't leak where the item actually sits.

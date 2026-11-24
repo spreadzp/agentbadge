@@ -3,12 +3,15 @@
  *
  * Reference: SLICE-1-5, CONTEXT.md:61-63
  *
- * POST /admin/revoke — wipe NFT, submit audit message (protected by adminAuth)
+ * POST /admin/revoke — wipe NFT, submit audit message (protected by operatorAuth)
  */
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
-import { adminAuth } from "../../middleware/adminAuth";
+import { getDatabase } from "../../lib/database";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { revokePassport, rebuildFromHcs } from "@agentbadge/passport";
 import { chainDisabled, passportChainEnabled } from "../../lib/passport-chain-gate";
 import { logger } from "@agentbadge/passport/logger";
@@ -23,97 +26,108 @@ export interface RevokeRequestBody {
   reason: string;
 }
 
-export const adminRoutes = new Hono();
+// SLICE-264-8: operatorAuth + workflow cap — was adminAuth.
+export function createAdminRoutes(
+  deps: { operatorStore?: OperatorStore } = {},
+): Hono {
+  const adminRoutes = new Hono();
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+  adminRoutes.use(
+    "/admin/*",
+    operatorAuth(opStore),
+    capabilityGate(),
+  );
 
 adminRoutes.post(
-  "/admin/revoke",
-  describeRoute({
-    tags: ["Admin"],
-    summary: "Revoke agent passport",
-    description: "Wipes the NFT and submits an audit message. Protected by admin authentication.",
-    responses: {
-      200: { description: "Passport revoked successfully" },
-      400: {
-        description: "tokenId and serial are required",
-        content: { "application/json": { schema: resolver(errorSchema) } },
+    "/admin/revoke",
+    describeRoute({
+      tags: ["Admin"],
+      summary: "Revoke agent passport",
+      description: "Wipes the NFT and submits an audit message. Protected by admin authentication.",
+      responses: {
+        200: { description: "Passport revoked successfully" },
+        400: {
+          description: "tokenId and serial are required",
+          content: { "application/json": { schema: resolver(errorSchema) } },
+        },
+        404: {
+          description: "Passport not found",
+          content: { "application/json": { schema: resolver(errorSchema) } },
+        },
+        409: {
+          description: "Passport already revoked",
+          content: { "application/json": { schema: resolver(errorSchema) } },
+        },
+        500: {
+          description: "Revocation failed",
+          content: { "application/json": { schema: resolver(errorSchema) } },
+        },
       },
-      404: {
-        description: "Passport not found",
-        content: { "application/json": { schema: resolver(errorSchema) } },
-      },
-      409: {
-        description: "Passport already revoked",
-        content: { "application/json": { schema: resolver(errorSchema) } },
-      },
-      500: {
-        description: "Revocation failed",
-        content: { "application/json": { schema: resolver(errorSchema) } },
-      },
-    },
-  }),
-  adminAuth,
-  async (c) => {
-    if (!passportChainEnabled()) return chainDisabled(c);
+    }),
+    async (c) => {
+      if (!passportChainEnabled()) return chainDisabled(c);
 
-    let body: RevokeRequestBody;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
-    }
-
-    if (!body.tokenId || !body.serial) {
-      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "tokenId and serial are required");
-    }
-
-    try {
-      const result = await revokePassport(body.tokenId, Number(body.serial), body.reason ?? "");
-      return c.json({ success: true, did: result.did }, 200);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      if (message.includes("not found")) {
-        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, message);
+      let body: RevokeRequestBody;
+      try {
+        body = await c.req.json();
+      } catch {
+        return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
       }
-      if (message.includes("already revoked")) {
-        return errorResponse(c, 409, ErrorCodes.PASSPORT_REVOKED, message);
+
+      if (!body.tokenId || !body.serial) {
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "tokenId and serial are required");
       }
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Revocation failed: ${message}`, { retryable: true });
-    }
-  },
-);
 
-adminRoutes.post(
-  "/admin/rebuild-cache",
-  describeRoute({
-    tags: ["Admin"],
-    summary: "Full directory cache rebuild",
-    description:
-      "Triggers a full rebuild of the directory cache from HCS messages. Protected by admin authentication.",
-    responses: {
-      200: { description: "Cache rebuilt successfully" },
-      500: {
-        description: "Rebuild failed",
-        content: { "application/json": { schema: resolver(errorSchema) } },
-      },
+      try {
+        const result = await revokePassport(body.tokenId, Number(body.serial), body.reason ?? "");
+        return c.json({ success: true, did: result.did }, 200);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        if (message.includes("not found")) {
+          return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, message);
+        }
+        if (message.includes("already revoked")) {
+          return errorResponse(c, 409, ErrorCodes.PASSPORT_REVOKED, message);
+        }
+        return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Revocation failed: ${message}`, { retryable: true });
+      }
     },
-  }),
-  adminAuth,
-  async (c) => {
-    if (!passportChainEnabled()) return chainDisabled(c);
+  );
 
-    const topicId = process.env.DIRECTORY_TOPIC_ID;
-    if (!topicId) {
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "DIRECTORY_TOPIC_ID not configured");
-    }
+  adminRoutes.post(
+    "/admin/rebuild-cache",
+    describeRoute({
+      tags: ["Admin"],
+      summary: "Full directory cache rebuild",
+      description:
+        "Triggers a full rebuild of the directory cache from HCS messages. Protected by admin authentication.",
+      responses: {
+        200: { description: "Cache rebuilt successfully" },
+        500: {
+          description: "Rebuild failed",
+          content: { "application/json": { schema: resolver(errorSchema) } },
+        },
+      },
+    }),
+    async (c) => {
+      if (!passportChainEnabled()) return chainDisabled(c);
 
-    try {
-      const start = Date.now();
-      await rebuildFromHcs(topicId);
-      logger.info("admin_cache_rebuild", { durationMs: Date.now() - start });
-      return c.json({ success: true, durationMs: Date.now() - start }, 200);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Rebuild failed: ${message}`, { retryable: true });
-    }
-  },
-);
+      const topicId = process.env.DIRECTORY_TOPIC_ID;
+      if (!topicId) {
+        return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "DIRECTORY_TOPIC_ID not configured");
+      }
+
+      try {
+        const start = Date.now();
+        await rebuildFromHcs(topicId);
+        logger.info("admin_cache_rebuild", { durationMs: Date.now() - start });
+        return c.json({ success: true, durationMs: Date.now() - start }, 200);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Rebuild failed: ${message}`, { retryable: true });
+      }
+    },
+  );
+
+  return adminRoutes;
+}

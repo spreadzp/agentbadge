@@ -10,13 +10,12 @@ import type { Context } from "hono";
 
 import { FEEDBACK_STATUSES } from "../../lib/feedback/types";
 import { REVIEW_STATUSES } from "../../lib/reviews/types";
+import { principalId } from "../../middleware/operatorAuth";
 import {
   safeErrCode,
   safeOkCode,
 } from "../../../views/admin-review-center/shared";
 import {
-  opBad,
-  opOf,
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "../admin-knowledge-ui-mutations-shared";
@@ -24,8 +23,6 @@ import {
 export {
   formStr,
   formRaw,
-  opOf,
-  opBad,
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "../admin-knowledge-ui-mutations-shared";
@@ -36,8 +33,9 @@ export const badId = () => new Response(null, { status: 404 });
  *  jsonb refuses lone surrogates (Arc nit: UTF-16 slicing). */
 export const clipCp = (s: string, n: number) => [...s].slice(0, n).join("");
 
-/** Shared POST prelude: parse → id → token → operator guards.
- *  Returns {body, operator} or a redirect Response. */
+/** Shared POST prelude: id → token → credential-principal actor.
+ *  Returns {body, operator} or a redirect/401 Response (264-8: the
+ *  operator ref is the principal.id, never a form field). */
 export async function guardMutation(
   c: Context,
   queue: "feedback" | "reviews",
@@ -51,6 +49,8 @@ export async function guardMutation(
   if (!id.success || id.data === undefined) {
     return { ok: false, res: badId() };
   }
+  const actor = principalId(c);
+  if (actor instanceof Response) return { ok: false, res: actor };
   const body = (await c.req.parseBody()) as Record<string, unknown>;
   if (!tokenConsumed(body)) {
     return {
@@ -58,13 +58,7 @@ export async function guardMutation(
       res: c.redirect(backTo(queue, id.data, { err: FORM_TOKEN_ERR }), 303),
     };
   }
-  if (opBad(body)) {
-    return {
-      ok: false,
-      res: c.redirect(backTo(queue, id.data, { err: "bad_operator" }), 303),
-    };
-  }
-  return { ok: true, body, operator: opOf(body), id: id.data };
+  return { ok: true, body, operator: actor, id: id.data };
 }
 
 export const backTo = (

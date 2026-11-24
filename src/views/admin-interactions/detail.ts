@@ -45,17 +45,6 @@ const textOf = (r: InboxRequestRecord): string => {
   return typeof p === "string" ? p : JSON.stringify(p);
 };
 
-const operatorField = html`<label class="block text-xs text-slate-500">
-  operator <span class="text-red-400">*</span>
-  <input
-    name="operator"
-    required
-    maxlength="128"
-    placeholder="your handle — recorded on every action"
-    class="mt-0.5 w-48 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200"
-  />
-</label>`;
-
 const terminalBadge = (r: InboxRequestRecord) =>
   ["completed", "failed"].includes(r.state)
     ? html`<span
@@ -167,7 +156,7 @@ function classifySection(d: DetailData) {
             class="rounded border-slate-700 bg-slate-900" />
           knowledge gap — answer not in the knowledge base
         </label>
-        <div class="flex items-end gap-2">${operatorField}
+        <div class="flex items-end gap-2">
           <button type="submit"
             class="rounded bg-sky-700 px-3 py-1 text-xs font-medium text-sky-50 hover:bg-sky-600">Classify</button>
         </div>
@@ -184,7 +173,7 @@ function respondRejectSection(d: DetailData) {
       <textarea name="body" required rows="4" maxlength="16384"
         class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
         placeholder="Answer visible to the agent via the public poll"></textarea>
-      <div class="mt-2 flex items-end gap-2">${operatorField}
+      <div class="mt-2 flex items-end gap-2">
         <button type="submit"
           class="rounded bg-emerald-700 px-3 py-1 text-xs font-medium text-emerald-50 hover:bg-emerald-600">Send answer</button>
       </div>
@@ -194,7 +183,7 @@ function respondRejectSection(d: DetailData) {
       <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">Reject</h3>
       <input name="reason" maxlength="512" placeholder="internal reason (not public)"
         class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200" />
-      <div class="mt-2 flex items-end gap-2">${operatorField}
+      <div class="mt-2 flex items-end gap-2">
         <button type="submit"
           class="rounded bg-red-800 px-3 py-1 text-xs font-medium text-red-100 hover:bg-red-700">Reject</button>
       </div>

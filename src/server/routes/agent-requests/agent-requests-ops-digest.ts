@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { telegramFromEnv } from "../../lib/notify/telegram";
@@ -16,15 +19,19 @@ import type { RequestInboxStores } from "../../lib/request-inbox/store";
 
 export interface InboxOpsDigestDeps {
   stores: RequestInboxStores;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 export function createInboxOpsDigestRoutes(deps: InboxOpsDigestDeps): Hono {
   const app = new Hono();
   const { stores } = deps;
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+
+  app.use("/api/ops/requests/*", operatorAuth(opStore), capabilityGate());
 
   app.post(
     "/api/ops/requests/digest",
-    adminAuth,
     describeRoute({
       summary: "Send the inbox digest to Telegram now (on-demand, ignores watermark)",
       tags: ["Ops"],

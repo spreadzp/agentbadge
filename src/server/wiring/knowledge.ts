@@ -1,6 +1,6 @@
 /**
  * EPIC-229: domain wiring — mounts knowledge surfaces on the app.
- *   229-3: admin JSON API — /admin/api/knowledge/* (adminAuth).
+ *   229-3: admin JSON API — /admin/api/knowledge/* (operatorAuth).
  * Later slices add the public agent surface (229-5 search,
  * 229-7 ask) and the operator SSR console (229-9) here.
  */

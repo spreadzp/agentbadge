@@ -20,6 +20,10 @@ import { createSettlementRoutes } from "../../src/server/routes/settlement/settl
 import { createSettlementAdminRoutes } from "../../src/server/routes/settlement/settlement-admin";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { cacheHeadersMiddleware } from "../../src/server/middleware/cache-headers";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 const BUYER_KEY =
   "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
@@ -35,19 +39,35 @@ export const ADMIN_KEY = "test-settlement-admin-key";
 export const OPS = "ops-route-1";
 export const TX = `0x${"c".repeat(64)}`;
 
-export const rt: { db: Database; app: Hono } = {
+export const rt: {
+  db: Database;
+  app: Hono;
+  opKey: string;
+  operatorId: string;
+} = {
   db: null as unknown as Database,
   app: null as unknown as Hono,
+  opKey: "",
+  operatorId: "",
 };
 
-export function initRouteTest(): void {
+export async function initRouteTest(): Promise<void> {
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   rt.db = createDatabase({ enabled: false });
+  // SLICE-264-8: admin surface rides a real opk_ credential — the
+  // actor written to AdminAction rows is the credential principal.id.
+  const opStore = createMemoryOperatorStore();
+  const seeded = await seedOperator(opStore, "Route Ops");
+  rt.opKey = seeded.key;
+  rt.operatorId = seeded.operatorId;
   rt.app = new Hono();
   rt.app.use(cacheHeadersMiddleware());
   rt.app.route("/", createSettlementRoutes({ getDb: () => rt.db }));
   rt.app.route("/", createSettlementReceiptRoutes({ getDb: () => rt.db }));
-  rt.app.route("/", createSettlementAdminRoutes({ getDb: () => rt.db }));
+  rt.app.route(
+    "/",
+    createSettlementAdminRoutes({ getDb: () => rt.db, operatorStore: opStore }),
+  );
 }
 
 export function teardownRouteTest(): void {
@@ -124,8 +144,8 @@ export const adminReq = (
   method: string,
   path: string,
   body?: unknown,
-  key = ADMIN_KEY,
-) => req(method, path, { body, headers: { "x-admin-key": key } });
+  key?: string,
+) => req(method, path, { body, headers: { "x-admin-key": key ?? rt.opKey } });
 
 export const PLAN_BODY = (agreementRef: string) => ({
   agreementRef,

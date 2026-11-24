@@ -5,7 +5,7 @@
  * Guards on every POST (Arc lessons 5-7):
  *  - single-use formToken consumed at the edge (double-submit/F5 →
  *    honest "expired" flash, the domain write never runs twice)
- *  - operator ref → opOf normalize + isOperatorRef shape check
+ *  - operator ref → credential principal.id (264-8)
  *  - flash values are whitelist codes via backTo(), never free text
  */
 

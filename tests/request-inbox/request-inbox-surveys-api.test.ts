@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import { createAgentSurveyRoutes } from "../../src/server/routes/agent-surveys/agent-surveys-api";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 import { createMemoryRequestInboxStores } from "../../src/server/lib/request-inbox/db-stores";
 import type { ReputationWriteRecord } from "../../src/server/lib/board/types";
 
@@ -23,8 +27,9 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-function mkApp(now: () => number = () => Date.now()) {
+async function mkApp(now: () => number = () => Date.now()) {
   const stores = createMemoryRequestInboxStores();
+  const opStore = createMemoryOperatorStore();
   const rep: ReputationWriteRecord[] = [];
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   app.use((c, next) => {
@@ -38,18 +43,20 @@ function mkApp(now: () => number = () => Date.now()) {
       stores,
       env: ENV,
       now,
+      operatorStore: opStore,
       writeReputation: (r: ReputationWriteRecord) => {
         rep.push(r);
       },
     }),
   );
-  return { app, stores, rep };
+  // 264-8: the ops lane rides a real opk_ credential.
+  const { key } = await seedOperator(opStore);
+  return { app, stores, rep, opsHeaders: { "X-Admin-Key": key } };
 }
-
-const opsHeaders = { "X-Admin-Key": ADMIN };
 
 const createSurvey = (
   app: Hono<{ Variables: Record<string, unknown> }>,
+  opsHeaders: Record<string, string>,
   body: unknown,
 ) =>
   app.request("/api/ops/surveys", {
@@ -74,14 +81,14 @@ const SV = { title: "Satisfaction", questions: [{ q: "How?", k: "how" }] };
 
 describe("ops create + open list (SLICE-252-4)", () => {
   it("POST /api/ops/surveys requires admin; creates active survey", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const anon = await app.request("/api/ops/surveys", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(SV),
     });
     expect(anon.status).toBe(401);
-    const res = await createSurvey(app, { ...SV, closesAtMs: Date.now() + 60_000 });
+    const res = await createSurvey(app, opsHeaders, { ...SV, closesAtMs: Date.now() + 60_000 });
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.id).toMatch(/^sv_/);
@@ -89,10 +96,10 @@ describe("ops create + open list (SLICE-252-4)", () => {
   });
 
   it("GET /api/surveys/open — active only; closed/inactive hidden", async () => {
-    const { app, stores } = mkApp();
-    const a = await (await createSurvey(app, SV)).json();
-    await createSurvey(app, { ...SV, title: "closed", closesAtMs: Date.now() - 1 });
-    const b = await (await createSurvey(app, { ...SV, title: "inactive" })).json();
+    const { app, stores, opsHeaders } = await mkApp();
+    const a = await (await createSurvey(app, opsHeaders, SV)).json();
+    await createSurvey(app, opsHeaders, { ...SV, title: "closed", closesAtMs: Date.now() - 1 });
+    const b = await (await createSurvey(app, opsHeaders, { ...SV, title: "inactive" })).json();
     await stores.surveys.setSurveyActive(b.id, false);
     const res = await app.request("/api/surveys/open");
     expect(res.status).toBe(200);
@@ -106,8 +113,8 @@ describe("ops create + open list (SLICE-252-4)", () => {
 
 describe("answer → rating (SLICE-252-4)", () => {
   it("verified agent → accepted + rated:true + ReputationWrite(surveys)", async () => {
-    const { app, rep } = mkApp();
-    const { id } = await (await createSurvey(app, SV)).json();
+    const { app, rep, opsHeaders } = await mkApp();
+    const { id } = await (await createSurvey(app, opsHeaders, SV)).json();
     const res = await answer(app, id, { answers: { how: "great" } }, {
       "x-test-agent": "agent-1",
     });
@@ -128,8 +135,8 @@ describe("answer → rating (SLICE-252-4)", () => {
   });
 
   it("anon → accepted + rated:false, no ReputationWrite", async () => {
-    const { app, rep } = mkApp();
-    const { id } = await (await createSurvey(app, SV)).json();
+    const { app, rep, opsHeaders } = await mkApp();
+    const { id } = await (await createSurvey(app, opsHeaders, SV)).json();
     const res = await answer(app, id, { answers: { how: "meh" } });
     expect(res.status).toBe(202);
     expect((await res.json()).rated).toBe(false);
@@ -137,8 +144,8 @@ describe("answer → rating (SLICE-252-4)", () => {
   });
 
   it("dedupe: verified repeat → 409; anon same fpHash → 409; new ip → accepted", async () => {
-    const { app } = mkApp();
-    const { id } = await (await createSurvey(app, SV)).json();
+    const { app, opsHeaders } = await mkApp();
+    const { id } = await (await createSurvey(app, opsHeaders, SV)).json();
     await answer(app, id, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
     const dup = await answer(app, id, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
     expect(dup.status).toBe(409);
@@ -150,14 +157,14 @@ describe("answer → rating (SLICE-252-4)", () => {
     const ok = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "5.6.7.8" });
     expect(ok.status).toBe(202);
     // different agent on new survey → new rated write allowed
-    const { id: id2 } = await (await createSurvey(app, SV)).json();
+    const { id: id2 } = await (await createSurvey(app, opsHeaders, SV)).json();
     const ok2 = await answer(app, id2, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
     expect(ok2.status).toBe(202);
   });
 
   it("soft-fp: anon repeat from rotated IP → 202 with flag soft_fp_dup", async () => {
-    const { app } = mkApp();
-    const { id } = await (await createSurvey(app, SV)).json();
+    const { app, opsHeaders } = await mkApp();
+    const { id } = await (await createSurvey(app, opsHeaders, SV)).json();
     // Same anonymous caller (same UA + identity headers) hops IP —
     // fpHash differs but softFpHash matches: accepted, flagged for ops.
     const first = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "9.9.9.9" });
@@ -173,9 +180,9 @@ describe("answer → rating (SLICE-252-4)", () => {
   });
 
   it("closed survey → 410; missing → 404", async () => {
-    const { app } = mkApp();
+    const { app, opsHeaders } = await mkApp();
     const { id } = await (
-      await createSurvey(app, { ...SV, closesAtMs: Date.now() - 1000 })
+      await createSurvey(app, opsHeaders, { ...SV, closesAtMs: Date.now() - 1000 })
     ).json();
     const closed = await answer(app, id, { answers: { q1: "x" } });
     expect(closed.status).toBe(410);

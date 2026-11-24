@@ -28,6 +28,8 @@ import { gasCappedWallet } from "../lib/eaas/settle";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import { arcMainnet, arcTestnet } from "../lib/marketplace/chain";
 import { createAgentRegisterRoutes } from "../routes/agents/agents-register-api";
+import { getDatabase } from "../lib/database";
+import { pickOperatorStores } from "../lib/operators";
 
 export function wireAgentRegistration(app: Hono): void {
   const cfg = getConfig().agentRegistration;
@@ -128,6 +130,7 @@ export function wireAgentRegistration(app: Hono): void {
     createAgentRegisterRoutes({
       enabled: cfg?.enabled === true,
       store,
+      operatorStore: pickOperatorStores(getDatabase()),
       ...(mint ? { mint } : {}),
       chainId: net.chain.chainId,
       registryAddress: net.identityRegistry,

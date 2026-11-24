@@ -2,12 +2,9 @@
  * EPIC-252 (SLICE-252-3): ops-pull channel (D-252-Q3) —
  *   GET  /api/ops/requests?state=&since=&limit=  — pull queue + payload
  *   POST /api/ops/requests/:id/respond           — response + completed
- *                                                  (working when mark_completed:false)
  *   POST /api/ops/requests/:id/state             — manual working/failed/completed
  *
- * All behind adminAuth (X-Admin-Key / Bearer). fpHash + sanitized
- * fingerprint snapshot are exposed for ops dedupe — raw IP is never
- * persisted, so nothing raw can leak here. Completed transitions go
+ * All behind operatorAuth (opk_ creds; 264-8). Completed transitions go
  * through transitionWithQa → QA corpus materialization (D-252-Q7).
  */
 
@@ -15,7 +12,10 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { transitionWithQa } from "../../lib/request-inbox/qa";
@@ -29,6 +29,8 @@ const TERMINAL = new Set(["completed", "failed"]);
 export interface AgentRequestOpsRoutesDeps {
   stores: RequestInboxStores;
   now?: () => number;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 const respondSchema = z.object({
@@ -70,10 +72,14 @@ export function createAgentRequestOpsRoutes(
   const app = new Hono();
   const { stores } = deps;
   const now = deps.now ?? (() => Date.now());
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
+
+  // 264-8: one mount covers every /api/ops/requests* route incl. the
+  // qa-ops retract registered below — GET→read, POST→workflow.
+  app.use("/api/ops/requests/*", operatorAuth(opStore), capabilityGate());
 
   app.get(
     "/api/ops/requests",
-    adminAuth,
     describeRoute({
       summary: "Ops pull — list inbox requests by state/since/limit",
       tags: ["Ops"],
@@ -110,7 +116,6 @@ export function createAgentRequestOpsRoutes(
 
   app.post(
     "/api/ops/requests/:id/respond",
-    adminAuth,
     describeRoute({
       summary: "Push an ops response — completes the request (D-252-Q3)",
       tags: ["Ops"],
@@ -191,7 +196,6 @@ export function createAgentRequestOpsRoutes(
 
   app.post(
     "/api/ops/requests/:id/state",
-    adminAuth,
     describeRoute({
       summary: "Manual state transition — working | failed | completed",
       tags: ["Ops"],
@@ -252,7 +256,6 @@ export function createAgentRequestOpsRoutes(
 
   app.post(
     "/api/ops/requests/:id/spam",
-    adminAuth,
     describeRoute({
       summary: "Toggle spamFlag — orthogonal to state, any record",
       tags: ["Ops"],

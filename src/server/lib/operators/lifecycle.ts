@@ -4,7 +4,7 @@
 // the store only ever sees sha256+prefix.
 //
 // D-264-Q16: isOperatorRef's rules moved to operator CREATION — the
-// request-side guard (requireOperatorRef/x-operator-id) dies in
+// request-side x-operator-id claims died in SLICE-264-8 — see
 // 264-6. The name rules are ported verbatim.
 //
 // Key shape note: the plaintext is "opk_"+32 base64url (192-bit) —

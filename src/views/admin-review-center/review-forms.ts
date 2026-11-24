@@ -28,13 +28,6 @@ const formBtn = (label: string, cls = "") => html`<button
 const tokenField = (token: string) =>
   html`<input type="hidden" name="formToken" value="${token}" />`;
 
-const opField = () =>
-  html`<label class="block text-xs text-slate-500">
-    operator
-    <input name="operator" maxlength="80" class="${inputCls}"
-      placeholder="admin-browser (default) or your operator id" />
-  </label>`;
-
 const sel = (
   name: string,
   options: readonly string[],
@@ -58,7 +51,7 @@ export function claimForm(r: ReviewCaseRecord, token: string) {
       Claim — take this case IN_REVIEW as the assignee
     </h3>
     <form method="post" action="/admin/review-center/reviews/${r.id}/claim">
-      ${tokenField(token)} ${opField()} ${formBtn("Claim →")}
+      ${tokenField(token)} ${formBtn("Claim →")}
     </form>
   </section>`;
 }
@@ -86,7 +79,6 @@ export function declineForm(r: ReviewCaseRecord, token: string) {
         note (internal)
         <input name="reason" maxlength="300" class="${inputCls}" />
       </label>
-      ${opField()}
       ${formBtn("Decline →", "bg-red-800 hover:bg-red-700")}
     </form>
   </section>`;
@@ -142,7 +134,7 @@ export function decideForm(r: ReviewCaseRecord, token: string) {
           class="${inputCls}"
         ></textarea>
       </label>
-      ${opField()} ${formBtn("Decide →")}
+      ${formBtn("Decide →")}
     </form>
   </section>`;
 }
@@ -165,7 +157,6 @@ export function reopenForm(r: ReviewCaseRecord, token: string) {
         reason (internal)
         <input name="reason" maxlength="300" class="${inputCls}" />
       </label>
-      ${opField()}
       ${formBtn("Reopen →", "bg-orange-800 hover:bg-orange-700")}
     </form>
   </section>`;
@@ -180,8 +171,7 @@ export function returnForm(r: ReviewCaseRecord, token: string) {
       method="post"
       action="/admin/review-center/reviews/${r.id}/return"
     >
-      ${tokenField(token)} ${opField()}
-      ${formBtn("Return to triage →", "bg-slate-700 hover:bg-slate-600")}
+      ${tokenField(token)} ${formBtn("Return to triage →", "bg-slate-700 hover:bg-slate-600")}
     </form>
   </section>`;
 }
@@ -195,7 +185,7 @@ export function convertForm(r: ReviewCaseRecord, token: string) {
       → Knowledge draft (creates a DRAFT — 229 approval stays human)
     </h3>
     <form method="post" action="/admin/review-center/reviews/${r.id}/convert">
-      ${tokenField(token)} ${opField()} ${formBtn("Convert →")}
+      ${tokenField(token)} ${formBtn("Convert →")}
       <a
         href="/admin/review-center/reviews/${r.id}/draft.json"
         class="ml-3 text-xs text-slate-400 underline"
@@ -236,7 +226,7 @@ export function evidenceForm(r: ReviewCaseRecord, token: string) {
         description
         <input name="description" maxlength="1000" class="${inputCls}" />
       </label>
-      ${opField()} ${formBtn("Add evidence →")}
+      ${formBtn("Add evidence →")}
     </form>
   </section>`;
 }

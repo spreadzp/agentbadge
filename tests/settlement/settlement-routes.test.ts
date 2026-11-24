@@ -22,7 +22,6 @@ import {
   adminReq,
   buyer,
   initRouteTest,
-  OPS,
   PLAN_BODY,
   provider,
   req,
@@ -35,8 +34,8 @@ import {
 } from "./route-helpers.js";
 
 let db: Database;
-beforeEach(() => {
-  initRouteTest();
+beforeEach(async () => {
+  await initRouteTest();
   db = rt.db;
 });
 afterEach(teardownRouteTest);
@@ -193,7 +192,7 @@ describe("receipt artifact + anchor", () => {
     await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
+      { txHash: TX },
     );
     const a = appWithDeps();
     const res = await a.fetch(
@@ -236,7 +235,7 @@ describe("receipt artifact + anchor", () => {
     await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
+      { txHash: TX },
     );
     // m2 must also be terminal for a two-milestone plan — seed used 1 milestone
     const ok1 = await a.fetch(

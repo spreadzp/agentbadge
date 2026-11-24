@@ -15,23 +15,31 @@ import {
 import { resetIdempotencyStore } from "../../src/server/lib/contract-guards";
 import { createMemoryKnowledgeStores } from "../../src/server/lib/knowledge/db-stores";
 import { knowledgeDraftPort } from "../../src/server/lib/knowledge-draft/port";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 /**
  * SLICE-230-5 DoD — Review Center SSR smoke over the memory backend.
- * Auth = HTTP Basic (ADMIN_API_KEY as password). Every mutation POST
- * needs a single-use formToken extracted from the rendered detail
- * page (229 lesson — tokens are render-minted, consumed once).
+ * Auth = HTTP Basic (264-8: password is the seeded opk_ credential —
+ * the actor on every mutation is the credential principal.id, never
+ * a form field). Every mutation POST needs a single-use formToken
+ * extracted from the rendered detail page (229 lesson — tokens are
+ * render-minted, consumed once).
  */
 
 process.env.FLY_APP_NAME = process.env.FLY_APP_NAME || "test-230-ui";
-process.env.ADMIN_API_KEY = "test-admin-key";
 
 beforeEach(() => resetIdempotencyStore());
 
-const basic = `Basic ${Buffer.from("ops:test-admin-key").toString("base64")}`;
+let basic = "";
 const FORM = "application/x-www-form-urlencoded";
 
-function mkApp() {
+async function mkApp() {
+  const opStore = createMemoryOperatorStore();
+  const { key, operatorId } = await seedOperator(opStore, "Ops");
+  basic = `Basic ${Buffer.from(`ops:${key}`).toString("base64")}`;
   const stores = {
     feedback: createMemoryFeedbackStore(createMemoryFeedbackData()),
     reviews: createMemoryReviewStore(createMemoryReviewData()),
@@ -40,8 +48,8 @@ function mkApp() {
   const app = new Hono();
   app.route("/", createAgentFeedbackRoutes({ store: stores.feedback }));
   app.route("/", createAgentReviewsRoutes({ store: stores.reviews }));
-  app.route("/", createReviewCenter({ stores }));
-  return { app, stores };
+  app.route("/", createReviewCenter({ stores, operatorStore: opStore }));
+  return { app, stores, operatorId };
 }
 
 let n = 0;
@@ -97,7 +105,7 @@ const post = async (app: Hono, path: string, fields: string, origin?: string) =>
 
 describe("review-center auth + queue", () => {
   it("no creds → 401; Basic → queue renders", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const un = await app.request("/admin/review-center");
     expect(un.status).toBe(401);
     const ok = await app.request("/admin/review-center", {
@@ -108,7 +116,7 @@ describe("review-center auth + queue", () => {
   });
 
   it("?queue=feedback|reviews lists rows; status filter closed-set", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "queue fb row");
     const rid = await submitReview(app);
 
@@ -124,7 +132,7 @@ describe("review-center auth + queue", () => {
   });
 
   it("agent-supplied text is escaped (XSS regression)", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "<script>alert(1)</script>");
     const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     expect(d.html).not.toContain("<script>alert(1)</script>");
@@ -134,7 +142,7 @@ describe("review-center auth + queue", () => {
 
 describe("feedback operator flow", () => {
   it("triage → resolve ACCEPTED → close (PRG + status renders)", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "needs triage");
 
     const d1 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
@@ -144,7 +152,7 @@ describe("feedback operator flow", () => {
     const tri = await post(
       app,
       `/admin/review-center/feedback/${fid}/triage`,
-      `formToken=${t1}&kind=FEATURE&target=docs&severity=LOW&suggestion=fix+the+guide&operator=ops_e2e`,
+      `formToken=${t1}&kind=FEATURE&target=docs&severity=LOW&suggestion=fix+the+guide`,
     );
     expect(tri.status).toBe(303);
     expect(tri.headers.get("location")).toContain("ok=triaged");
@@ -157,7 +165,7 @@ describe("feedback operator flow", () => {
     const res = await post(
       app,
       `/admin/review-center/feedback/${fid}/resolve`,
-      `formToken=${t2}&to=ACCEPTED&operator=ops_e2e`,
+      `formToken=${t2}&to=ACCEPTED`,
     );
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toContain("ok=resolved");
@@ -167,7 +175,7 @@ describe("feedback operator flow", () => {
     const cls = await post(
       app,
       `/admin/review-center/feedback/${fid}/close`,
-      `formToken=${t3}&operator=ops_e2e&fromStatus=ACCEPTED`,
+      `formToken=${t3}&fromStatus=ACCEPTED`,
     );
     expect(cls.status).toBe(303);
     const d4 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
@@ -176,7 +184,7 @@ describe("feedback operator flow", () => {
   });
 
   it("single-use token: replay → flash err, no second write", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "token test");
     const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     const t = tokenOf(d.html);
@@ -184,7 +192,7 @@ describe("feedback operator flow", () => {
     const first = await post(
       app,
       `/admin/review-center/feedback/${fid}/triage`,
-      `formToken=${t}&operator=ops_e2e`,
+      `formToken=${t}`,
     );
     expect(first.headers.get("location")).toContain("ok=triaged");
 
@@ -193,15 +201,15 @@ describe("feedback operator flow", () => {
     const replay = await post(
       app,
       `/admin/review-center/feedback/${fid}/triage`,
-      `formToken=${t}&operator=ops_e2e`,
+      `formToken=${t}`,
     );
     expect(replay.headers.get("location")).toContain(
       "err=form_expired_or_duplicate",
     );
   });
 
-  it("bad operator ref → flash err=bad_operator", async () => {
-    const { app } = mkApp();
+  it("forged operator form field is ignored — actor is the credential", async () => {
+    const { app, operatorId } = await mkApp();
     const fid = await submitFeedback(app, "op test");
     const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     const t = tokenOf(d.html);
@@ -210,13 +218,16 @@ describe("feedback operator flow", () => {
       `/admin/review-center/feedback/${fid}/triage`,
       `formToken=${t}&operator=agent%3Aevil`,
     );
-    expect(r.headers.get("location")).toContain("err=bad_operator");
+    expect(r.headers.get("location")).toContain("ok=triaged");
+    const d2 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    expect(d2.html).toContain(operatorId);
+    expect(d2.html).not.toContain("agent:evil");
   });
 });
 
 describe("review operator flow", () => {
   it("claim → evidence → decide → reopen → return", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const rid = await submitReview(app);
 
     // claim
@@ -225,7 +236,7 @@ describe("review operator flow", () => {
     let r = await post(
       app,
       `/admin/review-center/reviews/${rid}/claim`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     expect(r.headers.get("location")).toContain("ok=claimed");
 
@@ -235,7 +246,7 @@ describe("review operator flow", () => {
     r = await post(
       app,
       `/admin/review-center/reviews/${rid}/evidence`,
-      `formToken=${tokenOf(d.html)}&type=REPO_LINK&uri=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F1&label=pr+1&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}&type=REPO_LINK&uri=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Fpull%2F1&label=pr+1`,
     );
     expect(r.headers.get("location")).toContain("ok=evidence_added");
 
@@ -248,7 +259,7 @@ describe("review operator flow", () => {
     r = await post(
       app,
       `/admin/review-center/reviews/${rid}/decide`,
-      `formToken=${tokenOf(d.html)}&outcome=APPROVED&summary=docs+look+good&${critFields}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}&outcome=APPROVED&summary=docs+look+good&${critFields}`,
     );
     expect(r.headers.get("location")).toContain("ok=decided");
 
@@ -260,14 +271,14 @@ describe("review operator flow", () => {
     r = await post(
       app,
       `/admin/review-center/reviews/${rid}/reopen`,
-      `formToken=${tokenOf(d.html)}&reason=new+evidence&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}&reason=new+evidence`,
     );
     expect(r.headers.get("location")).toContain("ok=reopened");
     d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
     r = await post(
       app,
       `/admin/review-center/reviews/${rid}/return`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     expect(r.headers.get("location")).toContain("ok=returned");
     d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
@@ -276,13 +287,13 @@ describe("review operator flow", () => {
   });
 
   it("decide missing a criterion → missing_criteria flash, stays IN_REVIEW", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const rid = await submitReview(app);
     let d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
     await post(
       app,
       `/admin/review-center/reviews/${rid}/claim`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
     // Drop the last crit_ field → incomplete rubric.
@@ -294,7 +305,7 @@ describe("review operator flow", () => {
     const r = await post(
       app,
       `/admin/review-center/reviews/${rid}/decide`,
-      `formToken=${tokenOf(d.html)}&outcome=APPROVED&summary=x&${fields}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}&outcome=APPROVED&summary=x&${fields}`,
     );
     expect(r.headers.get("location")).toContain("err=missing_criteria");
     d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
@@ -302,14 +313,14 @@ describe("review operator flow", () => {
   });
 
   it("cross-origin form POST → 403 (B-3); same-origin → 303", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const rid = await submitReview(app);
     const d = await getHtml(app, `/admin/review-center/reviews/${rid}`);
     const t = tokenOf(d.html);
     const evil = await post(
       app,
       `/admin/review-center/reviews/${rid}/claim`,
-      `formToken=${t}&operator=ops_e2e`,
+      `formToken=${t}`,
       "https://evil.example",
     );
     expect(evil.status).toBe(403);
@@ -317,7 +328,7 @@ describe("review operator flow", () => {
     const same = await post(
       app,
       `/admin/review-center/reviews/${rid}/claim`,
-      `formToken=${tokenOf(d2.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d2.html)}`,
       "http://localhost",
     );
     expect(same.status).toBe(303);
@@ -326,20 +337,20 @@ describe("review operator flow", () => {
 
 describe("knowledge-draft conversion (230-6)", () => {
   it("ACCEPTED feedback → POST /convert → knowledgeItemId renders", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "convert me");
 
     let d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     await post(
       app,
       `/admin/review-center/feedback/${fid}/triage`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     await post(
       app,
       `/admin/review-center/feedback/${fid}/resolve`,
-      `formToken=${tokenOf(d.html)}&to=ACCEPTED&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}&to=ACCEPTED`,
     );
 
     d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
@@ -347,7 +358,7 @@ describe("knowledge-draft conversion (230-6)", () => {
     const r = await post(
       app,
       `/admin/review-center/feedback/${fid}/convert`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     expect(r.headers.get("location")).toContain("ok=converted");
 
@@ -362,19 +373,19 @@ describe("knowledge-draft conversion (230-6)", () => {
     const r2 = await post(
       app,
       `/admin/review-center/feedback/${fid}/convert`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     expect(r2.headers.get("location")).toContain("err=already_converted");
   });
 
   it("non-ACCEPTED feedback → not_convertible_status; draft.json gated + exports", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const fid = await submitFeedback(app, "still raw");
     const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     const r = await post(
       app,
       `/admin/review-center/feedback/${fid}/convert`,
-      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d.html)}`,
     );
     expect(r.headers.get("location")).toContain(
       "err=not_convertible_status",
@@ -393,13 +404,13 @@ describe("knowledge-draft conversion (230-6)", () => {
     await post(
       app,
       `/admin/review-center/feedback/${fid}/triage`,
-      `formToken=${tokenOf(d2.html)}&operator=ops_e2e`,
+      `formToken=${tokenOf(d2.html)}`,
     );
     d2 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
     await post(
       app,
       `/admin/review-center/feedback/${fid}/resolve`,
-      `formToken=${tokenOf(d2.html)}&to=ACCEPTED&operator=ops_e2e`,
+      `formToken=${tokenOf(d2.html)}&to=ACCEPTED`,
     );
 
     const dump = await app.request(

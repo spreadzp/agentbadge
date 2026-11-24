@@ -108,7 +108,6 @@ const FLASH_OK_MSG: Record<string, string> = {
 const FLASH_ERR_MSG: Record<string, string> = {
   operation_failed: "operation failed",
   form_expired_or_duplicate: "form expired or already used — retry",
-  bad_operator: "operator id must be [a-z0-9._@-] and not agent-shaped",
   not_found: "record not found",
   status_mismatch: "status changed — refresh and retry",
   illegal_transition: "illegal status transition",

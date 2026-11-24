@@ -7,22 +7,32 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { revokePassport } from "@agentbadge/passport";
-import { adminRoutes } from "../../src/server/routes/ops/admin";
+import { createAdminRoutes } from "../../src/server/routes/ops/admin";
 import { resetConfigCache } from "../../src/config/env";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
+import type { OperatorStore } from "../../src/server/lib/operators";
 
 const ORIGINAL_API_KEY = process.env.ADMIN_API_KEY;
 const ORIGINAL_CHAIN_FLAG = process.env.PASSPORT_CHAIN_ENABLED;
 
-function makeApp(): Hono {
+function makeApp(operatorStore: OperatorStore): Hono {
   const app = new Hono();
-  app.route("/", adminRoutes);
+  app.route("/", createAdminRoutes({ operatorStore }));
   return app;
 }
 
 describe("POST /admin/revoke", () => {
-  beforeEach(() => {
+  let store: OperatorStore;
+  let opKey: string;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = "test-secret-key";
+    store = createMemoryOperatorStore();
+    ({ key: opKey } = await seedOperator(store));
     // SLICE-169-9: revoke is a Hedera-chain call — enable the gate
     // so the handler proceeds (flag off would 503 before validation).
     process.env.PASSPORT_CHAIN_ENABLED = "true";
@@ -36,7 +46,7 @@ describe("POST /admin/revoke", () => {
   });
 
   it("returns 401 when X-Admin-Key header is missing", async () => {
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,7 +56,7 @@ describe("POST /admin/revoke", () => {
   });
 
   it("returns 401 when X-Admin-Key header is wrong", async () => {
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Admin-Key": "wrong" },
@@ -57,10 +67,10 @@ describe("POST /admin/revoke", () => {
 
   it("returns 404 when passport NFT does not exist", async () => {
     vi.mocked(revokePassport).mockRejectedValue(new Error("Passport not found"));
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ tokenId: "0.0.123", serial: 999, reason: "fraud" }),
     });
     expect(res.status).toBe(404);
@@ -70,10 +80,10 @@ describe("POST /admin/revoke", () => {
 
   it("returns 409 when passport is already revoked (deleted=true)", async () => {
     vi.mocked(revokePassport).mockRejectedValue(new Error("Passport already revoked"));
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ tokenId: "0.0.123", serial: 1, reason: "fraud" }),
     });
     expect(res.status).toBe(409);
@@ -84,10 +94,10 @@ describe("POST /admin/revoke", () => {
   it("wipes NFT and submits audit message on valid revocation", async () => {
     vi.mocked(revokePassport).mockResolvedValue({ did: "did:hcs:0.0.123:1" });
 
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ tokenId: "0.0.123", serial: 1, reason: "compromised" }),
     });
 
@@ -100,10 +110,10 @@ describe("POST /admin/revoke", () => {
   });
 
   it("returns 400 when tokenId or serial is missing", async () => {
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ reason: "fraud" }),
     });
     expect(res.status).toBe(400);
@@ -112,10 +122,10 @@ describe("POST /admin/revoke", () => {
   it("returns 503 when PASSPORT_CHAIN_ENABLED is off (SLICE-169-9)", async () => {
     process.env.PASSPORT_CHAIN_ENABLED = "";
     resetConfigCache();
-    const app = makeApp();
+    const app = makeApp(store);
     const res = await app.request("/admin/revoke", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
       body: JSON.stringify({ tokenId: "0.0.123", serial: 1, reason: "fraud" }),
     });
     expect(res.status).toBe(503);

@@ -4,11 +4,16 @@ import { Hono } from "hono";
 import { createAgentInteractionRoutes } from "../../src/server/routes/agent-interaction/agent-interaction-api";
 import { createAgentInteractionAdminUi } from "../../src/server/routes/agent-interaction/agent-interaction-admin-ui";
 import { createMemoryRequestInboxStores } from "../../src/server/lib/request-inbox";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 /**
  * SLICE-228-5 DoD — SSR console smoke + XSS regression over the
- * memory backend. Auth = HTTP Basic (O-228-3): password is the
- * ADMIN_API_KEY, any username.
+ * memory backend. Auth = HTTP Basic (O-228-3, 264-8): password is an
+ * opk_ operator credential, any username. The actor is the credential
+ * principal — no operator form field.
  */
 
 process.env.FLY_APP_NAME = process.env.FLY_APP_NAME || "test-inbox";
@@ -20,14 +25,18 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-const basic = `Basic ${Buffer.from("ops:test-admin-key").toString("base64")}`;
-
-function mkApp() {
+async function mkApp() {
   const stores = createMemoryRequestInboxStores();
+  const opStore = createMemoryOperatorStore();
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   app.route("/", createAgentInteractionRoutes({ stores, env: ENV }));
-  app.route("/", createAgentInteractionAdminUi({ stores }));
-  return { app, stores };
+  app.route(
+    "/",
+    createAgentInteractionAdminUi({ stores, operatorStore: opStore }),
+  );
+  const { key, operatorId } = await seedOperator(opStore, "UI Ops");
+  const basic = `Basic ${Buffer.from(`ops:${key}`).toString("base64")}`;
+  return { app, stores, basic, key, operatorId };
 }
 
 let n = 0;
@@ -52,13 +61,13 @@ const form = () => `application/x-www-form-urlencoded`;
 
 describe("admin UI auth", () => {
   it("no credentials → 401 + WWW-Authenticate (browser prompt)", async () => {
-    const { app } = mkApp();
+    const { app } = await mkApp();
     const r = await app.request("/admin/interactions");
     expect(r.status).toBe(401);
     expect(r.headers.get("WWW-Authenticate")).toMatch(/Basic/);
   });
-  it("Basic password = admin key → page renders; wrong → 401", async () => {
-    const { app } = mkApp();
+  it("Basic password = opk_ cred → page renders; wrong → 401", async () => {
+    const { app, basic, key } = await mkApp();
     const ok = await app.request("/admin/interactions", {
       headers: { authorization: basic },
     });
@@ -69,9 +78,9 @@ describe("admin UI auth", () => {
       },
     });
     expect(bad.status).toBe(401);
-    // X-Admin-Key still works on the same surface
+    // X-Admin-Key transport still works on the same surface
     const keyAuth = await app.request("/admin/interactions", {
-      headers: { "x-admin-key": "test-admin-key" },
+      headers: { "x-admin-key": key },
     });
     expect(keyAuth.status).toBe(200);
   });
@@ -79,7 +88,7 @@ describe("admin UI auth", () => {
 
 describe("inbox + detail flow (e2e smoke)", () => {
   it("submit → inbox row → detail → classify → respond (PRG)", async () => {
-    const { app } = mkApp();
+    const { app, basic, operatorId } = await mkApp();
     const id = await submit(app, "integration help please");
 
     const inbox = await app.request("/admin/interactions", {
@@ -101,7 +110,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
     const cls = await app.request(`/admin/interactions/${id}/classify`, {
       method: "POST",
       headers: { authorization: basic, "content-type": form() },
-      body: "intent=BUG_REPORT&topics=x402&operator=ops_e2e&knowledgeGap=1",
+      body: "intent=BUG_REPORT&topics=x402&knowledgeGap=1",
     });
     expect(cls.status).toBe(303);
     expect(cls.headers.get("location")).toContain(`/admin/interactions/${id}`);
@@ -109,7 +118,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
     const rsp = await app.request(`/admin/interactions/${id}/respond`, {
       method: "POST",
       headers: { authorization: basic, "content-type": form() },
-      body: "body=use+x402+settle&operator=ops_e2e",
+      body: "body=use+x402+settle",
     });
     expect(rsp.status).toBe(303);
 
@@ -119,7 +128,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
     const ah = await after.text();
     expect(ah).toContain("ANSWERED");
     expect(ah).toContain("use x402 settle");
-    expect(ah).toContain("ops_e2e");
+    expect(ah).toContain(operatorId);
 
     // B-3 prod-verify: cross-site form POST (mismatched Origin) → 403,
     // even with valid Basic creds (browsers auto-attach cached Basic).
@@ -130,7 +139,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
         "content-type": form(),
         origin: "https://evil.example",
       },
-      body: "reason=csrf&operator=ops_e2e",
+      body: "reason=csrf",
     });
     expect(evil.status).toBe(403);
     // Same-origin Origin header → allowed (real browser form submit).
@@ -141,7 +150,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
         "content-type": form(),
         origin: "http://localhost",
       },
-      body: "reason=ok&operator=ops_e2e",
+      body: "reason=ok",
     });
     expect(same.status).toBe(303);
 
@@ -150,7 +159,7 @@ describe("inbox + detail flow (e2e smoke)", () => {
   });
 
   it("empty queue → empty state; unknown id → 404", async () => {
-    const { app } = mkApp();
+    const { app, basic } = await mkApp();
     const r = await app.request("/admin/interactions", {
       headers: { authorization: basic },
     });
@@ -164,8 +173,8 @@ describe("inbox + detail flow (e2e smoke)", () => {
     ).toBe(404);
   });
 
-  it("respond without operator → PRG back with error", async () => {
-    const { app } = mkApp();
+  it("respond attributes the credential principal (no form field)", async () => {
+    const { app, stores, basic, operatorId } = await mkApp();
     const id = await submit(app);
     const r = await app.request(`/admin/interactions/${id}/respond`, {
       method: "POST",
@@ -173,13 +182,14 @@ describe("inbox + detail flow (e2e smoke)", () => {
       body: "body=hello",
     });
     expect(r.status).toBe(303);
-    expect(r.headers.get("location")).toContain("err=operator");
+    const [resp] = await stores.interactions.listResponses(id);
+    expect(resp.operatorRef).toBe(operatorId);
   });
 });
 
 describe("XSS regression (D-228-5)", () => {
   it("payload with <script> renders as escaped text", async () => {
-    const { app } = mkApp();
+    const { app, basic } = await mkApp();
     const id = await submit(
       app,
       '<script>alert("x")</script><img src=x onerror=alert(1)>',

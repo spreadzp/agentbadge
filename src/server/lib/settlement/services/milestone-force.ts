@@ -70,7 +70,13 @@ export const checkForceInput = (
 export async function forceApproveMilestone(
   ctx: SettlementCtx,
   milestoneRowId: string,
-  opts: { operator: string; reason: string; submissionRef?: string },
+  opts: {
+    operator: string;
+    reason: string;
+    submissionRef?: string;
+    /** 264-8 — credential principal id for the audit row (D-264-Q13). */
+    principalId?: string;
+  },
 ): Promise<
   SettlementResult<
     ApproveEffect & { auditRecorded: boolean; alreadyApproved?: boolean }
@@ -175,6 +181,7 @@ export async function forceApproveMilestone(
       subjectType: "milestone",
       subjectId: milestone.id,
       operator,
+      principalId: opts.principalId,
       evidence: {
         milestoneId: milestone.milestoneId,
         planId: plan.id,

@@ -259,6 +259,7 @@ async function markLegPaidInner(
       subjectType: "payout_leg",
       subjectId: leg.id,
       operator,
+      principalId: input.principalId,
       evidence: {
         intentId: intent.id,
         milestoneId: milestone.id,

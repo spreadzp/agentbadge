@@ -7,7 +7,7 @@
  * - bstockRateLimit: per-token sliding window, default 60 req/min → 429.
  * - bstockSseCap: max concurrent SSE connections (default 20) → 503.
  *
- * Patterns: adminAuth.ts (bearer + timing-safe compare),
+ * Patterns: operatorAuth.ts (bearer + timing-safe compare),
  * rate-limit.ts (sliding window buckets).
  */
 

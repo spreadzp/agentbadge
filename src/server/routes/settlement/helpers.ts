@@ -16,10 +16,13 @@ import type {
 } from "../../lib/settlement/index.js";
 import type { SendAnchorFn } from "../../lib/eaas/anchor.js";
 import type { VerifyAgreementFn } from "../../lib/settlement/services/plan-service.js";
+import type { OperatorStore } from "../../lib/operators";
 
 /** Injected seams — tests pass stubs; prod defaults lazily. */
 export interface SettlementRouteDeps {
   getDb?: () => Database;
+  /** SLICE-264-8: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
   /** VerifyPayoutTx adapter — wired on prod when a rail verifier exists. */
   verifyTx?: VerifyPayoutTx;
   /** Fail-closed mode for mark-paid (D-227-4). */

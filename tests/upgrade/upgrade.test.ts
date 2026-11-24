@@ -3,19 +3,12 @@ import { Hono } from "hono";
 import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { resetMockState, mintPassportNFT, transferNFTToAgent } from "@agentbadge/hedera-core";
 
-import { upgradeRoutes } from "../../src/server/routes/upgrade";
+import { createUpgradeRoutes } from "../../src/server/routes/upgrade";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 import { calculateUpgradePrice, upgradeTier, uploadMetadata } from "@agentbadge/passport";
-import type { PassportInfo } from "@agentbadge/passport";
-
-const mockNft = (overrides: Record<string, unknown> = {}) => ({
-  token_id: "0.0.123",
-  serial_number: 1,
-  account_id: "0.0.456",
-  deleted: false,
-  metadata: "aHR0cHM6Ly9leGFtcGxlLmNvbS9tZXRhZGF0YS5qc29u",
-  created_timestamp: "1700000000.123456789",
-  ...overrides,
-});
 
 const mockMetadata = (overrides: Record<string, unknown> = {}) => ({
   name: "TestBot",
@@ -113,8 +106,9 @@ describe("upgradeTier", () => {
 
 describe("POST /passport/:tokenId/:serial/upgrade", () => {
   let app: Hono;
+  let opKey: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.stubEnv("MOCK_IPFS", "true");
     vi.stubEnv("MOCK_HEDERA", "true");
     vi.stubEnv("PASSPORT_TOKEN_ID", "0.0.123");
@@ -122,8 +116,11 @@ describe("POST /passport/:tokenId/:serial/upgrade", () => {
     vi.stubEnv("AUDIT_TOPIC_ID", "0.0.555");
     vi.clearAllMocks();
     resetMockState();
+    // 264-8: admin upgrades ride an operator credential (workflow cap).
+    const opStore = createMemoryOperatorStore();
+    ({ key: opKey } = await seedOperator(opStore));
     app = new Hono();
-    app.route("/", upgradeRoutes);
+    app.route("/", createUpgradeRoutes({ operatorStore: opStore }));
   });
 
   it("returns 400 for invalid tier transition (downgrade)", async () => {
@@ -133,13 +130,13 @@ describe("POST /passport/:tokenId/:serial/upgrade", () => {
 
     const res = await app.request(`/passport/0.0.123/${mintResult.serial}/upgrade`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newTier: "bronze", accountId: "0.0.456" }),
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
+      body: JSON.stringify({ newTier: "bronze" }),
     });
     expect(res.status).toBe(400);
   });
 
-  it("returns 403 when requester does not own the passport", async () => {
+  it("returns 401 without a verified DID or operator credential", async () => {
     const metadataUri = await uploadMetadata(mockMetadata({ tier: "silver" as Tier }));
     const mintResult = await mintPassportNFT("0.0.123", metadataUri);
     await transferNFTToAgent("0.0.123", mintResult.serial, "0.0.100", "0.0.999");
@@ -147,16 +144,16 @@ describe("POST /passport/:tokenId/:serial/upgrade", () => {
     const res = await app.request(`/passport/0.0.123/${mintResult.serial}/upgrade`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
+      body: JSON.stringify({ newTier: "gold" }),
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
   it("returns 404 when passport not found", async () => {
     const res = await app.request("/passport/0.0.123/999/upgrade", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
+      body: JSON.stringify({ newTier: "gold" }),
     });
     expect(res.status).toBe(404);
   });
@@ -168,8 +165,8 @@ describe("POST /passport/:tokenId/:serial/upgrade", () => {
 
     const res = await app.request(`/passport/0.0.123/${mintResult.serial}/upgrade`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newTier: "gold", accountId: "0.0.456" }),
+      headers: { "Content-Type": "application/json", "X-Admin-Key": opKey },
+      body: JSON.stringify({ newTier: "gold" }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();

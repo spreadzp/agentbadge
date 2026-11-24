@@ -1,5 +1,5 @@
 /**
- * SLICE-227-3/8: settlement admin routes — adminAuth, no-store,
+ * SLICE-227-3/8: settlement admin routes — operatorAuth (264-8), no-store,
  * mark-paid replay/leg rules, dispute resolve audit, milestone
  * force-approve (R3-H3) + force-reopen (R5-M3) operator recovery.
  * Split from settlement-routes.test.ts under the staged-file cap.
@@ -20,7 +20,6 @@ import {
   adminReq,
   buyer,
   initRouteTest,
-  OPS,
   PLAN_BODY,
   provider,
   rt,
@@ -30,8 +29,8 @@ import {
 } from "./route-helpers.js";
 
 let db: Database;
-beforeEach(() => {
-  initRouteTest();
+beforeEach(async () => {
+  await initRouteTest();
   db = rt.db;
 });
 afterEach(teardownRouteTest);
@@ -45,7 +44,7 @@ describe("admin routes", () => {
       new Request(`http://localhost/admin/settlement/intents/${intentId}/mark-paid`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ operator: OPS, txHash: TX }),
+        body: JSON.stringify({ txHash: TX }),
       }),
     );
     expect(res.status).toBe(401);
@@ -54,16 +53,15 @@ describe("admin routes", () => {
     expect(body.code ?? body.error?.code).toBe("UNAUTHORIZED");
   });
 
-  it("mark-paid without operator → 400 OPERATOR_REQUIRED, no AdminAction", async () => {
+  it("mark-paid with a self-asserted operator field → 400, no AdminAction", async () => {
     const { intentId } = await seedApprovedIntent();
     const before = (await listAdminActions(db)).length;
     const r = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { txHash: TX },
+      { operator: "spoofed", txHash: TX },
     );
     expect(r.status).toBe(400);
-    expect(r.body.error.code).toBe("OPERATOR_REQUIRED");
     expect((await listAdminActions(db)).length).toBe(before);
   });
 
@@ -72,7 +70,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       "/admin/settlement/intents/pi_missing/mark-paid",
-      { operator: OPS, txHash: TX },
+      { txHash: TX },
     );
     expect(r.status).toBe(404);
     expect(r.body.error.code).toBe("NOT_FOUND");
@@ -85,7 +83,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
+      { txHash: TX },
     );
     expect(r.status).toBe(200);
     expect(r.body.auditRecorded).toBe(true);
@@ -94,12 +92,12 @@ describe("admin routes", () => {
     const actions = await listAdminActions(db);
     expect(actions.length).toBe(before + 1);
     expect(actions.at(-1)?.action).toBe("MARK_PAYOUT_PAID");
-    expect(actions.at(-1)?.operator).toBe(OPS);
+    expect(actions.at(-1)?.operator).toBe(rt.operatorId);
     // Replay → 409 INVALID_STATE (code matches status class).
     const replay = await adminReq(
       "POST",
       `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
+      { txHash: TX },
     );
     expect(replay.status).toBe(409);
     expect(replay.body.error.code).toBe("INVALID_STATE");
@@ -118,7 +116,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/disputes/${d.value.dispute.id}/resolve`,
-      { operator: OPS, resolution: "FOR_PROVIDER" },
+      { resolution: "FOR_PROVIDER" },
     );
     expect(r.status).toBe(200);
     expect(r.body.auditRecorded).toBe(true);
@@ -146,7 +144,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
+      { reason: "test recovery" },
     );
     expect(r.status).toBe(200);
     expect(r.body.intentId).toBeTruthy();
@@ -156,7 +154,7 @@ describe("admin routes", () => {
     const again = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
+      { reason: "test recovery" },
     );
     expect(again.status).toBe(200);
     expect(again.body.intentId).toBe(r.body.intentId);
@@ -191,7 +189,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
+      { reason: "test recovery" },
     );
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe("INVALID_STATE");
@@ -217,7 +215,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/reopen`,
-      { operator: OPS, reason: "release lost after reject" },
+      { reason: "release lost after reject" },
     );
     expect(r.status).toBe(200);
     expect(r.body.reopened).toBe(true);
@@ -238,14 +236,14 @@ describe("admin routes", () => {
     const noReason = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/reopen`,
-      { operator: OPS },
+      {},
     );
     expect(noReason.status).toBe(400);
     // Idempotent on PENDING — reopened:false, no audit spam.
     const again = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/reopen`,
-      { operator: OPS, reason: "retry" },
+      { reason: "retry" },
     );
     expect(again.status).toBe(200);
     expect(again.body.reopened).toBe(false);
@@ -260,7 +258,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${milestone.id}/release`,
-      { operator: OPS, reason: "undo resolver restore" },
+      { reason: "undo resolver restore" },
     );
     expect(r.status).toBe(200);
     expect(r.body.released).toBe(true);
@@ -284,7 +282,7 @@ describe("admin routes", () => {
     const again = await adminReq(
       "POST",
       `/admin/settlement/milestones/${milestone.id}/release`,
-      { operator: OPS, reason: "retry" },
+      { reason: "retry" },
     );
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("INVALID_STATE");
@@ -303,7 +301,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${milestone.id}/release`,
-      { operator: OPS, reason: "undo frozen ruling" },
+      { reason: "undo frozen ruling" },
     );
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe("INVALID_STATE");

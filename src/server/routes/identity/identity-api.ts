@@ -6,7 +6,7 @@
  *   GET  /api/v1/entitlements/:wallet        — entitlement rows
  *   GET  /api/v1/reputation/:wallet          — facts (factType filter)
  *   POST /api/v1/actors/:wallet/enrich       — owner enriches links
- *   POST /api/v1/entitlements/:wallet/revoke — adminAuth manual revoke
+ *   POST /api/v1/entitlements/:wallet/revoke — operatorAuth manual revoke
  *
  * Enforcement (`entitlements.check`) stays internal — consumed by
  * middleware, never exposed as an endpoint (D-225-6).
@@ -14,7 +14,10 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { adminAuth } from "../../middleware/adminAuth";
+import { getDatabase } from "../../lib/database";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import { capabilityGate } from "../../middleware/operator-gate";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import type { IdentityService } from "../../lib/identity";
@@ -44,8 +47,12 @@ import {
 
 // ---------- route factory ----------
 
-export function createIdentityRoutes(service: IdentityService): Hono {
+export function createIdentityRoutes(
+  service: IdentityService,
+  opts: { operatorStore?: OperatorStore } = {},
+): Hono {
   const r = new Hono();
+  const opStore = opts.operatorStore ?? pickOperatorStores(getDatabase());
 
   // GET /api/v1/actors/:wallet — public read; 404 when unknown.
   r.get(
@@ -212,10 +219,12 @@ export function createIdentityRoutes(service: IdentityService): Hono {
     },
   );
 
-  // POST /api/v1/entitlements/:wallet/revoke — admin manual revoke.
+  // POST /api/v1/entitlements/:wallet/revoke — operator manual revoke
+  // (264-8: workflow cap).
   r.post(
     "/api/v1/entitlements/:wallet/revoke",
-    adminAuth,
+    operatorAuth(opStore),
+    capabilityGate(),
     describeRoute({
       tags: ["Identity"],
       summary: "Revoke an entitlement (admin)",

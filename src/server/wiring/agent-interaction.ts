@@ -22,6 +22,7 @@ import { onInteractionEvent } from "../lib/agent-interaction/events";
 import { mountAgentInteractionRoutes } from "../routes/agent-interaction/mount";
 import type { RequestInboxStores } from "../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../config/env/types";
+import type { OperatorStore } from "../lib/operators";
 
 const ADMIN_BASE = "https://agentbadge.xyz/admin/interactions";
 
@@ -62,8 +63,9 @@ export function wireAgentInteraction(
   app: Hono,
   stores: RequestInboxStores,
   env: RequestInboxEnvConfig,
+  operatorStore?: OperatorStore,
 ): void {
-  mountAgentInteractionRoutes(app, stores, env);
+  mountAgentInteractionRoutes(app, stores, env, operatorStore);
   if (hookRegistered) return; // single hook per process (tests remount)
   hookRegistered = true;
   onInteractionEvent((_requestId, event) => {

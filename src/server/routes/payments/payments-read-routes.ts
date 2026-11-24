@@ -13,12 +13,24 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { paymentJson } from "../../lib/payments-api/api-schemas";
 import type { PaymentsCheckout } from "../../lib/payments-api";
-import { adminAuth } from "../../middleware/adminAuth";
+import { pickOperatorStores, type OperatorStore } from "../../lib/operators";
+import { getDatabase } from "../../lib/database";
+import { operatorAuth } from "../../middleware/operatorAuth";
+import {
+  capabilityGate,
+  lazyOperatorAuth,
+} from "../../middleware/operator-gate";
 
 export function createPaymentsReadRoutes(
   getCheckout: () => PaymentsCheckout,
+  operatorStore?: OperatorStore,
 ): Hono {
   const routes = new Hono();
+  // 264-8: payments-api is an import-time singleton — resolve the
+  // shared store on first request, not at module load.
+  const auth = operatorStore
+    ? operatorAuth(operatorStore)
+    : lazyOperatorAuth(() => pickOperatorStores(getDatabase()));
 
   // 222-4: ops exception feed — admin-only (payment internals:
   // txHashes, payers, expected/actual amounts). Registered BEFORE
@@ -33,10 +45,11 @@ export function createPaymentsReadRoutes(
         "reconciliation flagged (underpaid, late, duplicate, …).",
       responses: {
         200: { description: "Exception rows, newest first" },
-        401: { description: "Missing/invalid admin key" },
+        401: { description: "Missing/invalid operator credential" },
       },
     }),
-    adminAuth,
+    auth,
+    capabilityGate(),
     async (c) => {
       const checkout = getCheckout();
       const status = c.req.query("status");

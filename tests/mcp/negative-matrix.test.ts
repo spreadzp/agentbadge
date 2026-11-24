@@ -13,7 +13,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 import { registerTool, type ToolResult } from "@agentbadge/mcp";
 import { Hono, type Context, type Next } from "hono";
 import { mcpRoutes } from "../../src/server/routes/mcp/mcp";
-import { mcpOpsRoutes } from "../../src/server/routes/mcp/mcp-ops";
+import { createMcpOpsRoutes } from "../../src/server/routes/mcp/mcp-ops";
 import { registerPassportTools } from "@agentbadge/mcp";
 import { registerCircleWalletBalanceTools } from "@agentbadge/mcp";
 
@@ -71,7 +71,7 @@ function makeApp(setAgent?: (c: Context) => void): Hono {
     });
   }
   app.route("/", mcpRoutes);
-  app.route("/mcp/ops", mcpOpsRoutes);
+  app.route("/mcp/ops", createMcpOpsRoutes());
   return app;
 }
 
@@ -238,6 +238,9 @@ describe("negative matrix — caller × transport × tool (SLICE-259-8)", () => 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: /mcp/ops is operatorAuth now — the shared key rides the
+    // dual-auth window as break_glass legacy_admin (read+workflow).
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   });
 
   afterAll(() => {
