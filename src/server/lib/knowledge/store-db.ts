@@ -24,6 +24,10 @@ import type {
   KnowledgeGapEventInsert,
   KnowledgeGapEventRecord,
 } from "./gap-events";
+import type {
+  KnowledgeGapOverdueInsert,
+  KnowledgeGapOverdueRecord,
+} from "./gap-overdue";
 
 /**
  * EPIC-229 (SLICE-229-1): Postgres adapter — KnowledgeRepository +
@@ -40,17 +44,10 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   // ─── items ──
 
-  getItem(id: string) {
-    return this.core.getItem(id);
-  }
-
-  getItemBySlug(slug: string) {
-    return this.core.getItemBySlug(slug);
-  }
-
-  listItems(opts?: { status?: string; kind?: string; limit?: number }) {
-    return this.core.listItems(opts);
-  }
+  getItem = (id: string) => this.core.getItem(id);
+  getItemBySlug = (slug: string) => this.core.getItemBySlug(slug);
+  listItems = (opts?: { status?: string; kind?: string; limit?: number }) =>
+    this.core.listItems(opts);
 
   createItemWithVersion(
     item: KnowledgeItemInsert,
@@ -72,17 +69,10 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   // ─── versions ──
 
-  getVersion(id: string) {
-    return this.core.getVersion(id);
-  }
-
-  getVersionBySeq(itemId: string, seq: number) {
-    return this.core.getVersionBySeq(itemId, seq);
-  }
-
-  listVersions(itemId: string) {
-    return this.core.listVersions(itemId);
-  }
+  getVersion = (id: string) => this.core.getVersion(id);
+  getVersionBySeq = (itemId: string, seq: number) =>
+    this.core.getVersionBySeq(itemId, seq);
+  listVersions = (itemId: string) => this.core.listVersions(itemId);
 
   // ─── status machine ──
 
@@ -102,9 +92,8 @@ export class DbKnowledgeStore implements KnowledgeStore {
     return { item: r.item, event: r.event, transitioned: true };
   }
 
-  listStatusEvents(itemId: string) {
-    return this.core.listStatusEvents(itemId);
-  }
+  listStatusEvents = (itemId: string) =>
+    this.core.listStatusEvents(itemId);
 
   // ─── search seam ──
 
@@ -127,51 +116,31 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   // ─── capabilities ──
 
-  upsertCapability(input: KnowledgeCapabilityUpsert) {
-    return this.taxonomy.upsertCapability(input);
-  }
-
-  getCapability(id: string) {
-    return this.taxonomy.getCapability(id);
-  }
-
-  getCapabilityByName(name: string) {
-    return this.taxonomy.getCapabilityByName(name);
-  }
-
-  listCapabilities(opts?: { verified?: boolean; kind?: string; limit?: number }) {
-    return this.taxonomy.listCapabilities(opts);
-  }
-
-  linkCapability(itemId: string, capabilityId: string) {
-    return this.taxonomy.linkCapability(itemId, capabilityId);
-  }
-
-  unlinkCapability(itemId: string, capabilityId: string) {
-    return this.taxonomy.unlinkCapability(itemId, capabilityId);
-  }
-
-  capabilitiesForItem(itemId: string) {
-    return this.taxonomy.capabilitiesForItem(itemId);
-  }
-
-  itemsForCapability(name: string) {
-    return this.taxonomy.itemsForCapability(name);
-  }
+  upsertCapability = (input: KnowledgeCapabilityUpsert) =>
+    this.taxonomy.upsertCapability(input);
+  getCapability = (id: string) => this.taxonomy.getCapability(id);
+  getCapabilityByName = (name: string) =>
+    this.taxonomy.getCapabilityByName(name);
+  listCapabilities = (opts?: {
+    verified?: boolean;
+    kind?: string;
+    limit?: number;
+  }) => this.taxonomy.listCapabilities(opts);
+  linkCapability = (itemId: string, capabilityId: string) =>
+    this.taxonomy.linkCapability(itemId, capabilityId);
+  unlinkCapability = (itemId: string, capabilityId: string) =>
+    this.taxonomy.unlinkCapability(itemId, capabilityId);
+  capabilitiesForItem = (itemId: string) =>
+    this.taxonomy.capabilitiesForItem(itemId);
+  itemsForCapability = (name: string) =>
+    this.taxonomy.itemsForCapability(name);
 
   // ─── relations ──
 
-  addRelation(input: KnowledgeRelationInsert) {
-    return this.taxonomy.addRelation(input);
-  }
-
-  removeRelation(id: string) {
-    return this.taxonomy.removeRelation(id);
-  }
-
-  relationsFor(itemId: string) {
-    return this.taxonomy.relationsFor(itemId);
-  }
+  addRelation = (input: KnowledgeRelationInsert) =>
+    this.taxonomy.addRelation(input);
+  removeRelation = (id: string) => this.taxonomy.removeRelation(id);
+  relationsFor = (itemId: string) => this.taxonomy.relationsFor(itemId);
 
   // ─── evidence ──
 
@@ -264,6 +233,24 @@ export class DbKnowledgeStore implements KnowledgeStore {
   async listGapEvents(gapId: string): Promise<KnowledgeGapEventRecord[]> {
     // Row shape already matches the record — no mapping needed.
     return this.taxonomy.listGapEvents(gapId);
+  }
+
+  // ─── 264-13: durable overdue-breach records ──
+
+  async recordOverdue(
+    input: KnowledgeGapOverdueInsert,
+  ): Promise<{ row: KnowledgeGapOverdueRecord | null; created: boolean }> {
+    // Row shape already matches the record — no mapping needed.
+    return this.taxonomy.recordOverdue(input);
+  }
+
+  markOverdueEmitted(id: string) {
+    return this.taxonomy.markOverdueEmitted(id);
+  }
+
+  async listDueBreaches(now: string): Promise<KnowledgeGapRecord[]> {
+    const rows = await this.taxonomy.listDueBreaches(now);
+    return rows.map(mapGap);
   }
 }
 

@@ -13,10 +13,12 @@ import type {
   KnowledgeVersionInsert,
 } from "./store";
 import type { KnowledgeGapEventInsert } from "./gap-events";
+import type { KnowledgeGapOverdueInsert } from "./gap-overdue";
 import type { MemoryKnowledgeData } from "./memory-data";
 import { MemoryKnowledgeCore } from "./store-memory-core";
 import { MemoryKnowledgeEvidence } from "./store-memory-evidence";
 import { MemoryKnowledgeGaps } from "./store-memory-gaps";
+import { MemoryKnowledgeOverdue } from "./store-memory-overdue";
 import { MemoryKnowledgeTaxonomy } from "./store-memory-taxonomy";
 import { MemoryKnowledgeTransitions } from "./store-memory-transitions";
 
@@ -34,6 +36,7 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   private readonly taxonomy: MemoryKnowledgeTaxonomy;
   private readonly evidence: MemoryKnowledgeEvidence;
   private readonly gaps: MemoryKnowledgeGaps;
+  private readonly overdue: MemoryKnowledgeOverdue;
   private readonly transitions: MemoryKnowledgeTransitions;
 
   constructor(data: MemoryKnowledgeData) {
@@ -41,6 +44,7 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
     this.taxonomy = new MemoryKnowledgeTaxonomy(data);
     this.evidence = new MemoryKnowledgeEvidence(data);
     this.gaps = new MemoryKnowledgeGaps(data);
+    this.overdue = new MemoryKnowledgeOverdue(data);
     this.transitions = new MemoryKnowledgeTransitions(data);
   }
 
@@ -126,4 +130,10 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   appendGapEvent = (event: KnowledgeGapEventInsert) =>
     this.gaps.appendGapEvent(event);
   listGapEvents = (gapId: string) => this.gaps.listGapEvents(gapId);
+
+  // ─── 264-13: durable overdue-breach records ──
+  recordOverdue = (input: KnowledgeGapOverdueInsert) =>
+    this.overdue.recordOverdue(input);
+  markOverdueEmitted = (id: string) => this.overdue.markOverdueEmitted(id);
+  listDueBreaches = (now: string) => this.overdue.listDueBreaches(now);
 }

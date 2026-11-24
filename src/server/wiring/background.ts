@@ -15,6 +15,7 @@ import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startUsdcPaymentMonitor } from "../services/usdc-payment-monitor";
 import { startUsdcReconciliation } from "../services/usdc-reconciliation";
 import { startIdentitySweeper } from "../services/identity-sweeper";
+import { startKnowledgeOverdueSweeper } from "../services/knowledge-overdue-sweeper";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startArchiveWorkers } from "./archive-workers";
@@ -94,6 +95,11 @@ export function startBackgroundJobs(): void {
   // activate CONFIRMED-payment grants, revoke reversed payments.
   // Self-gates on IDENTITY_SWEEPER_ENABLED (default on).
   startIdentitySweeper();
+
+  // 264-13: knowledge gap overdue sweeper — durable breach rows +
+  // knowledge.gap_overdue emits (kill-safe via emittedAt=null
+  // catch-up). Self-gates on KNOWLEDGE_OVERDUE_SWEEPER_ENABLED.
+  startKnowledgeOverdueSweeper();
 
   // 217-8/217-9: TG archive workers (daily digest + weekly rollup doc).
   // Self-gates on DATABASE_ENABLED + TG creds; logs skip-reason.

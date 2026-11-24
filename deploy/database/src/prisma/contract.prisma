@@ -1608,6 +1608,23 @@ model KnowledgeGapEvent {
   @@index([gapId, occurredAt])
 }
 
+// ─── EPIC-264 (264-13): durable overdue-breach records (C8) —
+// the FACT a deadline was breached, persisted atomically by the
+// sweeper independent of console visits; emittedAt=null marks a
+// recorded-but-not-yet-signalled breach so a kill between record
+// and emit is caught up by the next tick. (gapId,dueAt) unique →
+// a renewed deadline after a breach is a NEW breach generation.
+model KnowledgeGapOverdue {
+  id         String            @id @default(uuid())
+  gapId      String // → KnowledgeGap.id
+  dueAt      TimestamptzString // the breached deadline
+  detectedAt TimestamptzString @default(now()) // sweeper tick that caught it
+  emittedAt  TimestamptzString? // NULL = record landed, emit pending
+
+  @@unique([gapId, dueAt])
+  @@index([emittedAt])
+}
+
 // ─── EPIC-230: Feedback & Review Infrastructure (D-230-1..9) ──────
 // Two domains sharing the 228 conventions: actor tiers + actorRef,
 // idempotent intake on (idempotencyKey, dedupeScope), append-only

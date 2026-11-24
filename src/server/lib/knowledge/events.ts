@@ -36,6 +36,7 @@ export const KNOWLEDGE_EVENT_KINDS = [
   "knowledge.gap_triaged",
   "knowledge.gap_resolved",
   "knowledge.gap_wontfix",
+  "knowledge.gap_overdue",
 ] as const;
 export type KnowledgeEventKind = (typeof KNOWLEDGE_EVENT_KINDS)[number];
 

@@ -14,45 +14,29 @@ import type {
   KnowledgeGapEventRecord,
   KnowledgeGapTransitionInput,
 } from "./gap-events";
+import type {
+  KnowledgeGapOverdueInsert,
+  KnowledgeGapOverdueRecord,
+} from "./gap-overdue";
+import type {
+  KnowledgeCapabilityUpsert,
+  KnowledgeEvidenceInsert,
+  KnowledgeGapUpsert,
+  KnowledgeItemInsert,
+  KnowledgeRelationInsert,
+  KnowledgeSearchOpts,
+  KnowledgeStatusEventInsert,
+  KnowledgeVersionInsert,
+} from "./store-inputs";
 
 /**
  * EPIC-229 (SLICE-229-1, D-143/D-229-1): knowledge store contract —
- * the Postgres adapter and the memory store share semantics.
- *
- * MUST share: composite mutations atomic (refused writes store
- * NOTHING); versions + status events append-only; honest signals
+ * the Postgres adapter and the memory store share semantics:
+ * composite mutations atomic (refused writes store NOTHING);
+ * versions + status events append-only; honest signals
  * (`transitioned`, `created`, `recorded`); one searchItems shape —
- * agent callers always status:"PUBLISHED"; recordGap upserts on
- * normalizedQuery with `created` true only on first sighting.
+ * agent callers always status:"PUBLISHED".
  */
-
-export interface KnowledgeItemInsert {
-  id: string;
-  slug: string;
-  kind: string;
-  status?: string;
-  createdBy: string;
-}
-
-export interface KnowledgeVersionInsert {
-  id: string;
-  itemId: string;
-  seq: number;
-  title: string;
-  body: string;
-  summary?: string | null;
-  restoredFromVersionId?: string | null;
-  createdBy: string;
-}
-
-export interface KnowledgeStatusEventInsert {
-  id: string;
-  itemId: string;
-  from: string | null;
-  to: string;
-  actor: string;
-  reason?: string | null;
-}
 
 /** Arc R4 M-4: the legal from→to table enforced INSIDE the store
  *  — previously workflow-only, so a direct store call could jump
@@ -66,52 +50,6 @@ export {
   type KnowledgeTransitionInput,
   type KnowledgeTransitionResult,
 } from "./transitions";
-
-export interface KnowledgeCapabilityUpsert {
-  id: string;
-  name: string;
-  kind: string;
-  description?: string | null;
-  source: string;
-  verified: boolean;
-}
-
-export interface KnowledgeRelationInsert {
-  id: string;
-  fromItemId: string;
-  toItemId: string;
-  type: string;
-  createdBy: string;
-}
-
-export interface KnowledgeEvidenceInsert {
-  id: string;
-  versionId: string;
-  type: string;
-  uri: string;
-  label?: string | null;
-  addedBy: string;
-}
-
-export interface KnowledgeGapUpsert {
-  id: string;
-  normalizedQuery: string;
-  /** Verbatim query text appended to sampleQueries (cap 10). */
-  sampleQuery: string;
-  source: string;
-  sourceRef?: string | null;
-  capabilityRef?: string | null;
-  intent?: string | null;
-}
-
-export interface KnowledgeSearchOpts {
-  query: string;
-  /** Defaults to PUBLISHED — agent callers never override. */
-  status?: string;
-  kind?: string | null;
-  capabilityRef?: string | null;
-  limit?: number;
-}
 
 export interface KnowledgeStore {
   readonly backend: "postgres" | "memory";
@@ -132,8 +70,7 @@ export interface KnowledgeStore {
   ): Promise<{ item: KnowledgeItemRecord; version: KnowledgeVersionRecord }>;
   /** Arc R1 H5 + R2 M-8: appends inside a tx that row-locks the item,
    *  asserts requireStatus (default DRAFT), computes seq = max+1.
-   *  expectedSeq is the lost-update precondition ("stale_seq");
-   *  copyEvidenceFromLatest copies from the LOCKED latest version. */
+   *  expectedSeq is the lost-update precondition ("stale_seq"). */
   addVersion(
     version: Omit<KnowledgeVersionInsert, "seq"> & {
       copyEvidenceFromLatest?: boolean;
@@ -189,8 +126,8 @@ export interface KnowledgeStore {
 
   // ─── relations ──
   /** Arc R2 M-7: SUPERSEDES cycle check inside the store — PG locks
-   *  both endpoints + bounded recursive CTE under the lock; memory
-   *  runs the same BFS. Cycles refuse honestly. */
+   *  both endpoints + bounded recursive CTE; memory runs the same
+   *  BFS. Cycles refuse honestly. */
   addRelation(
     input: KnowledgeRelationInsert,
   ): Promise<{
@@ -198,8 +135,8 @@ export interface KnowledgeStore {
     created: boolean;
     reason?: "supersedes_cycle" | "supersedes_bound" | "items_missing";
   }>;
-  /** Returns the deleted row when found — the audit event needs the
-   *  edge's endpoints + type (Arc R1 H4: no silent mutations). */
+  /** Returns the deleted row — the audit event needs the edge's
+   *  endpoints + type (Arc R1 H4: no silent mutations). */
   removeRelation(
     id: string,
   ): Promise<{ removed: boolean; row?: KnowledgeRelationRecord }>;
@@ -210,8 +147,7 @@ export interface KnowledgeStore {
 
   // ─── evidence ──
   /** Arc R1 H4 + R2 H-2: refuses unless item is DRAFT + target is its
-   *  latest version — evidence freezes at PENDING (no bait-and-switch
-   *  on the set a verifier reviews). */
+   *  latest version — evidence freezes at PENDING. */
   addEvidence(
     input: KnowledgeEvidenceInsert,
   ): Promise<
@@ -222,11 +158,10 @@ export interface KnowledgeStore {
       }
   >;
   listEvidence(versionId: string): Promise<KnowledgeEvidenceRecord[]>;
-  /** Arc R1 H4: evidence lookup by id — the DRAFT+latest guard on
-   *  removeEvidence needs version → item resolution. */
+  /** Arc R1 H4: removeEvidence's DRAFT+latest guard needs version →
+   *  item resolution. */
   getEvidence(id: string): Promise<KnowledgeEvidenceRecord | null>;
-  /** Arc R3 M-12: returns the deleted row — the audit event carries
-   *  what was removed (type/uri), not just an id. */
+  /** Arc R3 M-12: returns the deleted row for the audit event. */
   removeEvidence(
     id: string,
   ): Promise<{
@@ -238,8 +173,7 @@ export interface KnowledgeStore {
 
   // ─── gaps ──
   /** Arc R2 M-1: dedupe hits always bump; RESOLVED reopens (cap-
-   *  guarded in-tx); WONTFIX is final. Only NEW rows consume
-   *  openCap — a full backlog can't be raced nor block bumps. */
+   *  guarded in-tx); WONTFIX is final; only NEW rows eat openCap. */
   recordGap(
     input: KnowledgeGapUpsert,
     opts?: { openCap?: number },
@@ -250,17 +184,16 @@ export interface KnowledgeStore {
     reopened?: boolean;
   }>;
   getGap(id: string): Promise<KnowledgeGapRecord | null>;
-  /** Arc R1 H3: backlog bound — the public ask surface creates rows,
-   *  so OPEN gaps are capped (COUNT(*) is cheap, unique key is not
-   *  a bound on DISTINCT queries). */
+  /** Arc R1 H3: backlog bound — OPEN gaps are capped (COUNT(*) is
+   *  cheap; the unique key doesn't bound DISTINCT queries). */
   countGaps(status: string): Promise<number>;
   listGaps(opts?: {
     status?: string;
     /** 264-12: overdue = past-due first; unassigned = the pool. */
     orderBy?: "count" | "lastSeen" | "overdue";
     unassigned?: boolean;
-    limit?: number;
     /** Arc R2 M-1: bounded pagination. */
+    limit?: number;
     offset?: number;
   }): Promise<KnowledgeGapRecord[]>;
   transitionGap(
@@ -271,9 +204,8 @@ export interface KnowledgeStore {
     transitioned: boolean;
     reason?: "missing" | "status_mismatch";
   }>;
-  /** SLICE-264-10: idempotent ownership overwrite; 264-12 review —
-   *  `expectedAssignedTo` CAS-guards the write so a lost race can't
-   *  mint an audit row whose previousAssignee lies. */
+  /** SLICE-264-10: idempotent ownership overwrite; `expectedAssignedTo`
+   *  CAS-guards the write (264-12 review — no lying audit rows). */
   assignGap(
     id: string,
     input: KnowledgeGapAssignInput,
@@ -284,11 +216,24 @@ export interface KnowledgeStore {
   }>;
 
   // ─── 264-11: persisted gap audit ──
-  /** Standalone event append — for audit without a mutation;
-   *  state+audit pairs pass `event` through the mutation instead. */
+  /** Standalone event append — state+audit pairs pass `event`
+   *  through the mutation instead (same-tx guarantee). */
   appendGapEvent(event: KnowledgeGapEventInsert): Promise<boolean>;
   /** Chronological audit trail for one gap (occurredAt ASC). */
   listGapEvents(gapId: string): Promise<KnowledgeGapEventRecord[]>;
+
+  // ─── 264-13: durable overdue-breach records ──
+  /** Atomic breach record — (gapId,dueAt) conflict returns the
+   *  EXISTING row with created:false; the sweeper needs emittedAt
+   *  either way (kill-between-record-and-emit catch-up, C8). */
+  recordOverdue(
+    input: KnowledgeGapOverdueInsert,
+  ): Promise<{ row: KnowledgeGapOverdueRecord | null; created: boolean }>;
+  /** Stamp the emit — idempotent (emittedAt IS NULL guard). */
+  markOverdueEmitted(id: string): Promise<{ updated: boolean }>;
+  /** Gaps breached at `now` — OPEN|TRIAGED only (isGapOverdue's
+   *  liveness rule; `dueAt < now` already excludes NULL). */
+  listDueBreaches(now: string): Promise<KnowledgeGapRecord[]>;
 }
 
 // SLICE-264-10/11: gap write-input shapes live in gap-events.ts.
@@ -298,3 +243,21 @@ export type {
   KnowledgeGapEventInsert,
   KnowledgeGapTransitionInput,
 } from "./gap-events";
+
+// SLICE-264-13: breach-row shapes live in gap-overdue.ts.
+export type {
+  KnowledgeGapOverdueInsert,
+  KnowledgeGapOverdueRecord,
+} from "./gap-overdue";
+
+// Write-input shapes live in store-inputs.ts (300-cap split).
+export type {
+  KnowledgeCapabilityUpsert,
+  KnowledgeEvidenceInsert,
+  KnowledgeGapUpsert,
+  KnowledgeItemInsert,
+  KnowledgeRelationInsert,
+  KnowledgeSearchOpts,
+  KnowledgeStatusEventInsert,
+  KnowledgeVersionInsert,
+} from "./store-inputs";

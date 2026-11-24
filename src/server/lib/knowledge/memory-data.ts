@@ -8,6 +8,7 @@ import type {
   KnowledgeVersionRecord,
 } from "./types";
 import type { KnowledgeGapEventRecord } from "./gap-events";
+import type { KnowledgeGapOverdueRecord } from "./gap-overdue";
 
 /** D-229-9: ≤50 evidence refs per version. */
 export const KNOWLEDGE_EVIDENCE_CAP = 50;
@@ -26,6 +27,9 @@ export interface MemoryKnowledgeData {
   /** 264-11: persisted gap audit — same invariant as PG (append
    *  only, written atomically with the gap mutation). */
   gapEvents: Map<string, KnowledgeGapEventRecord>;
+  /** 264-13: durable overdue-breach rows — unique per (gapId,
+   *  dueAt) generation, same as the PG constraint. */
+  gapOverdues: Map<string, KnowledgeGapOverdueRecord>;
 }
 
 export function createMemoryKnowledgeData(): MemoryKnowledgeData {
@@ -39,6 +43,7 @@ export function createMemoryKnowledgeData(): MemoryKnowledgeData {
     evidence: new Map(),
     gaps: new Map(),
     gapEvents: new Map(),
+    gapOverdues: new Map(),
   };
 }
 

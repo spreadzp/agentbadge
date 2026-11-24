@@ -1,6 +1,6 @@
 {
   "name": "@agentbadge/database",
-  "version": "0.6.46",
+  "version": "0.6.47",
   "description": "Shared database layer for AgentBadge — Prisma ORM 8 client, repositories, store abstraction",
   "type": "module",
   "main": "dist/index.js",
