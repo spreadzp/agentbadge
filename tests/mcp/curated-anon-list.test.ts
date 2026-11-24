@@ -61,6 +61,8 @@ describe("curated anonymous tools/list — SLICE-259-7", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: shared key rides the dual-auth window for admin tier.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   });
 
   it("anonymous REST list shows curated tools only", async () => {

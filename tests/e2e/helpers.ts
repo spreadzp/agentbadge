@@ -4,6 +4,7 @@ import { passportRoutes } from "../../src/server/routes/identity/passport";
 import { verifyRoutes } from "../../src/server/routes/verify/verify";
 import { createAdminRoutes } from "../../src/server/routes/ops/admin";
 import { createUpgradeRoutes } from "../../src/server/routes/upgrade";
+import { createMemoryOperatorStore } from "../helpers/operators";
 import { auditRoutes } from "../../src/server/routes/observability/audit";
 import { catalogRoutes } from "../../src/server/routes/services/catalog";
 import { servicesCatalogRoutes } from "../../src/server/routes/services/services-catalog";
@@ -74,8 +75,12 @@ export function makeTestApp(): Hono {
   app.use(rateLimitMiddleware());
   app.route("/", passportRoutes);
   app.route("/", verifyRoutes);
-  app.route("/", createAdminRoutes());
-  app.route("/", createUpgradeRoutes());
+  // 264-8: fresh store per app — the default resolves the process-
+  // shared memory singleton, which would leak seeded rows across
+  // test files on the same worker.
+  const operatorStore = createMemoryOperatorStore();
+  app.route("/", createAdminRoutes({ operatorStore }));
+  app.route("/", createUpgradeRoutes({ operatorStore }));
   app.route("/", auditRoutes);
   app.route("/", catalogRoutes);
   app.route("/", servicesCatalogRoutes);
@@ -180,6 +185,8 @@ export function setupMockEnv(): void {
   process.env.AUDIT_TOPIC_ID = "0.0.9681981";
   process.env.DIRECTORY_TOPIC_ID = "0.0.9681982";
   process.env.ADMIN_API_KEY = "test-admin-key";
+  // 264-8: shared key → admin tier only inside the dual-auth window.
+  process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   process.env.IPFS_STORAGE = "./storage/metadata";
   process.env.KEEPERHUB_ENABLED = "false";
   process.env.ATTESTCOIN_ENABLED = "false";

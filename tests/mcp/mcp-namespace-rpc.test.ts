@@ -32,6 +32,8 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 
 beforeAll(() => {
   process.env.ADMIN_API_KEY = "test-admin-key";
+    // 264-8: shared key rides the dual-auth window for admin tier.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   const passportNs = createNamespace("passport");
   registerPassportTools(passportNs);
   registerSigningTools(passportNs);

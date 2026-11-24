@@ -32,11 +32,13 @@ export function createAdminRoutes(
 ): Hono {
   const adminRoutes = new Hono();
   const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
-  adminRoutes.use(
-    "/admin/*",
-    operatorAuth(opStore),
-    capabilityGate(),
-  );
+  // 264-8 review: mount only the two owned leaves — a /admin/* gate
+  // would leak through route() merge onto every sibling surface,
+  // shadowing their operatorBrowserAuth challenge headers.
+  const auth = [operatorAuth(opStore), capabilityGate()];
+  for (const path of ["/admin/revoke", "/admin/rebuild-cache"]) {
+    adminRoutes.use(path, ...auth);
+  }
 
 adminRoutes.post(
     "/admin/revoke",

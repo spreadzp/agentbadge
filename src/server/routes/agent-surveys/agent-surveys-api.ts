@@ -98,7 +98,8 @@ export function createAgentSurveyRoutes(
   const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
 
   // 264-8: the ops lane under this surface — POST create → workflow.
-  app.use("/api/ops/*", operatorAuth(opStore), capabilityGate());
+  // 264-8: owned leaf only — /api/ops/* leaks to sibling factories.
+  app.use("/api/ops/surveys", operatorAuth(opStore), capabilityGate());
   const now = deps.now ?? (() => Date.now());
   const writeReputation =
     deps.writeReputation ??

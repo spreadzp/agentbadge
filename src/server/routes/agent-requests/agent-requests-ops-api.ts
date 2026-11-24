@@ -51,8 +51,7 @@ const toOpsItem = (r: InboxRequestRecord) => ({
   state: r.state,
   kind: r.kind,
   payload: r.payload,
-  // Re-audit C-1: re-sanitize on read — rows written before the
-  // IP-carrier strip still carry raw IPs otherwise.
+  // Re-audit C-1: re-sanitize on read — pre-strip rows carry raw IPs.
   fingerprint:
     r.fingerprint != null
       ? { ...r.fingerprint, headers: sanitizeHeaders(r.fingerprint.headers ?? {}) }
@@ -74,9 +73,17 @@ export function createAgentRequestOpsRoutes(
   const now = deps.now ?? (() => Date.now());
   const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
 
-  // 264-8: one mount covers every /api/ops/requests* route incl. the
-  // qa-ops retract registered below — GET→read, POST→workflow.
-  app.use("/api/ops/requests/*", operatorAuth(opStore), capabilityGate());
+  // 264-8: owned leaves only — a /* umbrella double-gates digest.
+  const auth = [operatorAuth(opStore), capabilityGate()];
+  for (const path of [
+    "/api/ops/requests",
+    "/api/ops/requests/:id/respond",
+    "/api/ops/requests/:id/state",
+    "/api/ops/requests/:id/spam",
+    "/api/ops/requests/qa/*",
+  ]) {
+    app.use(path, ...auth);
+  }
 
   app.get(
     "/api/ops/requests",
@@ -85,7 +92,7 @@ export function createAgentRequestOpsRoutes(
       tags: ["Ops"],
       responses: {
         200: { description: "Request list with payload + fingerprint" },
-        401: { description: "Admin key required" },
+        401: { description: "Operator credential required" },
       },
     }),
     async (c) => {
@@ -140,29 +147,18 @@ export function createAgentRequestOpsRoutes(
       }
       const { record, expired } = await stores.requests.get(id);
       if (!record) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.REQUEST_NOT_FOUND,
-          "no such request",
-        );
+        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
       }
       if (expired) {
-        return errorResponse(
-          c,
-          410,
-          ErrorCodes.REQUEST_EXPIRED,
-          "request expired",
+        return errorResponse(c, 410, ErrorCodes.REQUEST_EXPIRED, "request expired",
         );
       }
       if (TERMINAL.has(record.state)) {
         return errorResponse(c, 409, ErrorCodes.INVALID_STATE, "terminal");
       }
       const patch = {
-        // pg/json codec: driver returns json columns already parsed —
-        // codec decode re-parses strings → a top-level string 500s every
-        // read of the row. Normalize to the {answer} convention used by
-        // all existing rows; objects pass through untouched.
+        // pg/json codec: a top-level string re-parses → 500 on read.
+        // Normalize to the {answer} convention of existing rows.
         response:
           typeof parsed.data.response === "string"
             ? { answer: parsed.data.response }
@@ -220,19 +216,10 @@ export function createAgentRequestOpsRoutes(
       }
       const { record, expired } = await stores.requests.get(id);
       if (!record) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.REQUEST_NOT_FOUND,
-          "no such request",
-        );
+        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
       }
       if (expired) {
-        return errorResponse(
-          c,
-          410,
-          ErrorCodes.REQUEST_EXPIRED,
-          "request expired",
+        return errorResponse(c, 410, ErrorCodes.REQUEST_EXPIRED, "request expired",
         );
       }
       if (TERMINAL.has(record.state)) {
@@ -291,8 +278,7 @@ export function createAgentRequestOpsRoutes(
     },
   );
 
-  // D-256-Q14: QA retract route — lives in agent-requests-qa-ops.ts
-  // (file-size guard).
+  // D-256-Q14: QA retract lives in agent-requests-qa-ops.ts.
   registerQaOpsRoutes(app, stores.requests, now);
 
   return app;

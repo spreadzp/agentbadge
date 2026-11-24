@@ -8,7 +8,10 @@
  * default is `admin` for unclassified tools.
  *
  * Callers:
- *   - "admin"         — valid ADMIN_API_KEY (X-Admin-Key / Bearer)
+ *   - "admin"         — legacy shared key inside the dual-auth window
+ *                       or under ADMIN_BREAK_GLASS_ENABLED (264-8:
+ *                       routed through tryLegacySharedKey so usage is
+ *                       marked + alerted; opk_ creds use /mcp/ops)
  *   - "authenticated" — verified agent identity: agentKeyAuth (agb_)
  *                       or did-auth signature (verifiedDid)
  *   - "anonymous"     — everyone else
@@ -17,7 +20,7 @@
  * subject binding) still applies inside tools (D-259-Q2).
  */
 import type { Context } from "hono";
-import { verifyAdminKey } from "../middleware/adminAuth";
+import { tryLegacySharedKey } from "../middleware/operator-legacy";
 import {
   listTools,
   type ToolExposure,
@@ -45,7 +48,9 @@ export function resolveCallerTier(c: Context): CallerTier {
   const bearerKey = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
     : null;
-  if (verifyAdminKey(xAdminKey || bearerKey)) return "admin";
+  if (tryLegacySharedKey(xAdminKey || bearerKey || "", c.req.path).accepted) {
+    return "admin";
+  }
 
   if (c.get("verifiedDid") || c.get("agentId")) return "authenticated";
   return "anonymous";

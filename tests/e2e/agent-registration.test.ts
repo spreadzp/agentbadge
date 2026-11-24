@@ -87,6 +87,8 @@ describe("SLICE-184-4 e2e: agent registration cycle", () => {
   const prevAdmin = process.env.ADMIN_API_KEY;
   beforeEach(() => {
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: admin revoke rides the dual-auth window explicitly.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
     tokenSeq = 0n;
   });
   afterEach(() => {

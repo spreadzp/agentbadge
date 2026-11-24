@@ -51,6 +51,8 @@ describe("tool exposure enforcement — anonymous (SLICE-259-3)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: shared key rides the dual-auth window for admin tier.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   });
 
   it("denies tools/call on admin tool via JSON-RPC", async () => {
@@ -148,6 +150,8 @@ describe("tool exposure enforcement — authenticated caller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: shared key rides the dual-auth window for admin tier.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   });
 
   it("allows authenticated tool for keyed agent", async () => {
@@ -190,6 +194,8 @@ describe("tool exposure enforcement — admin caller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
+    // 264-8: shared key rides the dual-auth window for admin tier.
+    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
   });
 
   it("admin key can call admin tools", async () => {

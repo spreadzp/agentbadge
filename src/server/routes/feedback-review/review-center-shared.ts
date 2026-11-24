@@ -4,6 +4,13 @@
  * ok/err are codes, never free text), operator-ref guard (lesson 5)
  * and pagination bounds (lesson 9). Field readers + form-token and
  * operator-shape checks reuse the 229 shared module verbatim.
+ *
+ * 264-8 forged-field rule (consistent across surfaces): JSON API
+ * boundaries REFUSE a body `operator`/`operatorLabel` field (typed
+ * 400 via rejectOperatorField — clients must fix their payload);
+ * SSR form posts IGNORE a stray one (never read — the actor is the
+ * credential principal, and refusing would break legitimate PRG
+ * flows over a dead field).
  */
 
 import type { Context } from "hono";

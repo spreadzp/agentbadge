@@ -130,4 +130,46 @@ describe("Operator credential authentication — SLICE-7-11/264-8", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(401);
   });
+
+  it("assembled app: adminRoutes use() does not leak onto sibling surfaces (264-8 review)", async () => {
+    const { createReviewCenter } = await import(
+      "../../src/server/routes/feedback-review/review-center"
+    );
+    const { createMemoryFeedbackData, createMemoryFeedbackStore } = await import(
+      "../../src/server/lib/feedback/store-memory"
+    );
+    const { createMemoryReviewData, createMemoryReviewStore } = await import(
+      "../../src/server/lib/reviews/store-memory"
+    );
+    const { createMemoryKnowledgeStores } = await import(
+      "../../src/server/lib/knowledge/db-stores"
+    );
+    const { knowledgeDraftPort } = await import(
+      "../../src/server/lib/knowledge-draft/port"
+    );
+
+    const app = new Hono();
+    app.route("/", createAdminRoutes({ operatorStore: store }));
+    app.route("/", createReviewCenter({
+      operatorStore: store,
+      stores: {
+        feedback: createMemoryFeedbackStore(createMemoryFeedbackData()),
+        reviews: createMemoryReviewStore(createMemoryReviewData()),
+        draftPort: knowledgeDraftPort(createMemoryKnowledgeStores()),
+      },
+    }));
+
+    // The sibling surface keeps its own operatorBrowserAuth — the
+    // leaked gate used to return bare 401 with no challenge, so no
+    // browser could ever log in.
+    const res = await app.request("/admin/review-center");
+    expect(res.status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toBe(
+      'Basic realm="operators"',
+    );
+
+    // Owned leaves still gated.
+    const rev = await app.request("/admin/revoke", { method: "POST" });
+    expect(rev.status).toBe(401);
+  });
 });

@@ -28,7 +28,7 @@ export function createInboxOpsDigestRoutes(deps: InboxOpsDigestDeps): Hono {
   const { stores } = deps;
   const opStore = deps.operatorStore ?? pickOperatorStores(getDatabase());
 
-  app.use("/api/ops/requests/*", operatorAuth(opStore), capabilityGate());
+  app.use("/api/ops/requests/digest", operatorAuth(opStore), capabilityGate());
 
   app.post(
     "/api/ops/requests/digest",
@@ -37,7 +37,7 @@ export function createInboxOpsDigestRoutes(deps: InboxOpsDigestDeps): Hono {
       tags: ["Ops"],
       responses: {
         200: { description: "Digest sent (or skipped: 0 new / no creds)" },
-        401: { description: "Admin key required" },
+        401: { description: "Operator credential required" },
       },
     }),
     async (c) => {

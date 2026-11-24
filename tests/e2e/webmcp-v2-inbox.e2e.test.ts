@@ -16,6 +16,8 @@ import { toolsFor, injectWebMCP, generateDeclarativeScript } from "@agentbadge/w
 process.env.FLY_APP_NAME = process.env.FLY_APP_NAME || "test-webmcp-v2";
 const ADMIN = "test-admin-key";
 process.env.ADMIN_API_KEY = ADMIN;
+// 264-8: ops/admin calls ride the dual-auth window explicitly.
+process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
 const OPS = { "X-Admin-Key": ADMIN };
 
 let app: Hono;

@@ -98,6 +98,15 @@ upgradeRoutes.post(
         );
       }
 
+      // 264-8: the self-asserted operator header is dead everywhere —
+      // a stale client must get the same signal it gets elsewhere.
+      if (c.req.header("x-operator-id")) {
+        return errorResponse(
+          c, 400, ErrorCodes.OPERATOR_HEADER_REJECTED,
+          "x-operator-id is not accepted — identity comes from the operator credential or DID signature",
+        );
+      }
+
       const xAdminKey = c.req.header("X-Admin-Key");
       const authHeader = c.req.header("Authorization");
       const bearerKey = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
