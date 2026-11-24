@@ -117,6 +117,7 @@ describe("operator store contract (memory backend)", () => {
       ok: false,
       reason: "duplicate_hash",
     });
+    await mkOp(s, "human"); // second human — C5 guard must not engage
     await s.disableOperator(op.operator.id);
     expect(await issue(s, op.operator.id)).toEqual({
       ok: false,
@@ -246,6 +247,7 @@ describe("operator store contract (memory backend)", () => {
   it("revoke + disable are idempotent and honest", async () => {
     const s = createMemoryOperatorStore();
     const op = await mkOp(s);
+    await mkOp(s, "human"); // second human — C5 guard must not engage
     if (!op.ok) throw new Error("seed failed");
     const cred = await issue(s, op.operator.id);
     if (!cred.ok) throw new Error("seed failed");
@@ -275,18 +277,28 @@ describe("operator store contract (memory backend)", () => {
     await mkOp(s, "service");
     await mkOp(s, "break_glass");
     expect(await s.activeHumanCount()).toBe(1);
-    if (h.ok) await s.disableOperator(h.operator.id);
-    expect(await s.activeHumanCount()).toBe(0);
+    // C5: the last active human cannot be disabled — the count
+    // cannot drop to zero through disableOperator
+    if (h.ok) {
+      expect(await s.disableOperator(h.operator.id)).toEqual({
+        ok: false,
+        reason: "last_operator",
+      });
+      await mkOp(s, "human"); // second human frees the guard
+      await s.disableOperator(h.operator.id);
+    }
+    expect(await s.activeHumanCount()).toBe(1);
   });
 
   it("listOperators filters by status + principalType", async () => {
     const s = createMemoryOperatorStore();
     const h = await mkOp(s, "human");
+    await mkOp(s, "human"); // second human — C5 allows disabling h
     await mkOp(s, "service");
     if (h.ok) await s.disableOperator(h.operator.id);
     expect((await s.listOperators({ principalType: "service" })).length).toBe(1);
     expect((await s.listOperators({ status: "disabled" })).length).toBe(1);
-    expect((await s.listOperators()).length).toBe(2);
+    expect((await s.listOperators()).length).toBe(3);
   });
 
   it("touchLastUsed sets diagnostics timestamp, false on missing", async () => {

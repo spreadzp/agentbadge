@@ -109,6 +109,7 @@ describe("operatorAuth — credential → principal (memory backend)", () => {
   it("auth-negatives refuse with the IDENTICAL 401 envelope", async () => {
     const store = createMemoryOperatorStore();
     const { operator, credential, key } = await seedOperator(store);
+    await seedOperator(store); // second human — C5 guard must not engage
     const app = makeApp(store);
 
     const cases: [string, Record<string, string>][] = [

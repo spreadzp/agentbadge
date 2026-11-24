@@ -35,6 +35,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
     "seed-medical-tasks": "bun src/scripts/seed-medical-tasks.ts",
+    "operator:create": "bun src/scripts/operator-create.ts",
     "format": "prettier --write src/ tests/",
     "mcp": "bun src/mcp/entry.ts",
     "hermes": "bun scripts/hermes.ts",

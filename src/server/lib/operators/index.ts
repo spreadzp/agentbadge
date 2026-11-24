@@ -6,3 +6,17 @@ export * from "./store";
 export { createOperatorStore } from "./ops";
 export { createMemoryOperatorRepos } from "./memory";
 export { createMemoryOperatorStore, pickOperatorStores } from "./db-stores";
+export {
+  applyOperatorSeed,
+  createOperator,
+  isOperatorName,
+  issueOperatorCredential,
+  normalizeOperatorName,
+  rotateOperatorCredential,
+  seedOperatorsFromEnv,
+  type LifecycleCreateResult,
+  type IssueKeyResult,
+  type OperatorSeed,
+  type OperatorSeedResult,
+  type RotateCredentialResult,
+} from "./lifecycle";

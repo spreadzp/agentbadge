@@ -18,6 +18,7 @@ import { createSettleSeam } from "./lib/x402-settle-seam";
 import { venueMonthlyPriceAtomic } from "./lib/venue/billing";
 import { wireAgentWallet, wireSpendEnvelopeGates } from "./wiring/agent-wallet";
 import { wireAgentRegistration } from "./wiring/agent-registration";
+import { wireOperators } from "./wiring/operators";
 import { wireWitness } from "./wiring/witness";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
@@ -224,6 +225,8 @@ wireAgentWallet(app);
 // Routes always mount — handlers self-gate on AGENT_REGISTER_ENABLED +
 // ARC_OPS_KEY so a misconfig answers honest 503, not a silent 404.
 wireAgentRegistration(app);
+
+await wireOperators(app); // EPIC-264 (SLICE-264-3): one-shot OPERATOR_SEED_JSON bootstrap (C9)
 
 // EPIC-185 SLICE-185-2: witness layer (/api/v1/witness/*). Enroll/seat/
 // attest are free + advisory; POSTs answer 503 when WITNESS_ENABLED off.

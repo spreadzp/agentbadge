@@ -76,9 +76,24 @@ export type IssueCredentialResult =
 
 export type RevokeCredentialResult =
   | { ok: true; credential: AdminOperatorCredential }
-  | { ok: false; reason: "missing" };
+  | {
+      ok: false;
+      /** `last_operator` (C5): the credential is the LAST active one
+       *  on the LAST active human — revoking it locks out all human
+       *  access. Use the break-glass CLI instead (D-264-Q15). */
+      reason: "missing" | "last_operator";
+    };
 
 export type DisableOperatorResult =
+  | { ok: true; operator: AdminOperator }
+  | {
+      ok: false;
+      /** `last_operator` (C5): this is the LAST active human —
+       *  disabling it locks out all human access. */
+      reason: "missing" | "last_operator";
+    };
+
+export type EnableOperatorResult =
   | { ok: true; operator: AdminOperator }
   | { ok: false; reason: "missing" };
 
@@ -118,10 +133,14 @@ export interface OperatorStore {
     keyHash: string;
     keyPrefix: string;
   }): Promise<IssueCredentialResult>;
-  /** Idempotent — re-revoking returns the row unchanged. */
+  /** Idempotent — re-revoking returns the row unchanged. C5-guarded:
+   *  the last active credential of the last active human refuses. */
   revokeCredential(id: string): Promise<RevokeCredentialResult>;
-  /** Idempotent — re-disabling returns the row unchanged. */
+  /** Idempotent — re-disabling returns the row unchanged. C5-guarded:
+   *  the last active human refuses. */
   disableOperator(id: string): Promise<DisableOperatorResult>;
+  /** Idempotent — re-enabling returns the row unchanged. */
+  enableOperator(id: string): Promise<EnableOperatorResult>;
   /** Best-effort diagnostics touch (auth middleware throttles). */
   touchLastUsed(credentialId: string, ts: string): Promise<boolean>;
 }

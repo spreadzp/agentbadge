@@ -156,6 +156,27 @@ export function createOperatorStore(
       if (credential.status === "revoked") {
         return { ok: true, credential }; // idempotent
       }
+      // C5: never revoke the LAST active credential of the LAST active
+      // human — that locks every human out (break-glass only). A
+      // second surviving credential keeps the revoke legal; a disabled
+      // or non-last human's creds are always revocable. The guard lives
+      // HERE (not the route) so no caller can bypass it.
+      const operator = await repos.operators.byId(credential.operatorId);
+      if (
+        operator?.principalType === "human" &&
+        operator.status === "active" &&
+        (await repos.operators.countActiveHumans()) <= 1
+      ) {
+        const activeCreds = (
+          await repos.credentials.forOperator(operator.id)
+        ).filter((c) => c.status === "active");
+        if (
+          activeCreds.length === 1 &&
+          activeCreds[0]?.id === credential.id
+        ) {
+          return { ok: false, reason: "last_operator" };
+        }
+      }
       return {
         ok: true,
         credential: await repos.credentials.update({
@@ -172,12 +193,35 @@ export function createOperatorStore(
       if (operator.status === "disabled") {
         return { ok: true, operator }; // idempotent
       }
+      // C5: the LAST active human cannot be disabled — same lockout.
+      if (
+        operator.principalType === "human" &&
+        (await repos.operators.countActiveHumans()) <= 1
+      ) {
+        return { ok: false, reason: "last_operator" };
+      }
       return {
         ok: true,
         operator: await repos.operators.update({
           ...operator,
           status: "disabled",
           disabledAt: now(),
+        }),
+      };
+    },
+
+    async enableOperator(id) {
+      const operator = await repos.operators.byId(id);
+      if (!operator) return { ok: false, reason: "missing" };
+      if (operator.status === "active") {
+        return { ok: true, operator }; // idempotent
+      }
+      return {
+        ok: true,
+        operator: await repos.operators.update({
+          ...operator,
+          status: "active",
+          disabledAt: null,
         }),
       };
     },
