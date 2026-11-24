@@ -30,3 +30,9 @@ export function pickDemandStore(db: Db): DemandStore {
   }
   return (sharedMemoryStore ??= createMemoryDemandStores());
 }
+
+/** Test seam — swap the shared fallback for a fresh one (the legacy
+ *  demandStore.clear() equivalent; pickDemandStore re-reads the var). */
+export function resetDemandMemoryStoreForTests(): void {
+  sharedMemoryStore = createMemoryDemandStores();
+}

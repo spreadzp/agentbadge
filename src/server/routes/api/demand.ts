@@ -1,15 +1,29 @@
 /**
  * Demand API routes.
  *
- * SLICE-46-12: POST /api/demand/request — register demand for a capability.
- * Rate limited: 10/hour/IP. Unified rate limiter.
+ * SLICE-46-12 contract (FROZEN): POST /api/demand/request —
+ * {capability_query ≤200, context? ≤1000} → 202 {demand_id, count,
+ * priority, status}; 10/hour/IP unified rate limiter.
+ *
+ * SLICE-231-3 (D-231-7): the handler is a thin adapter over the
+ * demand pipeline — source=DEMAND_API, declaredLevel=INTENT. The
+ * in-memory demandStore is gone; `demand_id` is now the canonical
+ * DemandSignal.id and `count`/`priority` derive from the cluster's
+ * canonical-only demand (burst dups fold into their canonical).
  */
 
 import { Hono } from "hono";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
-import { demandStore } from "../../services/demand-registry";
-import { createRateLimiter, MemoryStore } from "../../middleware/rate-limit";
+import { resolveActor } from "../../lib/agent-interaction/actor";
+import { getDatabase } from "../../lib/database";
+import { pickDemandStore } from "../../lib/demand/db-stores";
+import { ingestDemand } from "../../lib/demand/pipeline";
+import {
+  createRateLimiter,
+  MemoryStore,
+  resolveClientIp,
+} from "../../middleware/rate-limit";
 
 export const demandRoutes = new Hono();
 
@@ -67,6 +81,16 @@ function validateDemandRequest(body: unknown): { capability_query?: string; cont
   return { capability_query: capability_query.trim(), context: context?.trim() || undefined };
 }
 
+// ─── Response mapping (frozen contract fields) ───────────
+
+// Legacy priority ladder — thresholds unchanged (backlog <5,
+// candidate 5–19, priority ≥20 registrations).
+function legacyPriority(count: number): "backlog" | "candidate" | "priority" {
+  if (count >= 20) return "priority";
+  if (count >= 5) return "candidate";
+  return "backlog";
+}
+
 // ─── POST /api/demand/request ────────────────────────────
 
 demandRoutes.post("/api/demand/request", async (c) => {
@@ -87,14 +111,58 @@ demandRoutes.post("/api/demand/request", async (c) => {
     return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, error);
   }
 
-  const record = demandStore.request(capability_query!, context);
+  // ANON callers have no identity ref — bucket them by the same
+  // truncated IP the limiter uses so unidentified callers never
+  // merge into one unattributed actor (decisions.md: ANON-bucket).
+  const actor = resolveActor(c);
+  const demandActor = {
+    resolution: actor.resolution,
+    actorRef: actor.actorRef ?? `anon:ip:${resolveClientIp(c)}`,
+  };
+
+  const store = pickDemandStore(getDatabase());
+  let res;
+  try {
+    res = await ingestDemand(
+      store,
+      {
+        text: capability_query!,
+        context,
+        declaredLevel: "INTENT",
+        source: "DEMAND_API",
+      },
+      demandActor,
+    );
+  } catch {
+    return errorResponse(
+      c,
+      500,
+      ErrorCodes.INTERNAL_ERROR,
+      "Demand store unavailable",
+    );
+  }
+  if (!res.ok) {
+    return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, res.error);
+  }
+
+  // count = registrations under this need — canonical relatedCounts
+  // (burst dups fold into their canonical, §13.2). Bounded at 1000
+  // canonical rows — far past any real demand volume on this route.
+  const canonicals = await store.listSignals({
+    clusterId: res.cluster.id,
+    canonicalOnly: true,
+    limit: 1000,
+  });
+  const count = canonicals.reduce((n, s) => n + s.relatedCount, 0);
 
   return c.json(
     {
-      demand_id: record.id,
-      capability_query: record.capability_query,
-      count: record.count,
-      priority: record.priority,
+      // The canonical signal is the demand record callers reference —
+      // repeat requests inside the burst window return the same id.
+      demand_id: res.canonicalOf ?? res.signal.id,
+      capability_query,
+      count,
+      priority: legacyPriority(count),
       status: "accepted",
     },
     202,

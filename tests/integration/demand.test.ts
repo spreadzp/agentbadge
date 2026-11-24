@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { makeTestApp, setupMockEnv } from "../e2e/helpers";
-import { demandStore } from "../../src/server/services/demand-registry";
+import {
+  pickDemandStore,
+  resetDemandMemoryStoreForTests,
+} from "../../src/server/lib/demand/db-stores";
 import { resetDemandRateLimits } from "../../src/server/routes/api/demand";
 
 setupMockEnv();
 const app = makeTestApp();
+const store = () => pickDemandStore({});
 
-describe("SLICE-46-14: Integration — Demand Aggregation", () => {
+describe("SLICE-46-14/231-3: Integration — Demand Aggregation", () => {
   beforeEach(() => {
-    demandStore.clear();
+    resetDemandMemoryStoreForTests();
     resetDemandRateLimits();
   });
 
@@ -80,7 +84,7 @@ describe("SLICE-46-14: Integration — Demand Aggregation", () => {
       body: JSON.stringify({ capability_query: "react development" }),
     });
 
-    const records = demandStore.list();
+    const records = await store().listSignals({ canonicalOnly: true });
     expect(records.length).toBe(2);
   });
 
@@ -101,9 +105,9 @@ describe("SLICE-46-14: Integration — Demand Aggregation", () => {
       body: JSON.stringify({ capability_query: "  SOLIDITY   AUDIT  " }),
     });
 
-    const records = demandStore.list();
+    const records = await store().listSignals({ canonicalOnly: true });
     expect(records.length).toBe(1);
-    expect(records[0].count).toBe(3);
+    expect(records[0].relatedCount).toBe(3);
   });
 
   it("context is accumulated across requests", async () => {
@@ -118,9 +122,10 @@ describe("SLICE-46-14: Integration — Demand Aggregation", () => {
       body: JSON.stringify({ capability_query: "blockchain dev", context: "NFT platform" }),
     });
 
-    const records = demandStore.list();
-    expect(records[0].contexts).toContain("DeFi project");
-    expect(records[0].contexts).toContain("NFT platform");
+    const records = await store().listSignals();
+    const contexts = records.map((r) => r.context);
+    expect(contexts).toContain("DeFi project");
+    expect(contexts).toContain("NFT platform");
   });
 
   it("agent guide documentation is accessible", async () => {

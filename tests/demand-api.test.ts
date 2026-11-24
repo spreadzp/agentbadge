@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
-import { demandStore } from "../src/server/services/demand-registry";
+import {
+  pickDemandStore,
+  resetDemandMemoryStoreForTests,
+} from "../src/server/lib/demand/db-stores";
 import { resetDemandRateLimits } from "../src/server/routes/api/demand";
 
 setupMockEnv();
 const app = makeTestApp();
 
-describe("SLICE-46-12: Demand API + storage + aggregation + agent docs", () => {
+describe("SLICE-46-12/231-3: Demand API + pipeline + aggregation + agent docs", () => {
   beforeEach(() => {
-    demandStore.clear();
+    resetDemandMemoryStoreForTests();
     resetDemandRateLimits();
   });
 
@@ -22,7 +25,7 @@ describe("SLICE-46-12: Demand API + storage + aggregation + agent docs", () => {
       expect(res.status).toBe(202);
       const json = await res.json();
       expect(json.demand_id).toBeDefined();
-      expect(json.demand_id).toMatch(/^demand-/);
+      expect(json.demand_id).toMatch(/^ds_/);
     });
 
     it("returns capability_query in response", async () => {
@@ -314,11 +317,10 @@ describe("SLICE-46-12: Demand API + storage + aggregation + agent docs", () => {
 
   describe("Demand does NOT auto-create capabilities", () => {
     it("demand store has no method to create capabilities", () => {
-      const store = demandStore as unknown as Record<string, unknown>;
-      expect(typeof store.request).toBe("function");
-      expect(typeof store.get).toBe("function");
-      expect(typeof store.list).toBe("function");
-      expect(typeof store.clear).toBe("function");
+      const store = pickDemandStore({}) as unknown as Record<
+        string,
+        unknown
+      >;
       expect(store.createCapability).toBeUndefined();
       expect(store.addToRegistry).toBeUndefined();
     });
