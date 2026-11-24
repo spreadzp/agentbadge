@@ -75,6 +75,7 @@ function makeApp(admin: Partial<Deps> = {}) {
     "/",
     createSettlementReceiptRoutes({
       getDb: () => db,
+      operatorStore: opStore,
       signer,
       chainId: CHAIN_ID,
       memo: "0x1111111111111111111111111111111111111111",

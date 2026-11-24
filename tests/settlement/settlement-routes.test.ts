@@ -177,6 +177,7 @@ describe("receipt artifact + anchor", () => {
       "/",
       createSettlementReceiptRoutes({
         getDb: () => db,
+        operatorStore: rt.opStore,
         signer,
         chainId: CHAIN_ID,
         anchorSend,
@@ -268,11 +269,21 @@ describe("receipt artifact + anchor", () => {
     expect(b2.duplicate).toBe(true);
     expect(b2.anchor.status).toBe("ANCHORED");
     expect(sends.length).toBe(1);
-    // admin path also reaches the anchor (idempotent → duplicate)
-    const admin = await a.fetch(
+    // 264-9: the shared key without the break-glass flag is dead —
+    // it falls through to wallet auth and 401s.
+    const shared = await a.fetch(
       new Request(`http://localhost${path}`, {
         method: "POST",
         headers: { "x-admin-key": ADMIN_KEY, "content-type": "application/json" },
+        body: "{}",
+      }),
+    );
+    expect(shared.status).toBe(401);
+    // an operator credential reaches the anchor (idempotent → duplicate)
+    const admin = await a.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: { "x-admin-key": rt.opKey, "content-type": "application/json" },
         body: "{}",
       }),
     );

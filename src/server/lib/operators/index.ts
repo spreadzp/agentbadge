@@ -8,6 +8,12 @@ export { createMemoryOperatorRepos } from "./memory";
 export { consumeKeyReveal, mintKeyReveal } from "./key-reveal";
 export { createMemoryOperatorStore, pickOperatorStores } from "./db-stores";
 export {
+  breakGlassAuthUsed,
+  logBreakGlassPosture,
+  tryBreakGlassKey,
+  type BreakGlassAuthResult,
+} from "./breakglass";
+export {
   applyOperatorSeed,
   createOperator,
   isOperatorName,

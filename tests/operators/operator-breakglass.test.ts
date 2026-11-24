@@ -6,9 +6,9 @@ import {
   operatorAuth,
   requireCapability,
 } from "../../src/server/middleware/operatorAuth";
-import { breakGlassAuthUsed } from "../../src/server/middleware/operator-breakglass";
 import {
   adminKeyPrefix,
+  breakGlassAuthUsed,
   createMemoryOperatorStore,
   generateAdminKeyPlaintext,
   hashAdminKey,

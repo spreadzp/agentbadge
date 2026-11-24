@@ -20,7 +20,7 @@
  * subject binding) still applies inside tools (D-259-Q2).
  */
 import type { Context } from "hono";
-import { tryBreakGlassKey } from "../middleware/operator-breakglass";
+import { tryBreakGlassKey } from "./operators";
 import {
   listTools,
   type ToolExposure,

@@ -11,10 +11,13 @@ import { logger } from "@agentbadge/passport/logger";
 
 import { getConfig } from "../../config/env";
 import { getDatabase } from "../lib/database";
-import { pickOperatorStores, seedOperatorsFromEnv } from "../lib/operators";
+import {
+  logBreakGlassPosture,
+  pickOperatorStores,
+  seedOperatorsFromEnv,
+} from "../lib/operators";
 import { createAdminOperatorsApi } from "../routes/admin-operators-api";
 import { createAdminOperatorsUi } from "../routes/admin-operators-ui";
-import { logBreakGlassPosture } from "../middleware/operator-breakglass";
 
 export async function wireOperators(app: Hono): Promise<void> {
   const store = pickOperatorStores(getDatabase());

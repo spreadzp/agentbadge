@@ -22,7 +22,7 @@ import {
   type OperatorStore,
   type Principal,
 } from "../lib/operators";
-import { tryBreakGlassKey } from "./operator-breakglass";
+import { tryBreakGlassKey } from "../lib/operators";
 
 /** Minimum gap between lastUsedAt writes (D-264-Q6 — diagnostics, not auth). */
 const LAST_USED_MIN_INTERVAL_MS = 5 * 60 * 1000;

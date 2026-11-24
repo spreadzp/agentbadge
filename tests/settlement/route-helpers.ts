@@ -44,11 +44,13 @@ export const rt: {
   app: Hono;
   opKey: string;
   operatorId: string;
+  opStore: ReturnType<typeof createMemoryOperatorStore>;
 } = {
   db: null as unknown as Database,
   app: null as unknown as Hono,
   opKey: "",
   operatorId: "",
+  opStore: null as unknown as ReturnType<typeof createMemoryOperatorStore>,
 };
 
 export async function initRouteTest(): Promise<void> {
@@ -60,10 +62,17 @@ export async function initRouteTest(): Promise<void> {
   const seeded = await seedOperator(opStore, "Route Ops");
   rt.opKey = seeded.key;
   rt.operatorId = seeded.operatorId;
+  rt.opStore = opStore;
   rt.app = new Hono();
   rt.app.use(cacheHeadersMiddleware());
   rt.app.route("/", createSettlementRoutes({ getDb: () => rt.db }));
-  rt.app.route("/", createSettlementReceiptRoutes({ getDb: () => rt.db }));
+  rt.app.route(
+    "/",
+    createSettlementReceiptRoutes({
+      getDb: () => rt.db,
+      operatorStore: opStore,
+    }),
+  );
   rt.app.route(
     "/",
     createSettlementAdminRoutes({ getDb: () => rt.db, operatorStore: opStore }),

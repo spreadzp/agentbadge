@@ -29,8 +29,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { Counter } from "prom-client";
 import { logger } from "@agentbadge/passport/logger";
 
-import { registry } from "../metrics/metrics";
-import type { AdminOperator, Principal } from "../lib/operators";
+import { registry } from "../../metrics/metrics";
+import type { AdminOperator, Principal } from "./types";
 
 export const breakGlassAuthUsed = new Counter({
   name: "agentbadge_admin_breakglass_auth_total",
@@ -89,11 +89,18 @@ export type BreakGlassAuthResult =
   | { accepted: true; principal: Principal; operator: AdminOperator }
   | { accepted: false };
 
-/** Metric/log label for the request surface — bounded and stripped:
- *  raw decoded paths carry per-resource ids (cardinality) and can
- *  carry control bytes into the alert log line. */
+/** Metric/log label for the request surface — bounded AND stripped:
+ *  id-shaped segments (kv_…, ulid-ish, >24 chars, pure digits) map to
+ *  "*" so the label cardinality follows route templates, not data;
+ *  control bytes are scrubbed from the alert log line. */
+const IDISH_SEGMENT = /^[a-z]{1,4}_[0-9A-Za-z]{6,}$|^\d+$|^.{25,}$/;
 const surfaceTag = (path: string): string =>
-  path.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 120);
+  path
+    .replace(/[\x00-\x1f\x7f]/g, "")
+    .split("/")
+    .map((seg) => (IDISH_SEGMENT.test(seg) ? "*" : seg))
+    .join("/")
+    .slice(0, 120);
 
 /**
  * Called ONLY when the candidate matched no credential row. Accepts

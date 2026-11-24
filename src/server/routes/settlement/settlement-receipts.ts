@@ -9,8 +9,6 @@
  * memo(target, 0x, memoIdFor("settlement", ref), receiptHash) on Arc;
  * only the returned real txHash flips the row to ANCHORED.
  */
-import { createHash, timingSafeEqual } from "node:crypto";
-
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod";
@@ -18,6 +16,11 @@ import z from "zod";
 import { getDatabase } from "../../lib/database";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
+import { authenticateOperatorKey } from "../../middleware/operator-verify";
+import {
+  pickOperatorStores,
+  type OperatorStore,
+} from "../../lib/operators";
 import {
   buildSettlementReceipt,
   createSettlementCtx,
@@ -33,19 +36,25 @@ import { respond, type SettlementRouteDeps } from "./helpers";
 
 const TAG = { tags: ["Settlement"] };
 
-/** Timing-safe admin key check — anchor accepts participant OR admin. */
-function isAdminRequest(c: Parameters<typeof scopedWallet>[0]): boolean {
-  const expected = process.env.ADMIN_API_KEY;
-  if (!expected) return false;
+/** SLICE-264-9: the anchor's admin branch is an operator credential —
+ *  opk_ via authenticateOperatorKey, the shared key only through the
+ *  break-glass verdict (marked, alerted). A mutating write requires
+ *  the workflow capability; anything else falls through to wallet auth.
+ *  Returns the principal.id for the audit actor, or null. */
+async function operatorAnchorActor(
+  c: Parameters<typeof scopedWallet>[0],
+  store: OperatorStore,
+): Promise<string | null> {
   const provided =
     c.req.header("x-admin-key") ??
     (c.req.header("authorization")?.startsWith("Bearer ")
       ? c.req.header("authorization")!.slice(7)
       : undefined);
-  if (!provided) return false;
-  const a = createHash("sha256").update(provided).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
+  if (!provided) return null;
+  const v = await authenticateOperatorKey(store, provided, c.req.path);
+  return v.ok && v.operator.capabilities.includes("workflow")
+    ? v.principal.id
+    : null;
 }
 
 export function createSettlementReceiptRoutes(
@@ -138,10 +147,14 @@ export function createSettlementReceiptRoutes(
       },
     }),
     async (c) => {
-      const admin = isAdminRequest(c);
+      const opActor = await operatorAnchorActor(
+        c,
+        deps.operatorStore ?? pickOperatorStores(getDb()),
+      );
+      const admin = opActor !== null;
       let actor: string;
       if (admin) {
-        actor = "admin";
+        actor = opActor;
       } else {
         const auth = await requireWallet(c, { allowIdemReplay: true });
         if (auth instanceof Response) return auth;

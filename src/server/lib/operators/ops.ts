@@ -150,7 +150,7 @@ export function createOperatorStore(
       // 264-5 collision guard: a row whose keyHash IS
       // sha256(ADMIN_API_KEY) authenticates the shared key on the
       // store-HIT path — a personal identity with full caps, no
-      // break_glass marking, no window deadline (review r2 High).
+      // break_glass marking, no flag gate (review r2 High).
       // The shared key must stay on the miss path; its hash can
       // never become a credential row. Every writer (seed, API,
       // CLI, rotate) funnels through here.

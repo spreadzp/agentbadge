@@ -116,8 +116,8 @@ export function operatorBrowserAuth(store: OperatorStore) {
     const res = await inner(c, next);
     if (res instanceof Response && res.status === 401) {
       // DISTINCT realm ("operators", not "admin") — the Basic
-      // credential cache keys on (origin, realm); during the window
-      // ADMIN_API_KEY and opk_ creds must not transpose into 401s.
+      // credential cache keys on (origin, realm); break-glass and
+      // opk_ creds must not transpose into 401s.
       res.headers.set("WWW-Authenticate", 'Basic realm="operators"');
     }
     return res;
