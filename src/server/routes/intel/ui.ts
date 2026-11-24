@@ -28,6 +28,7 @@ import { IntelSitePage } from "../../../views/intel/site";
 import { IntelReportPage } from "../../../views/intel/report";
 import { createIntelClientReportRoutes } from "./client-reports";
 import { createIntelConsentUiRoutes } from "./consent-ui";
+import { createIntelAlertsUiRoutes } from "./alerts-ui";
 import type { EvidenceProvenanceMap } from "../../../views/intel/components";
 
 declare module "hono" {
@@ -272,6 +273,10 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
   app.route(
     "/",
     createIntelConsentUiRoutes(deps, (c) => c.get("intelOperator")),
+  );
+  app.route(
+    "/",
+    createIntelAlertsUiRoutes(deps, (c) => c.get("intelOperator")),
   );
 
   return app;

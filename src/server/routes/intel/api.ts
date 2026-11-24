@@ -14,6 +14,7 @@ import { registerOwnershipRoutes } from "./ownership";
 import { registerConsentRoutes } from "./consent";
 import { registerPullJobRoutes } from "./jobs";
 import { registerAttestationRoutes } from "./attestations";
+import { registerAlertRoutes } from "./alerts";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
 const DAY_MS = 86_400_000;
@@ -212,6 +213,7 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
   registerConsentRoutes(app, deps);
   registerPullJobRoutes(app, deps);
   registerAttestationRoutes(app, deps);
+  registerAlertRoutes(app, deps);
 
   return app;
 }
