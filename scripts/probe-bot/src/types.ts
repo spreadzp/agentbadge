@@ -12,6 +12,11 @@ export interface Endpoint {
   source: Source;
   /** Семантический контракт из registry.yaml (SLICE-234-40). */
   contract?: EndpointContract;
+  /** SLICE-258-25: scoped обход HARD_DENY для audited read-only
+   *  путей, ложно срабатывающих на /pay/i (напр. статический
+   *  /.well-known/x402-payto.json). Per-endpoint opt-in из
+   *  registry.yaml — без флага поведение неизменно. */
+  denyExempt?: boolean;
 }
 
 /** Contract-блок: семантика endpoint'а для contract-aware сценариев. */

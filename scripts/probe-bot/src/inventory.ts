@@ -95,32 +95,42 @@ export function endpointsFromCode(routesDir = ROUTES_DIR): Endpoint[] {
 export function endpointsFromRegistry(path = REGISTRY_PATH): Endpoint[] {
   try {
     const doc = YAML.parse(readFileSync(path, "utf8")) as {
-      endpoints?: { path: string; method?: string; contract?: EndpointContract }[];
+      endpoints?: { path: string; method?: string; contract?: EndpointContract; denyExempt?: boolean }[];
     };
     return (doc?.endpoints ?? [])
       .filter(e => e.path?.startsWith("/"))
       .map(e => ({
         path: e.path, method: (e.method ?? "GET").toUpperCase(),
         source: "manual" as Source, contract: e.contract,
+        denyExempt: e.denyExempt === true || undefined,
       }));
   } catch {
     return [];
   }
 }
 
-/** Сливает contract из registry-записей на совпадающие endpoints
- *  (path+method) — openapi/code endpoint получает семантику из
- *  ручного реестра. */
+/** Сливает registry-семантику (contract + denyExempt) на совпадающие
+ *  endpoints (path+method) — openapi/code/state endpoint получает
+ *  метаданные из ручного реестра. denyExempt обязателен к merge:
+ *  иначе state-копия без флага дедупит variant'ы раньше exempt-
+ *  записи и endpoint молча остаётся под hard-deny (258-25). */
 export function mergeContracts(eps: Endpoint[]): Endpoint[] {
   const contracts = new Map<string, EndpointContract>();
+  const exempt = new Set<string>();
   for (const e of eps) {
-    if (e.contract) contracts.set(`${e.method} ${e.path}`, e.contract);
+    const k = `${e.method} ${e.path}`;
+    if (e.contract) contracts.set(k, e.contract);
+    if (e.denyExempt) exempt.add(k);
   }
-  if (!contracts.size) return eps;
+  if (!contracts.size && !exempt.size) return eps;
   return eps.map(e => {
-    if (e.contract) return e;
-    const c = contracts.get(`${e.method} ${e.path}`);
-    return c ? { ...e, contract: c } : e;
+    const k = `${e.method} ${e.path}`;
+    const merged = {
+      ...e,
+      contract: e.contract ?? contracts.get(k),
+      denyExempt: e.denyExempt || (exempt.has(k) || undefined),
+    };
+    return merged === e ? e : merged;
   });
 }
 

@@ -319,7 +319,9 @@ function compileYaml(y: YamlScenario): Scenario {
         }];
       }
       case "unsupported-method":
-        return (methodsList.length ? methodsList : ["PROPFIND", "TRACK", "CONNECT"])
+        // TRACK/DEBUG исключены из дефолта: Bun fetch() нормализует
+        // неизвестные методы в GET → вечный false-positive (258-25).
+        return (methodsList.length ? methodsList : ["PROPFIND", "SEARCH", "CONNECT"])
           .map(m => ({
             method: m, path: ep.path, expect,
             note: `unsupported ${m}`,

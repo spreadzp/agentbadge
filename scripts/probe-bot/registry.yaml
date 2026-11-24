@@ -12,8 +12,12 @@ endpoints:
   - path: /.well-known/x402.json
     method: GET
   # EPIC-258: x402 payout proof — статический well-known + self-scan showcase.
+  # x402-payto.json: denyExempt — audited read-only static file,
+  # ложно срабатывает на /pay/i (SLICE-258-25). Без exempt бот
+  # молча пропускает весь endpoint → method-guard регрессии слепы.
   - path: /.well-known/x402-payto.json
     method: GET
+    denyExempt: true
   - path: /agent-readiness.json
     method: GET
   - path: /.well-known/agent-card.json

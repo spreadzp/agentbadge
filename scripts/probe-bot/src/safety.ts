@@ -75,6 +75,11 @@ export interface PlanItem {
   dbVerify: boolean;
   variantHash: string;
   variant: Variant;
+  /** SLICE-258-25: audited read-only endpoint may bypass hard-deny
+   *  (registry per-endpoint opt-in; e.g. /.well-known/x402-payto.json
+   *  is static GET but matches /pay/i). Mutating-flag rules apply
+   *  on top regardless. */
+  denyExempt?: boolean;
   skippedReason?: string;
 }
 
@@ -98,7 +103,7 @@ export function applySafety(items: PlanItem[], opts: {
       skipped.push(it);
       continue;
     }
-    if (isHardDenied(it.variant.path)) {
+    if (isHardDenied(it.variant.path) && !it.denyExempt) {
       skipped.push({ ...it, skippedReason: "hard-deny path" });
       continue;
     }

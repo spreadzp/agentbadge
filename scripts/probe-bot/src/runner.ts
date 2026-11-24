@@ -78,6 +78,7 @@ export async function buildPlan(opts: RunOpts, state: ProbeState): Promise<PlanI
           mutating: sc.mutating, dbVerify: sc.dbVerify,
           variantHash: vh,
           variant: v,
+          denyExempt: ep.denyExempt,
           skippedReason: skip ? "already pass" : undefined,
         });
       }

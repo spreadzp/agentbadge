@@ -98,3 +98,48 @@ apply: { methods: [GET] }
     expect(() => s.variants(ep())).toThrow(/unknown template/);
   });
 });
+
+describe("payto-proof-surface (258-25)", () => {
+  const get = async () =>
+    (await loadScenarios()).find(s => s.name === "payto-proof-surface")!;
+
+  it("applies только к двум 258-путям и только GET", async () => {
+    const s = await get();
+    expect(s.applies(ep({ path: "/.well-known/x402-payto.json" }))).toBe(true);
+    expect(s.applies(ep({ path: "/agent-readiness.json" }))).toBe(true);
+    expect(s.applies(ep({ path: "/.well-known/x402.json" }))).toBe(false);
+    expect(s.applies(ep({ path: "/api/payto", method: "POST" }))).toBe(false);
+    expect(s.mutating).toBe(false);
+  });
+
+  it("payto flow.assert: ловит domain-mismatch и malformed записи", async () => {
+    const s = await get();
+    const [v] = await s.variants(
+      ep({ path: "/.well-known/x402-payto.json" }),
+      { target: "https://agentbadge.xyz" });
+    const ok = { version: 1, domain: "agentbadge.xyz",
+      payTo: [{ address: "0x" + "a".repeat(40), signature: "0x" + "b".repeat(130) }] };
+    expect(v.flow!.assert!([{ status: 200, requestId: null, bodySnippet: "", bodyJson: ok }])).toEqual([]);
+    const bad1 = { ...ok, domain: "evil.example" };
+    const bad2 = { ...ok, payTo: [{ address: "not-an-address", signature: "0xzz" }] };
+    const bad3 = { ...ok, payTo: [] };
+    for (const [body, frag] of [[bad1, "domain"], [bad2, "malformed"], [bad3, "non-empty"]] as const) {
+      const probs = v.flow!.assert!([{ status: 200, requestId: null, bodySnippet: "", bodyJson: body }]);
+      expect(probs.join()).toContain(frag);
+    }
+  });
+
+  it("showcase flow.assert: требует AB-188/189/190 VERIFIED", async () => {
+    const s = await get();
+    const [v] = await s.variants(ep({ path: "/agent-readiness.json" }), { target: "https://agentbadge.xyz" });
+    const mk = (status: string) => ({
+      scan: { status: "ok", assertions: REQUIRED_IDS.map(id => ({ rule_id: id, status })) },
+    });
+    const REQUIRED_IDS = ["AB-188", "AB-189", "AB-190"];
+    expect(v.flow!.assert!([{ status: 200, requestId: null, bodySnippet: "", bodyJson: mk("VERIFIED") }])).toEqual([]);
+    const degraded = mk("VERIFIED");
+    (degraded.scan.assertions[0] as { status: string }).status = "PARTIAL";
+    const probs = v.flow!.assert!([{ status: 200, requestId: null, bodySnippet: "", bodyJson: degraded }]);
+    expect(probs.join()).toContain("AB-188");
+  });
+});

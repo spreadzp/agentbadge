@@ -67,3 +67,29 @@ describe("applySafety", () => {
     expect(r.abortedReasons[0]).toContain("max-requests");
   });
 });
+
+describe("denyExempt (258-25)", () => {
+  it("exempt-эндпоинт стреляет вопреки /pay/i, не-exempt — denied", () => {
+    const payVariant = { method: "GET", path: "/.well-known/x402-payto.json", expect: {} };
+    const plan = [
+      item({ variant: payVariant, denyExempt: true }),
+      item({ variant: payVariant }),                       // тот же путь без флага
+      item({ variant: { method: "GET", path: "/api/payments/x", expect: {} } }),
+    ];
+    const r = applySafety(plan, { allowMutations: false, maxRequests: 100 });
+    expect(r.fire).toHaveLength(1);
+    expect(r.fire[0].denyExempt).toBe(true);
+    expect(r.skipped.map(s => s.skippedReason)).toEqual(
+      ["hard-deny path", "hard-deny path"]);
+  });
+
+  it("denyExempt НЕ освобождает от mutating-gate", () => {
+    const plan = [item({
+      mutating: true, denyExempt: true,
+      variant: { method: "POST", path: "/.well-known/x402-payto.json", expect: {} },
+    })];
+    const r = applySafety(plan, { allowMutations: false, maxRequests: 100 });
+    expect(r.fire).toHaveLength(0);
+    expect(r.skipped[0].skippedReason).toBe("mutating (needs --allow-mutations)");
+  });
+});

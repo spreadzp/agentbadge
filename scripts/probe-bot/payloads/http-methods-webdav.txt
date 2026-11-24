@@ -7,7 +7,7 @@ MOVE
 LOCK
 UNLOCK
 SEARCH
-TRACK
+# TRACK/DEBUG убраны (258-25): Bun fetch() молча нормализует
+# неизвестные методы в GET → кейсы навсегда false-positive (200).
 TRACE
-DEBUG
 CONNECT
