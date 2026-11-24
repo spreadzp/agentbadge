@@ -30,6 +30,25 @@ export { checkerNextCallPattern } from "./next-call-pattern";
 export { checkerX402PaytoProof } from "./x402-payto-proof";
 export { checkerMppRecipientProof } from "./mpp-recipient-proof";
 export { checkerOfferReceiptDeclared } from "./offer-receipt-declared";
+// SLICE-259-40: credential_security / aauth / auth_probe / ai_sitemap rules
+export {
+  checkerCredentialOauth2Preferred,
+  checkerCredentialHeaderTransport,
+  checkerCredentialNoStaticKeys,
+  checkerCredentialScopesDefined,
+  checkerCredentialRevocation,
+  checkerCredentialIntrospection,
+  checkerCredentialPrivateKeyJwt,
+  checkerCredentialTokenExchange,
+  checkerCredentialDpop,
+  checkerCredentialMtls,
+  checkerAauthAgentGrant,
+  checkerAauthScopeDescriptions,
+  checkerAuthProbeTokenExpires,
+  checkerOauthRefreshGrant,
+  checkerAiSitemapCoverage,
+  checkerOpenapiStandardValid,
+} from "./credential-security";
 // EPIC-146: GEO citability checkers (ported from core package)
 export {
   checkerAnswerFirst,
@@ -65,6 +84,24 @@ import { checkerX402PaytoProof } from "./x402-payto-proof";
 import { checkerMppRecipientProof } from "./mpp-recipient-proof";
 import { checkerOfferReceiptDeclared } from "./offer-receipt-declared";
 import {
+  checkerCredentialOauth2Preferred,
+  checkerCredentialHeaderTransport,
+  checkerCredentialNoStaticKeys,
+  checkerCredentialScopesDefined,
+  checkerCredentialRevocation,
+  checkerCredentialIntrospection,
+  checkerCredentialPrivateKeyJwt,
+  checkerCredentialTokenExchange,
+  checkerCredentialDpop,
+  checkerCredentialMtls,
+  checkerAauthAgentGrant,
+  checkerAauthScopeDescriptions,
+  checkerAuthProbeTokenExpires,
+  checkerOauthRefreshGrant,
+  checkerAiSitemapCoverage,
+  checkerOpenapiStandardValid,
+} from "./credential-security";
+import {
   checkerAnswerFirst,
   checkerEvidenceDensity,
   checkerEntityClarity,
@@ -97,6 +134,23 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   x402_payto_proof: checkerX402PaytoProof,
   mpp_recipient_proof: checkerMppRecipientProof,
   offer_receipt_declared: checkerOfferReceiptDeclared,
+  // SLICE-259-40: bot_auth + sitemap families — replaces dead cross_evidence
+  credential_oauth2_preferred: checkerCredentialOauth2Preferred,
+  credential_header_transport: checkerCredentialHeaderTransport,
+  credential_no_static_keys: checkerCredentialNoStaticKeys,
+  credential_scopes_defined: checkerCredentialScopesDefined,
+  credential_revocation: checkerCredentialRevocation,
+  credential_introspection: checkerCredentialIntrospection,
+  credential_private_key_jwt: checkerCredentialPrivateKeyJwt,
+  credential_token_exchange: checkerCredentialTokenExchange,
+  credential_dpop: checkerCredentialDpop,
+  credential_mtls: checkerCredentialMtls,
+  aauth_agent_grant: checkerAauthAgentGrant,
+  aauth_scope_descriptions: checkerAauthScopeDescriptions,
+  auth_probe_token_expires: checkerAuthProbeTokenExpires,
+  oauth_refresh_grant: checkerOauthRefreshGrant,
+  ai_sitemap_coverage: checkerAiSitemapCoverage,
+  openapi_standard_valid: checkerOpenapiStandardValid,
   answer_first: checkerAnswerFirst,
   evidence_density: checkerEvidenceDensity,
   entity_clarity: checkerEntityClarity,

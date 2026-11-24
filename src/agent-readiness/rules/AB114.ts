@@ -4,8 +4,9 @@ export const AB114: AgentReadinessRule = {
   name: "AI sitemap content type coverage",
   category: "discovery", severity: "medium", counted_in_score: true,
   check: {
-    type: "cross_evidence",
+    type: "semantic_validation",
     sources: ["ai_sitemap", "sitemap"],
+    semantic: "ai_sitemap_coverage",
     conflict_when: "ai_sitemap_url_count < sitemap_url_count * 0.5",
   },
   fix: {

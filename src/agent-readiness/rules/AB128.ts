@@ -36,8 +36,9 @@ export const AB128: EvaluableRule = makeEvaluable(
     severity: "high",
     counted_in_score: true,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_oauth2_preferred",
     },
     fix: {
       eligible: true,
@@ -60,8 +61,9 @@ export const AB129: EvaluableRule = makeEvaluable(
     severity: "high",
     counted_in_score: true,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_header_transport",
     },
     fix: {
       eligible: true,
@@ -84,8 +86,9 @@ export const AB130: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: true,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_scopes_defined",
     },
     fix: {
       eligible: true,
@@ -108,8 +111,9 @@ export const AB131: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: true,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_revocation",
     },
     fix: {
       eligible: true,
@@ -132,8 +136,9 @@ export const AB132: EvaluableRule = makeEvaluable(
     severity: "low",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_introspection",
     },
     fix: {
       eligible: false,
@@ -156,8 +161,9 @@ export const AB133: EvaluableRule = makeEvaluable(
     severity: "low",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_private_key_jwt",
     },
     fix: {
       eligible: false,
@@ -180,8 +186,9 @@ export const AB134: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_token_exchange",
     },
     fix: {
       eligible: false,

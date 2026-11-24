@@ -360,7 +360,7 @@ describe("SLICE-75-3: Agent Discovery Rules AB-109 through AB-114", () => {
       expect(AB114.category).toBe("discovery");
       expect(AB114.severity).toBe("medium");
       expect(AB114.counted_in_score).toBe(true);
-      expect(AB114.check.type).toBe("cross_evidence");
+      expect(AB114.check.type).toBe("semantic_validation");
       expect(AB114.check.sources).toContain("ai_sitemap");
       expect(AB114.check.sources).toContain("sitemap");
     });

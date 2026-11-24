@@ -37,7 +37,7 @@ describe("SLICE-69-1: AB-073..AB-078 infrastructure & OpenAPI gap rules", () => 
     expect(AB077.category).toBe("openapi");
     expect(AB077.severity).toBe("medium");
     expect(AB077.counted_in_score).toBe(true);
-    expect(AB077.check.type).toBe("cross_evidence");
+    expect(AB077.check.type).toBe("semantic_validation");
     expect(AB077.check.sources).toEqual(["openapi_standard"]);
     expect(AB077.fix.eligible).toBe(false);
     expect(AB077.fix.type).toBe("assisted");

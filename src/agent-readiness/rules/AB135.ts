@@ -52,8 +52,9 @@ export const AB136: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: true,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["aauth"],
+      semantic: "aauth_agent_grant",
     },
     fix: {
       eligible: true,
@@ -76,8 +77,9 @@ export const AB137: EvaluableRule = makeEvaluable(
     severity: "low",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["aauth"],
+      semantic: "aauth_scope_descriptions",
     },
     fix: {
       eligible: false,
@@ -100,8 +102,9 @@ export const AB138: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_dpop",
     },
     fix: {
       eligible: false,
@@ -124,8 +127,9 @@ export const AB139: EvaluableRule = makeEvaluable(
     severity: "medium",
     counted_in_score: false,
     check: {
-      type: "cross_evidence",
+      type: "semantic_validation",
       sources: ["credential_security"],
+      semantic: "credential_mtls",
     },
     fix: {
       eligible: false,

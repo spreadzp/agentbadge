@@ -185,6 +185,12 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
         idempotency: "mutating POSTs accept an Idempotency-Key header; retries with the same key return the original result",
         guidance: "safe to retry after Retry-After; use exponential backoff for bursts",
       },
+      // SLICE-259-40 (AB-156): free anonymous probe doubles as the test
+      // environment — no key, no payment, full verdict shape.
+      sandbox: {
+        url: "https://agentbadge.xyz/api/scan?url=https://example.com",
+        note: "free anonymous agent-readiness probe — use it as the test environment for integration checks (no key, no payment)",
+      },
       api_endpoints: [
         "GET /passport/request",
         "GET /passport/address/{address}",

@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
+import { generateKeyPair, exportPKCS8 } from "jose";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { landingRoutes } from "../../src/server/routes/pages/landing";
 import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
 import { createDiscoveryRoutes } from "../../src/server/routes/discovery/discovery";
+import { setMirrorApp } from "../../src/server/middleware/markdown-negotiation-helpers";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 let app: Hono;
@@ -135,6 +137,16 @@ describe("SLICE-49-4: Auth.md + agent_auth block", () => {
 // ── SLICE-49-5: Agent Skills index ───────────────────────────────
 
 describe("SLICE-49-5: Agent Skills index", () => {
+  // SLICE-259-37: sha256 is computed via self-fetch through the late-bound
+  // app (memoized) — provide a mirror stub serving the three artifacts.
+  beforeEach(() => {
+    const stub = new Hono();
+    stub.get("/skill.md", (c) => c.text("# skill body\n"));
+    stub.get("/.well-known/agent-card.json", (c) => c.json({ card: true }));
+    stub.get("/marketplace-guide", (c) => c.text("# marketplace guide\n"));
+    setMirrorApp(stub);
+  });
+
   it("returns JSON at /.well-known/agent-skills/index.json", async () => {
     const res = await app.request("/.well-known/agent-skills/index.json");
     expect(res.status).toBe(200);
@@ -188,6 +200,18 @@ describe("SLICE-49-6: Content Signals in robots.txt", () => {
 // ── SLICE-49-7: Web Bot Auth directory ───────────────────────────
 
 describe("SLICE-49-7: Web Bot Auth directory", () => {
+  // SLICE-259-38: the directory serves the real DID key — gated on
+  // DID_SIGNING_KEY (honest absence when unset).
+  const originalKey = process.env.DID_SIGNING_KEY;
+  beforeEach(async () => {
+    const { privateKey } = await generateKeyPair("Ed25519", { extractable: true });
+    process.env.DID_SIGNING_KEY = await exportPKCS8(privateKey);
+  });
+  afterEach(() => {
+    if (originalKey === undefined) delete process.env.DID_SIGNING_KEY;
+    else process.env.DID_SIGNING_KEY = originalKey;
+  });
+
   it("returns JSON at /.well-known/http-message-signatures-directory", async () => {
     const res = await app.request("/.well-known/http-message-signatures-directory");
     expect(res.status).toBe(200);
