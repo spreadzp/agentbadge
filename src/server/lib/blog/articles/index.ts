@@ -63,6 +63,7 @@ import { article as arcC57PeachDex } from "./arc-c57-peach-dex";
 import { article as arcC58CounterpartyTrust } from "./arc-c58-counterparty-trust";
 import { article as arcC59KnowledgeEngine } from "./arc-c59-knowledge-engine";
 import { article as arcC60InteractionCore } from "./arc-c60-interaction-core";
+import { article as arcC56MmfConformanceAudit } from "./arc-c56-mmf-conformance-audit";
 import { article as arcC61FeedbackReview } from "./arc-c61-feedback-review";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
@@ -130,5 +131,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC59KnowledgeEngine,
   arcC60InteractionCore,
   arcC61FeedbackReview,
+  arcC56MmfConformanceAudit,
   devinCloudAudit,
 ];
