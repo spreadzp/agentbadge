@@ -5,9 +5,12 @@
 
 import { html, raw } from "hono/html";
 import type { ScanJobStatus } from "../../server/lib/intel/scan";
-import type {
-  ConsentStatus,
-  IntelConsent,
+import {
+  CONSENT_KINDS,
+  type ConsentKind,
+  type ConsentStatus,
+  type IntelConsent,
+  type IntelConsentEvent,
 } from "../../server/lib/intel/consent";
 import type {
   IntelOwnershipProof,
@@ -110,6 +113,97 @@ export const ConsentBadge = (consents: IntelConsent[], kind = "audit") => {
         ? "bg-rose-500/15 text-rose-300"
         : "bg-slate-800 text-slate-400";
   return html`<span class="rounded-full ${cls} px-2.5 py-1 text-xs">consent: ${kind} · ${status}</span>`;
+};
+
+// ─── SLICE-262-23 — consent management panel: every kind with a
+// status badge + grant/revoke form (hidden for viewers), then the
+// append-only history. Apply/publication are manageable now; their
+// enforcement lands with 262-26 / 262-29 — the labels say so,
+// never implying a gate that isn't wired yet. ───
+const KIND_COPY: Record<ConsentKind, { label: string; what: string }> = {
+  audit: {
+    label: "Audit",
+    what: "External scans and the signed agent-surface report. Revoking stops all paid scan operations immediately.",
+  },
+  inside_diagnostics: {
+    label: "Inside diagnostics",
+    what: "The plugin may claim signed pull-jobs (option reads, declared URLs). Checked at claim AND again at result-submit — mid-flight revocation rejects the result.",
+  },
+  apply: {
+    label: "Fix apply",
+    what: "Permission for backend-written fixes (fix_apply jobs). Enforced when the fixer pipeline ships — granting now only records intent.",
+  },
+  publication: {
+    label: "Publication",
+    what: "Permission to publish attestations on the public verification surface. Enforced when verification ships — granting now only records intent.",
+  },
+};
+
+const consentStatusOf = (
+  consents: IntelConsent[],
+  kind: ConsentKind,
+): { status: ConsentStatus | "none"; row: IntelConsent | null } => {
+  const row = consents.find((x) => x.kind === kind) ?? null;
+  const status: ConsentStatus | "none" = row
+    ? row.revokedAt
+      ? "revoked"
+      : row.status
+    : "none";
+  return { status, row };
+};
+
+export const ConsentPanel = (
+  siteId: string,
+  consents: IntelConsent[],
+  events: IntelConsentEvent[],
+  canManage: boolean,
+) => {
+  const STATUS_CLS: Record<string, string> = {
+    granted: "bg-emerald-500/15 text-emerald-300",
+    revoked: "bg-rose-500/15 text-rose-300",
+    none: "bg-slate-800 text-slate-400",
+  };
+  return html`<section class="mt-6 rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+    <h2 class="text-sm font-semibold text-white">Consent</h2>
+    <p class="mt-1 text-xs text-slate-500">Permission for specific actions — independent of subscription and site_key. Revocation stops paid operations even while the subscription is alive.</p>
+    <ul class="mt-4 divide-y divide-slate-800/60">
+      ${CONSENT_KINDS.map((kind) => {
+        const { status, row } = consentStatusOf(consents, kind);
+        const copy = KIND_COPY[kind];
+        return html`<li class="flex flex-wrap items-start justify-between gap-3 py-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-medium text-white">${copy.label}</span>
+              <span class="rounded-full ${STATUS_CLS[status]} px-2 py-0.5 text-xs">${status}</span>
+              <span class="font-mono text-xs text-slate-500">${kind}</span>
+            </div>
+            <p class="mt-1 text-xs text-slate-400">${copy.what}</p>
+            ${row ? html`<p class="mt-1 text-xs text-slate-500">
+              ${status === "granted" ? `granted ${row.grantedAt.slice(0, 10)}` : ""}${status === "revoked" ? `granted ${row.grantedAt.slice(0, 10)} · revoked ${row.revokedAt!.slice(0, 10)}` : ""}
+              · by ${esc(row.grantedByPrincipal)} ${esc(row.grantedById)}
+            </p>` : ""}
+          </div>
+          ${canManage ? html`
+            <form method="post" action="/intel/sites/${siteId}/consent" class="shrink-0">
+              <input type="hidden" name="kind" value="${kind}" />
+              ${status === "granted"
+                ? html`<input type="hidden" name="action" value="revoke" /><button class="rounded-lg border border-rose-800 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/10">Revoke</button>`
+                : html`<input type="hidden" name="action" value="grant" /><button class="rounded-lg border border-emerald-800 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/10">Grant</button>`}
+            </form>` : ""}
+        </li>`;
+      })}
+    </ul>
+    ${events.length > 0 ? html`
+      <h3 class="mt-4 text-xs font-semibold text-slate-400">History</h3>
+      <ul class="mt-2 space-y-1">
+        ${events.slice(0, 20).map((e) => html`<li class="flex flex-wrap items-baseline gap-2 text-xs">
+          <span class="font-mono text-slate-500">${e.at.slice(0, 16).replace("T", " ")}Z</span>
+          <span class="${e.action === "granted" ? "text-emerald-300" : "text-rose-300"}">${e.action}</span>
+          <span class="font-mono text-slate-400">${e.kind}</span>
+          <span class="text-slate-500">by ${esc(e.principal)} ${esc(e.principalId)}</span>
+        </li>`)}
+      </ul>` : ""}
+  </section>`;
 };
 
 // ─── integrity block (DESIGN §2.4) — signature proves integrity,

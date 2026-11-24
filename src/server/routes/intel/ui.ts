@@ -27,6 +27,7 @@ import { IntelPortfolioPage } from "../../../views/intel/portfolio";
 import { IntelSitePage } from "../../../views/intel/site";
 import { IntelReportPage } from "../../../views/intel/report";
 import { createIntelClientReportRoutes } from "./client-reports";
+import { createIntelConsentUiRoutes } from "./consent-ui";
 import type { EvidenceProvenanceMap } from "../../../views/intel/components";
 
 declare module "hono" {
@@ -163,7 +164,14 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
       : [];
     return c.html(
       page(
-        IntelSitePage(d, op.role, crs).toString(),
+        IntelSitePage(
+          d,
+          op.role,
+          crs,
+          c.req.query("consent") === "invalid"
+            ? "Unknown consent kind or action — nothing was changed."
+            : undefined,
+        ).toString(),
         `${ctx.primaryHostname ?? siteId} — Agent Surface Intel`,
         `/intel/sites/${siteId}`,
       ),
@@ -260,6 +268,10 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
   app.route(
     "/",
     createIntelClientReportRoutes(deps, (c) => c.get("intelOperator")),
+  );
+  app.route(
+    "/",
+    createIntelConsentUiRoutes(deps, (c) => c.get("intelOperator")),
   );
 
   return app;

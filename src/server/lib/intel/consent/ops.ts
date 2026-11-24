@@ -14,7 +14,7 @@ export async function grantConsent(
 ): Promise<IntelConsent> {
   const existing = await store.byScope(siteId, kind);
   const now = new Date().toISOString();
-  return store.upsert({
+  const consent = await store.upsert({
     id: existing?.id ?? `con_${generateReportId()}`,
     siteId,
     kind,
@@ -26,6 +26,16 @@ export async function grantConsent(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   });
+  await store.appendEvent({
+    id: `cev_${generateReportId()}`,
+    siteId,
+    kind,
+    action: "granted",
+    principal: grantedBy.principal,
+    principalId: grantedBy.id,
+    at: now,
+  });
+  return consent;
 }
 
 export async function revokeConsent(
@@ -36,7 +46,7 @@ export async function revokeConsent(
 ): Promise<IntelConsent> {
   const existing = await store.byScope(siteId, kind);
   const now = new Date().toISOString();
-  return store.upsert({
+  const consent = await store.upsert({
     id: existing?.id ?? `con_${generateReportId()}`,
     siteId,
     kind,
@@ -48,6 +58,16 @@ export async function revokeConsent(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   });
+  await store.appendEvent({
+    id: `cev_${generateReportId()}`,
+    siteId,
+    kind,
+    action: "revoked",
+    principal: revokedBy.principal,
+    principalId: revokedBy.id,
+    at: now,
+  });
+  return consent;
 }
 
 /** granted-and-live check — the scans/paid-op gate (D-262-Q8). */

@@ -39,16 +39,29 @@ const fromRecord = (r: ConsentRepoRecord): IntelConsent => ({
   grantedByPrincipal: r.grantedByPrincipal as ConsentPrincipal,
 });
 
-const adapt = (repo: IntelConsentRepository): IntelConsentStore => ({
-  backend: "postgres",
-  upsert: async (c) => fromRecord(await repo.upsert(c)),
-  byScope: async (siteId, kind) => {
-    const r = await repo.byScope(siteId, kind);
-    return r ? fromRecord(r) : null;
-  },
-  forSite: async (siteId) =>
-    (await repo.forSite(siteId)).map(fromRecord),
-});
+const adapt = (repo: IntelConsentRepository): IntelConsentStore => {
+  // SLICE-262-23 — the package has no consent-events table yet
+  // (needs @agentbadge/database ≥0.6.33): keep a process-local
+  // list so history works warm-path; cold restart loses it, same
+  // documented gap as the scanId→jobId index in 262-28.
+  const events: import("./types").IntelConsentEvent[] = [];
+  return {
+    backend: "postgres",
+    upsert: async (c) => fromRecord(await repo.upsert(c)),
+    byScope: async (siteId, kind) => {
+      const r = await repo.byScope(siteId, kind);
+      return r ? fromRecord(r) : null;
+    },
+    forSite: async (siteId) =>
+      (await repo.forSite(siteId)).map(fromRecord),
+    appendEvent: async (e) => {
+      events.push(e);
+      return e;
+    },
+    eventsForSite: async (siteId) =>
+      events.filter((e) => e.siteId === siteId),
+  };
+};
 
 let sharedMemoryStore: IntelConsentStore | undefined;
 

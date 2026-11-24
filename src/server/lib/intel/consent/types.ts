@@ -4,10 +4,15 @@
 // alive (D-262-Q8 priority order).
 //
 // v1 grants are per-site per-kind upserts (latest state wins, like
-// ownership proofs); the full 3-kind management surface + history is
-// SLICE-262-23.
+// ownership proofs); SLICE-262-23 adds the full kind matrix +
+// append-only history.
 
-export const CONSENT_KINDS = ["audit", "inside_diagnostics"] as const;
+export const CONSENT_KINDS = [
+  "audit",
+  "inside_diagnostics",
+  "apply",
+  "publication",
+] as const;
 export type ConsentKind = (typeof CONSENT_KINDS)[number];
 
 export type ConsentStatus = "granted" | "revoked";
@@ -27,4 +32,18 @@ export interface IntelConsent {
   revokedAt: string | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+}
+
+/** Append-only consent lifecycle event (SLICE-262-23) — the audit
+ *  trail the upserted row cannot carry. Written on every grant and
+ *  every revoke, including no-op transitions (a re-assertion is
+ *  still a fact about what a principal did). */
+export interface IntelConsentEvent {
+  id: string; // cev_<ulid>
+  siteId: string;
+  kind: ConsentKind;
+  action: ConsentStatus; // "granted" | "revoked"
+  principal: ConsentPrincipal;
+  principalId: string;
+  at: string; // ISO
 }

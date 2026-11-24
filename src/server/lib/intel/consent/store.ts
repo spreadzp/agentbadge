@@ -2,7 +2,7 @@
 // (siteId, kind), upsert replaces latest state. Memory + postgres
 // share identical behavior.
 
-import type { ConsentKind, IntelConsent } from "./types";
+import type { ConsentKind, IntelConsent, IntelConsentEvent } from "./types";
 
 export interface IntelConsentStore {
   backend: "memory" | "postgres";
@@ -10,4 +10,7 @@ export interface IntelConsentStore {
   upsert(c: IntelConsent): Promise<IntelConsent>;
   byScope(siteId: string, kind: ConsentKind): Promise<IntelConsent | null>;
   forSite(siteId: string): Promise<IntelConsent[]>;
+  /** append-only lifecycle history (SLICE-262-23) */
+  appendEvent(e: IntelConsentEvent): Promise<IntelConsentEvent>;
+  eventsForSite(siteId: string): Promise<IntelConsentEvent[]>;
 }

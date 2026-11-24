@@ -9,6 +9,7 @@ import {
   revokeConsent,
   type ConsentKind,
 } from "../../lib/intel/consent";
+import { authenticateOperator } from "../../lib/intel/registry";
 import { gateOperatorSite } from "./operator-guard";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
@@ -68,4 +69,36 @@ export function registerConsentRoutes(
 
   app.post("/consent", handler("grant"));
   app.post("/consent/revoke", handler("revoke"));
+
+  // SLICE-262-23 — GET /sites/:siteId/consents: current state for
+  // every kind + append-only history. Reads are role-free (viewer
+  // included); only writes are gated by rolePermitted "consent".
+  app.get("/sites/:siteId/consents", async (c) => {
+    if (!deps.registryStores || !deps.consent || !deps.registry) {
+      return c.json(
+        { error: "consent_unavailable", message: "consent stores are not configured" },
+        503,
+      );
+    }
+    const token = bearerToken(c);
+    const auth = token
+      ? await authenticateOperator(deps.registryStores, token)
+      : null;
+    if (!auth) {
+      return c.json(
+        { error: "key_invalid", message: "missing, unknown, or revoked operator key" },
+        401,
+      );
+    }
+    const siteId = c.req.param("siteId");
+    const ctx = await deps.registry.resolveSiteContext(siteId);
+    if (!ctx || ctx.tenantId !== auth.tenant_id) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    const [consents, events] = await Promise.all([
+      deps.consent.forSite(siteId),
+      deps.consent.eventsForSite(siteId),
+    ]);
+    return c.json({ site_id: siteId, consents, events }, 200);
+  });
 }

@@ -11,7 +11,7 @@ import type {
   IntelOwnershipProof,
   IntelSite,
 } from "../registry/types";
-import type { IntelConsent } from "../consent";
+import type { IntelConsent, IntelConsentEvent } from "../consent";
 import type { ScanJob } from "../scan";
 import { computeMoMDelta, type MoMDelta } from "../delta";
 import { attentionFor } from "./freshness";
@@ -33,6 +33,8 @@ export interface SiteDetail {
     domain_control: IntelOwnershipProof | null;
   };
   consents: IntelConsent[];
+  /** SLICE-262-23 — append-only grant/revoke history */
+  consentEvents: IntelConsentEvent[];
   latestJob: ScanJob | null;
   /** SLICE-262-12 — delta vs the site's previous report (null when
    *  no prior report or ruleset changed) */
@@ -125,6 +127,9 @@ export async function siteDetail(
       ),
     },
     consents: await consentStore.forSite(siteId),
+    consentEvents: (await consentStore.eventsForSite(siteId)).sort(
+      (a, b) => (a.at < b.at ? 1 : -1),
+    ),
     latestJob: job,
     momDelta:
       job?.report != null ? computeMoMDelta(prevReport, job.report) : null,

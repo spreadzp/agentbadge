@@ -7,6 +7,7 @@ import type { OperatorRole } from "../../server/lib/intel/registry";
 import type { ClientReport } from "../../server/lib/intel/client-report";
 import {
   ConsentBadge,
+  ConsentPanel,
   type EvidenceProvenanceMap,
   FindingRow,
   FreshnessCell,
@@ -56,6 +57,8 @@ export const IntelSitePage = (
         ${ConsentBadge(d.consents)}
         ${d.latestJob ? JobStateChip(d.latestJob.status) : html`<span class="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-400">no scan yet</span>`}
       </div>
+
+      ${ConsentPanel(d.site.id, d.consents, d.consentEvents, role !== "viewer")}
 
       ${!rep ? html`
         <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900/50 p-8 text-center">
