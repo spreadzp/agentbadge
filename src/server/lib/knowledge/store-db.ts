@@ -237,7 +237,7 @@ export class DbKnowledgeStore implements KnowledgeStore {
       from: string;
       to: string;
       linkedItemId?: string | null;
-      resolvedAt?: string | null;
+      resolvedAt: string | null;
     },
   ) {
     const r = await this.taxonomy.transitionGap(id, input);

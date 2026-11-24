@@ -258,14 +258,16 @@ describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
     expect(g?.count).toBe(1 + KNOWLEDGE_GAP_SAMPLES_CAP + 2);
     expect(g?.sampleQueries.length).toBe(KNOWLEDGE_GAP_SAMPLES_CAP);
     const bad = await s.transitionGap(g1.row!.id, {
-      from: "RESOLVED", to: "OPEN",
+      from: "RESOLVED", to: "OPEN", resolvedAt: null,
     });
     expect(bad.transitioned).toBe(false);
     const ok = await s.transitionGap(g1.row!.id, {
       from: "OPEN", to: "RESOLVED", linkedItemId: "ki_x",
+      resolvedAt: "2026-11-24T09:00:00.000Z",
     });
     expect(ok.transitioned).toBe(true);
     expect(ok.gap?.linkedItemId).toBe("ki_x");
+    expect(ok.gap?.resolvedAt).not.toBeNull();
   });
 
   it("pickKnowledgeStores: memory fallback is a process-wide singleton", () => {

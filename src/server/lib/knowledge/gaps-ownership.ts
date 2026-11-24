@@ -21,8 +21,15 @@ import type { KnowledgeGapRecord } from "./types";
 
 const TERMINAL = new Set(["RESOLVED", "WONTFIX"]);
 
-const isTimestamp = (s: string) =>
-  s.length > 0 && !Number.isNaN(Date.parse(s));
+/** C3: dueAt is an ABSOLUTE UTC timestamp — must carry an explicit
+ *  zone (`Z` or ±hh:mm). A naive ISO string parses as local time and
+ *  would silently shift the deadline; a duration is not a deadline. */
+const ISO_ABSOLUTE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/;
+const isTimestamp = (s: unknown): s is string =>
+  typeof s === "string" &&
+  ISO_ABSOLUTE.test(s) &&
+  !Number.isNaN(Date.parse(s));
 
 /** Shared assign/reassign preflight — gap exists, not terminal,
  *  assignee resolves to an active human operator. */
@@ -53,7 +60,13 @@ async function assignable(
 
 /** Assign a gap to an operator. `assignedBy` is the CALLING
  *  principal's id (the route resolves it from the credential —
- *  never a form field); `dueAt` is an absolute UTC timestamp. */
+ *  never a form field); `dueAt` is an absolute UTC timestamp.
+ *
+ *  Anti-laundering (C3): assigning to a DIFFERENT owner is refused
+ *  (`already_assigned` — that path is reassignGap); and a dueAt the
+ *  gap already carries can only move via setGapDueAt (reason →
+ *  audit), so assign may set a deadline on a fresh/unassigned gap
+ *  but never silently rewrites or clears an existing one. */
 export async function assignGap(
   store: KnowledgeStore,
   input: {
@@ -64,17 +77,27 @@ export async function assignGap(
   },
   deps: { operators: OperatorStore },
 ): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord }>> {
-  const dueAt = input.dueAt ?? null;
-  if (dueAt !== null && !isTimestamp(dueAt)) {
+  if (input.dueAt !== undefined && input.dueAt !== null && !isTimestamp(input.dueAt)) {
     return { ok: false, error: "bad_due_at", field: "dueAt" };
   }
   const pre = await assignable(store, input.gapId, input.assignedTo, deps);
   if (!pre.ok) return pre;
+  const { gap } = pre;
+  if (gap.assignedTo !== null && gap.assignedTo !== input.assignedTo) {
+    return { ok: false, error: "already_assigned", field: "assignedTo" };
+  }
+  if (
+    gap.dueAt !== null &&
+    input.dueAt !== undefined &&
+    input.dueAt !== gap.dueAt
+  ) {
+    return { ok: false, error: "due_at_change_needs_reason", field: "dueAt" };
+  }
   const res = await store.assignGap(input.gapId, {
     assignedTo: input.assignedTo,
     assignedBy: input.assignedBy,
     assignedAt: new Date().toISOString(),
-    dueAt,
+    dueAt: input.dueAt ?? gap.dueAt,
   });
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
@@ -131,7 +154,7 @@ export async function setGapDueAt(
     reason: string;
   },
 ): Promise<KnowledgeResult<{ gap: KnowledgeGapRecord }>> {
-  const reason = input.reason?.trim() ?? "";
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
   if (reason.length === 0) {
     return { ok: false, error: "reason_required", field: "reason" };
   }

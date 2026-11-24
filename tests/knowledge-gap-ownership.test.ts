@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+import { createDatabase, type Database } from "@agentbadge/database";
 
 import {
   addEvidence,
   assignGap,
   createMemoryKnowledgeStores,
   createKnowledgeItem,
+  DbKnowledgeStore,
   recordGap,
   reassignGap,
   resolveGap,
@@ -177,6 +179,76 @@ describe("gap ownership (SLICE-264-10)", () => {
       expect(r.error).toBe("bad_due_at");
       expect(r.field).toBe("dueAt");
     }
+    // Naive ISO (no zone) parses as LOCAL time — must refuse (C3:
+    // absolute UTC only). Same for a bare date.
+    for (const bad of ["2026-12-01T00:00:00", "2026-12-01", "12/01/2026"]) {
+      const naive = await assignGap(
+        store,
+        { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: bad },
+        { operators },
+      );
+      expect(naive.ok).toBe(false);
+      if (!naive.ok) expect(naive.error).toBe("bad_due_at");
+    }
+    // Explicit offsets are absolute too.
+    const offset = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: "2026-12-01T03:00:00+03:00" },
+      { operators },
+    );
+    expect(offset.ok).toBe(true);
+  });
+
+  it("anti-laundering: assign ≠ reassign path; dueAt moves only via setGapDueAt", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const a = await seedOperator(operators, "A");
+    const b = await seedOperator(operators, "B");
+    const due = "2026-12-10T00:00:00.000Z";
+    await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: a.operatorId, assignedBy: "op_admin", dueAt: due },
+      { operators },
+    );
+    // Different owner via assignGap → already_assigned (reassign is
+    // the path; it keeps dueAt).
+    const hijack = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: b.operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(hijack.ok).toBe(false);
+    if (!hijack.ok) expect(hijack.error).toBe("already_assigned");
+    // Same owner re-assert is idempotent — and can't touch dueAt.
+    const reassert = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: a.operatorId, assignedBy: "op_admin", dueAt: "2027-01-01T00:00:00.000Z" },
+      { operators },
+    );
+    expect(reassert.ok).toBe(false);
+    if (!reassert.ok) {
+      expect(reassert.error).toBe("due_at_change_needs_reason");
+      expect(reassert.field).toBe("dueAt");
+    }
+    // unassign keeps dueAt; re-adding an owner keeps it too —
+    // and explicitly changing it here is still refused.
+    await unassignGap(store, { gapId: gap.id });
+    const sneak = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: b.operatorId, assignedBy: "op_admin", dueAt: "2027-06-01T00:00:00.000Z" },
+      { operators },
+    );
+    expect(sneak.ok).toBe(false);
+    if (!sneak.ok) expect(sneak.error).toBe("due_at_change_needs_reason");
+    const back = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: b.operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(back.ok).toBe(true);
+    if (!back.ok) return;
+    expect(back.gap.assignedTo).toBe(b.operatorId);
+    expect(back.gap.dueAt).toBe(due); // launder-proof
   });
 
   it("reassign keeps dueAt; unassign clears the triple but keeps dueAt", async () => {
@@ -293,5 +365,83 @@ describe("gap ownership (SLICE-264-10)", () => {
     expect(term.ok).toBe(false);
     if (!term.ok) expect(term.error).toBe("gap_terminal");
     void stamp;
+  });
+});
+
+/** Opt-in PG run — the server's own DATABASE_URL DB doesn't carry
+ *  the package migrations; point KNOWLEDGE_PG_URL at a migrated
+ *  dev PG (e.g. packages/database's) to exercise the real
+ *  DbKnowledgeStore.assignGap/mapGap glue the memory suite can't. */
+const PG_URL = process.env["KNOWLEDGE_PG_URL"];
+describe.skipIf(!PG_URL)("gap ownership — PG backend", () => {
+  let database: Database | undefined;
+  afterAll(async () => {
+    await database?.close();
+  });
+
+  it("assign/reassign/unassign/dueAt + resolvedAt lifecycle on DbKnowledgeStore", async () => {
+    database = createDatabase({ url: PG_URL, enabled: true });
+    const k = database.knowledge;
+    if (!k) throw new Error("knowledge repos missing");
+    const store = new DbKnowledgeStore(k.core, k.taxonomy);
+    const operators = createMemoryOperatorStore();
+    const a = await seedOperator(operators, "pg-a");
+    const b = await seedOperator(operators, "pg-b");
+
+    const nq = `pg-own-${Date.now().toString(36)}`;
+    const g = await recordGap(store, { query: nq, source: "MANUAL" });
+    if (!g.ok || !g.gap) throw new Error("gap seed failed");
+    expect(g.gap.assignedTo).toBeNull();
+    expect(g.gap.resolvedAt).toBeNull();
+
+    const due = "2026-12-15T00:00:00.000Z";
+    const a1 = await assignGap(
+      store,
+      { gapId: g.gap.id, assignedTo: a.operatorId, assignedBy: "op_admin", dueAt: due },
+      { operators },
+    );
+    expect(a1.ok).toBe(true);
+    if (!a1.ok) return;
+    expect(a1.gap.assignedTo).toBe(a.operatorId);
+    expect(new Date(a1.gap.dueAt!).toISOString()).toBe(due);
+
+    // reassign keeps dueAt; unassign clears the triple, keeps it.
+    const re = await reassignGap(
+      store,
+      { gapId: g.gap.id, assignedTo: b.operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(re.ok).toBe(true);
+    if (!re.ok) return;
+    expect(re.gap.assignedTo).toBe(b.operatorId);
+    expect(new Date(re.gap.dueAt!).toISOString()).toBe(due);
+    const un = await unassignGap(store, { gapId: g.gap.id });
+    expect(un.ok).toBe(true);
+    if (!un.ok) return;
+    expect(un.gap.assignedTo).toBeNull();
+    expect(new Date(un.gap.dueAt!).toISOString()).toBe(due);
+
+    // RESOLVED stamps; dedupe-hit reopen clears resolvedAt too.
+    await store.transitionGap(g.gap.id, {
+      from: "OPEN", to: "TRIAGED", resolvedAt: null,
+    });
+    const res = await store.transitionGap(g.gap.id, {
+      from: "TRIAGED", to: "RESOLVED", linkedItemId: "item_pg",
+      resolvedAt: "2026-11-24T12:00:00.000Z",
+    });
+    expect(res.transitioned).toBe(true);
+    expect(res.gap?.resolvedAt).not.toBeNull();
+    const again = await recordGap(store, { query: nq.toUpperCase(), source: "MANUAL" });
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.reopened).toBe(true);
+    expect(again.gap!.resolvedAt).toBeNull();
+    expect(again.gap!.status).toBe("OPEN");
+
+    // listGaps surfaces the columns through mapGap.
+    const listed = await store.listGaps({ status: "OPEN" });
+    const ours = listed.find((r) => r.id === g.gap!.id);
+    expect(ours?.assignedTo).toBeNull();
+    expect(new Date(ours!.dueAt!).toISOString()).toBe(due);
   });
 });

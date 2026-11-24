@@ -263,9 +263,10 @@ export interface KnowledgeStore {
       from: string;
       to: string;
       linkedItemId?: string | null;
-      /** SLICE-264-10: written on EVERY transition — the RESOLVED
-       *  stamp, or null to keep/clear it. */
-      resolvedAt?: string | null;
+      /** SLICE-264-10: written on EVERY transition — REQUIRED so an
+       *  omission can't silently wipe the stamp (RESOLVED → ISO,
+       *  anything else → null). */
+      resolvedAt: string | null;
     },
   ): Promise<{
     gap: KnowledgeGapRecord | null;

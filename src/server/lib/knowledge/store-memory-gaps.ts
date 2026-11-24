@@ -138,7 +138,7 @@ export class MemoryKnowledgeGaps {
       from: string;
       to: string;
       linkedItemId?: string | null;
-      resolvedAt?: string | null;
+      resolvedAt: string | null;
     },
   ) {
     const gap = this.data.gaps.get(id);
@@ -155,8 +155,8 @@ export class MemoryKnowledgeGaps {
     gap.status = input.to;
     if (input.linkedItemId !== undefined) gap.linkedItemId = input.linkedItemId;
     // SLICE-264-10: always written (PG mirrors) — RESOLVED stamps,
-    // everything else keeps/clears to null.
-    gap.resolvedAt = input.resolvedAt ?? null;
+    // everything else writes null.
+    gap.resolvedAt = input.resolvedAt;
     return { gap, transitioned: true };
   }
 

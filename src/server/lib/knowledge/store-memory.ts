@@ -123,7 +123,7 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
       from: string;
       to: string;
       linkedItemId?: string | null;
-      resolvedAt?: string | null;
+      resolvedAt: string | null;
     },
   ) => this.gaps.transitionGap(id, input);
   assignGap = (id: string, input: KnowledgeGapAssignment) =>
