@@ -28,6 +28,7 @@ export function rolePermitted(role: OperatorRole, op: string): boolean {
   if (role === "viewer") return false;
   return [
     "deep_scan",
+    "inside_diagnostics",
     "fix_apply",
     "ownership_verify",
     "consent",

@@ -11,6 +11,10 @@ import type { IntelScanJobStore, ScanFetch } from "../../lib/intel/scan";
 import type { IntelConsentStore } from "../../lib/intel/consent";
 import type { DnsResolver } from "../../lib/intel/ownership";
 import type { IntelClientReportStore } from "../../lib/intel/client-report";
+import type {
+  IntelPullJobStore,
+  IntelSecurityEventStore,
+} from "../../lib/intel/pull";
 
 export interface IntelRouteDeps {
   /** null → enabled but misconfigured: handlers answer 503 intel_key_missing. */
@@ -45,6 +49,9 @@ export interface IntelRouteDeps {
   dnsResolver?: DnsResolver;
   /** SLICE-262-11 — client monthly reports (canonical + editorial). */
   clientReports?: IntelClientReportStore;
+  /** SLICE-262-16 — pull-jobs + security events. */
+  pullJobs?: IntelPullJobStore;
+  securityEvents?: IntelSecurityEventStore;
 }
 
 export const INTEL_KEY_MISSING = {

@@ -8,6 +8,12 @@ import type { Hono } from "hono";
 import { generateReportId } from "../../../agent-readiness/integrity/ulid";
 import { checkEntitlement } from "../../lib/intel/entitlement";
 import { hasActiveConsent } from "../../lib/intel/consent";
+import {
+  CONST_WHITELIST,
+  OPTION_WHITELIST,
+  createPullJob,
+  deriveJobsKey,
+} from "../../lib/intel/pull";
 import { runScanJob, SCAN_PLAN } from "../../lib/intel/scan";
 import { rolePermitted } from "../../lib/intel/registry";
 import { resolveScanAuth } from "./scan-auth";
@@ -134,6 +140,64 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       finishedAt: null,
     });
 
+    // SLICE-262-16 (D-262-Q37): pull-jobs are queued ONLY when the
+    // site has handshake + inside_diagnostics consent + entitlement —
+    // missing consent is not an error, it just yields zero jobs.
+    // The bounded ~90s wait lives inside the runner right before the
+    // self-report merge; late results ride the next scan.
+    let pullJobsCreated = 0;
+    const pullDeps =
+      deps.pullJobs && deps.securityEvents && deps.consent && deps.evidence
+        ? {
+            pullJobs: deps.pullJobs,
+            securityEvents: deps.securityEvents,
+            evidence: deps.evidence,
+            consent: deps.consent,
+            jobsKey: deriveJobsKey(deps.key),
+            signKey: deps.key,
+            evidenceRetentionDays: deps.evidenceRetentionDays,
+          }
+        : null;
+    const insideDiagAllowed =
+      pullDeps &&
+      (await hasActiveConsent(pullDeps.consent, siteId, "inside_diagnostics")) &&
+      checkEntitlement(
+        await deps.entitlement.getByTenant(ctx.tenantId),
+        "inside_diagnostics",
+        siteId,
+        now.toISOString(),
+      ).allowed;
+    if (insideDiagAllowed && pullDeps) {
+      for (const name of CONST_WHITELIST) {
+        const r = await createPullJob(pullDeps, {
+          siteId,
+          tenantId: ctx.tenantId,
+          probeId: "const_read",
+          params: { name },
+          scanId: job.scanId,
+        });
+        if (r.ok) pullJobsCreated += 1;
+      }
+      for (const name of Object.keys(OPTION_WHITELIST)) {
+        const r = await createPullJob(pullDeps, {
+          siteId,
+          tenantId: ctx.tenantId,
+          probeId: "option_read",
+          params: { name },
+          scanId: job.scanId,
+        });
+        if (r.ok) pullJobsCreated += 1;
+      }
+      const r = await createPullJob(pullDeps, {
+        siteId,
+        tenantId: ctx.tenantId,
+        probeId: "phpinfo_summary",
+        params: {},
+        scanId: job.scanId,
+      });
+      if (r.ok) pullJobsCreated += 1;
+    }
+
     job = await runScanJob(job, {
       fetch: deps.scanFetch,
       evidence: deps.evidence,
@@ -141,6 +205,22 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       key: deps.key,
       ruleset: deps.ruleset,
       evidenceRetentionDays: deps.evidenceRetentionDays,
+      awaitPullJobs: pullDeps
+        ? async (j) => {
+            // bounded wait ~90s: poll until no pending pull-jobs for
+            // this scanId remain, or the window closes — whichever
+            // comes first (D-262-Q37)
+            const deadline = Date.now() + 90_000;
+            while (Date.now() < deadline) {
+              const pending = await pullDeps.pullJobs.pendingForSite(
+                j.siteId,
+                new Date().toISOString(),
+              );
+              if (!pending.some((p) => p.scanId === j.scanId)) return;
+              await new Promise((r) => setTimeout(r, 500));
+            }
+          }
+        : undefined,
     });
 
     return c.json(
@@ -148,6 +228,7 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
         job: { ...job, report: undefined },
         report: job.report,
         warning: decision.warning,
+        pull_jobs: pullJobsCreated,
       },
       job.status === "failed" ? 502 : 201,
     );

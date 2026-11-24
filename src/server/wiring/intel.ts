@@ -15,6 +15,10 @@ import { pickIntelEntitlementStore } from "../lib/intel/entitlement";
 import { pickIntelConsentStore } from "../lib/intel/consent";
 import { createNodeDnsResolver } from "../lib/intel/ownership";
 import { pickIntelClientReportStore } from "../lib/intel/client-report";
+import {
+  pickIntelPullJobStore,
+  pickIntelSecurityEventStore,
+} from "../lib/intel/pull/db-stores";
 import { INTEL_WP_PROFILE_V1 } from "../lib/intel/rules";
 import {
   createSafeScanFetch,
@@ -39,6 +43,8 @@ export function wireIntel(app: Hono): void {
   const consent = pickIntelConsentStore(db);
   const scanJobs = pickIntelScanJobStore(db);
   const clientReports = pickIntelClientReportStore(db);
+  const pullJobs = pickIntelPullJobStore(db);
+  const securityEvents = pickIntelSecurityEventStore(db);
   app.route(
     "/api/intel",
     createIntelApiRoutes({
@@ -54,6 +60,8 @@ export function wireIntel(app: Hono): void {
       consent,
       dnsResolver: createNodeDnsResolver(),
       clientReports: clientReports.store,
+      pullJobs,
+      securityEvents,
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));

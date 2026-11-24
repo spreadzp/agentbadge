@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pull-job.v1.schema.json",
+  "title": "PullJob v1 — wire format (signed body + lifecycle fields)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id",
+    "site_id",
+    "probe_id",
+    "params",
+    "nonce",
+    "exp",
+    "key_id",
+    "sig"
+  ],
+  "properties": {
+    "job_id": { "type": "string", "pattern": "^pjob_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "site_id": { "type": "string", "minLength": 1 },
+    "probe_id": { "type": "string", "enum": ["const_read", "option_read", "phpinfo_summary"] },
+    "params": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "typed params per capability-registry.v1.json; ≤1KiB JSON"
+    },
+    "nonce": { "type": "string", "minLength": 16, "maxLength": 64 },
+    "exp": { "type": "string", "format": "date-time" },
+    "key_id": { "type": "string", "minLength": 1 },
+    "sig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "value": { "type": "string", "description": "base64 signature over JCS({job_id,site_id,probe_id,params,exp,nonce,key_id})" }
+      }
+    },
+    "status": { "type": "string", "enum": ["queued", "claimed", "done", "expired", "failed"] },
+    "lease_generation": { "type": "integer", "minimum": 0 },
+    "lease_expires_at": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

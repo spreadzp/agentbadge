@@ -1,0 +1,83 @@
+{
+  "registry_version": "v1",
+  "protocol": "intel-pull",
+  "issued_at": "2026-11-24",
+  "limits": {
+    "params_max_bytes": 1024,
+    "result_max_bytes": 8192,
+    "string_max_chars": 256,
+    "results_per_job": 1,
+    "capability_max_exec_ms": 5000,
+    "lease_seconds": 900,
+    "job_ttl_seconds": 3600,
+    "max_reclaims": 2
+  },
+  "const_whitelist": [
+    "WP_DEBUG",
+    "WP_DEBUG_LOG",
+    "WP_DEBUG_DISPLAY",
+    "DISALLOW_FILE_EDIT",
+    "DISALLOW_FILE_MODS",
+    "WP_ENVIRONMENT_TYPE",
+    "AUTOMATIC_UPDATER_DISABLED"
+  ],
+  "option_whitelist": {
+    "blog_public": { "type": "integer", "enum": [0, 1] },
+    "permalink_structure": { "type": "string", "max": 256 },
+    "siteurl": { "type": "reduced", "emit": "siteurl_https", "description": "https-scheme flag only — never the URL" },
+    "home": { "type": "reduced", "emit": "home_https", "description": "https-scheme flag only — never the URL" },
+    "users_can_register": { "type": "integer", "enum": [0, 1] },
+    "default_role": { "type": "enum", "values": ["subscriber", "contributor", "author", "editor", "administrator"] }
+  },
+  "capabilities": [
+    {
+      "probe_id": "const_read",
+      "params": {
+        "name": { "type": "string", "in": "const_whitelist" }
+      },
+      "result": {
+        "name": "string (echo of validated name)",
+        "defined": "boolean",
+        "value": "boolean|string|null — raw constant value, only if defined"
+      },
+      "max_exec_ms": 500,
+      "data_class": "config-flag",
+      "damage_budget": "attacker learns debug/update/file-edit flags of the site — aids targeted exploit selection, no secret values"
+    },
+    {
+      "probe_id": "option_read",
+      "params": {
+        "name": { "type": "string", "in": "option_whitelist" }
+      },
+      "result": {
+        "name": "string (echo)",
+        "present": "boolean",
+        "value": "typed per option_whitelist field spec — reduced forms never emit raw values"
+      },
+      "max_exec_ms": 500,
+      "data_class": "config-flag",
+      "damage_budget": "attacker learns registration/permalink/role flags and https-scheme booleans — configuration fingerprint, no URLs or user data"
+    },
+    {
+      "probe_id": "phpinfo_summary",
+      "params": {},
+      "result": {
+        "php_version": "string",
+        "memory_limit": "string",
+        "max_execution_time": "string",
+        "upload_max_filesize": "string",
+        "post_max_size": "string",
+        "display_errors": "string",
+        "expose_php": "string",
+        "allow_url_fopen": "string"
+      },
+      "max_exec_ms": 1000,
+      "data_class": "environment-summary",
+      "damage_budget": "8-field PHP config fingerprint — version disclosure aids CVE targeting; loaded_extensions deliberately excluded"
+    }
+  ],
+  "reserved_for_future": {
+    "probe_ids": ["fix_preview", "fix_apply", "plugin_list", "active_plugins"],
+    "note": "protocol reserves fix_* param field `expected_state` (concurrency hash); NONE implemented in v1 — extension = new protocol version + threat/consent review"
+  }
+}

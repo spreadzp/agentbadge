@@ -30,6 +30,14 @@ export interface ScanRunDeps {
   evidenceRetentionDays?: number;
   /** injectable clock — tests are deterministic */
   now?: () => Date;
+  /**
+   * SLICE-262-16: bounded wait for pull-job results tied to this
+   * scan (D-262-Q37). Called right before the self-report merge so
+   * plugin results that arrived inside the window feed THIS report;
+   * late results stay envelopes for the next compatible scan — the
+   * signed report never mutates retroactively.
+   */
+  awaitPullJobs?: (job: ScanJob) => Promise<void>;
 }
 
 export async function runScanJob(
@@ -124,6 +132,10 @@ export async function runScanJob(
   // window (48h, D-262-Q33) and deduped to the latest accepted
   // value per fact, so a stale superseded value can't poison a
   // rule that already saw the newer one
+  // SLICE-262-16: bounded wait (~90s in the route) for pull-job
+  // results bound to this scanId — collected-in-window facts feed
+  // THIS report; anything later rides the next scan (G3)
+  await deps.awaitPullJobs?.(job);
   const selfReported = await freshSelfReportedEvidence(deps, job);
   const report = assembleIntelReport([...envelopes, ...selfReported], {
     site_id: job.siteId,
@@ -175,7 +187,9 @@ async function freshSelfReportedEvidence(
   const all = (await deps.evidence.forSite(job.siteId)).filter(
     (e) =>
       e.provenance === "PLUGIN_SELF_REPORTED" &&
-      e.scanId !== job.scanId &&
+      // pull-job results carry THIS scanId and belong to this report;
+      // periodic self-reports carry their own `self-*`/prior scan ids
+      // and ride the same 48h freshness window either way
       Date.parse(e.receivedAt) > cutoff,
   );
   for (const rec of all) {

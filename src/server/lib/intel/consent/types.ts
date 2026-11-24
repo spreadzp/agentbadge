@@ -7,7 +7,7 @@
 // ownership proofs); the full 3-kind management surface + history is
 // SLICE-262-23.
 
-export const CONSENT_KINDS = ["audit"] as const;
+export const CONSENT_KINDS = ["audit", "inside_diagnostics"] as const;
 export type ConsentKind = (typeof CONSENT_KINDS)[number];
 
 export type ConsentStatus = "granted" | "revoked";

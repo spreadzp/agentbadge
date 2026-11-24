@@ -12,6 +12,7 @@ import { computeDedupeHash } from "../../lib/intel/evidence/store";
 import { registerScanRoute } from "./scans";
 import { registerOwnershipRoutes } from "./ownership";
 import { registerConsentRoutes } from "./consent";
+import { registerPullJobRoutes } from "./jobs";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
 const DAY_MS = 86_400_000;
@@ -178,10 +179,11 @@ export function createIntelApiRoutes(deps: IntelRouteDeps): Hono {
     return c.json({ deduplicated: false, envelope }, 201);
   });
 
-  // SLICE-262-6/7/8 route groups live in their own files (line budget)
+  // SLICE-262-6/7/8/16 route groups live in their own files (line budget)
   registerScanRoute(app, deps);
   registerOwnershipRoutes(app, deps);
   registerConsentRoutes(app, deps);
+  registerPullJobRoutes(app, deps);
 
   return app;
 }

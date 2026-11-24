@@ -8,6 +8,11 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { toPublicKeyEntry } from "../../lib/intel/keys";
+import {
+  deriveJobsKey,
+  jobsKeysetEntry,
+  signKeyset,
+} from "../../lib/intel/pull";
 import { INTEL_KEY_MISSING, type IntelRouteDeps } from "./index";
 
 const keyEntrySchema = z.object({
@@ -20,6 +25,22 @@ const keyEntrySchema = z.object({
 
 const keysDocSchema = z.object({
   keys: z.array(keyEntrySchema),
+  root_id: z.string(),
+  keysets: z.array(
+    z.object({
+      key_id: z.string(),
+      public_key: z.string(),
+      purpose: z.literal("jobs"),
+      not_before: z.string(),
+      not_after: z.string(),
+      status: z.string(),
+    }),
+  ),
+  sig: z.object({
+    algorithm: z.literal("ed25519"),
+    key_id: z.string(),
+    value: z.string(),
+  }),
 });
 
 export function createIntelKeysRoutes(deps: IntelRouteDeps): Hono {
@@ -47,9 +68,15 @@ export function createIntelKeysRoutes(deps: IntelRouteDeps): Hono {
     }),
     (c) => {
       if (!deps.key) return c.json(INTEL_KEY_MISSING, 503);
-      return c.json({ keys: [toPublicKeyEntry(deps.key)] }, 200, {
-        "Cache-Control": "public, max-age=300",
-      });
+      const jobsKey = deriveJobsKey(deps.key);
+      const keyset = signKeyset(deps.key, [jobsKeysetEntry(jobsKey)]);
+      return c.json(
+        { keys: [toPublicKeyEntry(deps.key)], ...keyset },
+        200,
+        // max-age below the plugin's min-refresh (~6h) — TTL never
+        // substitutes for root-signature verification (ADR §2, R3-Q3)
+        { "Cache-Control": "public, max-age=300" },
+      );
     },
   );
 

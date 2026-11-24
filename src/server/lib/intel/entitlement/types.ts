@@ -4,7 +4,11 @@
 // is aligned with the 19b lifecycle (trial→active→past_due→expired→
 // canceled); 19a manages transitions manually.
 
-export const INTEL_PAID_OPERATIONS = ["deep_scan", "fix_apply"] as const;
+export const INTEL_PAID_OPERATIONS = [
+  "deep_scan",
+  "inside_diagnostics",
+  "fix_apply",
+] as const;
 export type IntelPaidOperation = (typeof INTEL_PAID_OPERATIONS)[number];
 
 export const INTEL_ENTITLEMENT_STATUSES = [
