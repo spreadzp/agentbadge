@@ -31,5 +31,7 @@ export function loadIntel(): IntelEnvConfig {
       const n = raw === undefined ? 300 : Number(raw);
       return Number.isFinite(n) && n >= 0 ? n : 300;
     })(),
+    billingStripeSecret: process.env.INTEL_BILLING_STRIPE_WEBHOOK_SECRET || undefined,
+    billingFreemiusSecret: process.env.INTEL_BILLING_FREEMIUS_WEBHOOK_SECRET || undefined,
   };
 }

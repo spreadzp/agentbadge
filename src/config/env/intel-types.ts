@@ -44,4 +44,12 @@ export interface IntelEnvConfig {
    * site; the cooldown caps it. Default 300; 0 disables (dev only).
    */
   scanCooldownSeconds?: number;
+  /**
+   * INTEL_BILLING_{STRIPE,FREEMIUS}_WEBHOOK_SECRET — provider webhook
+   * secrets for POST /api/intel/billing/webhook/:provider
+   * (SLICE-262-21). Absent → that provider answers 503
+   * billing_unconfigured.
+   */
+  billingStripeSecret?: string;
+  billingFreemiusSecret?: string;
 }

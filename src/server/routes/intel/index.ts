@@ -71,6 +71,8 @@ export interface IntelRouteDeps {
   scanCooldownSeconds?: number;
   /** SLICE-262-19b — append-only entitlement transition log. */
   entitlementEvents?: import("../../lib/intel/entitlement").IntelEntitlementEventStore;
+  /** SLICE-262-21 — webhook secrets per provider; absent → 503. */
+  billingSecrets?: { stripe?: string; freemius?: string };
 }
 
 export const INTEL_KEY_MISSING = {

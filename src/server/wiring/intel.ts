@@ -70,6 +70,10 @@ export function wireIntel(app: Hono): void {
       attestationValidityDays: cfg.attestationValidityDays,
       scanCooldownSeconds: cfg.scanCooldownSeconds,
       entitlementEvents: createMemoryEntitlementEventStore(),
+      billingSecrets: {
+        stripe: cfg.billingStripeSecret,
+        freemius: cfg.billingFreemiusSecret,
+      },
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));
