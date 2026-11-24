@@ -45,12 +45,26 @@ aauthDiscoveryRoutes.get(
         jwks_uri: `${baseUrl}/.well-known/jwks.json`,
         response_types_supported: ["code"],
         grant_types_supported: ["authorization_code", "client_credentials"],
+        // SLICE-259-40 (AB-130/143): top-level scopes_supported +
+        // revocation_endpoint — the scanner reads only top-level fields,
+        // the nested agent_auth copy was invisible. revocation points at
+        // the REAL admin-gated revoke route (the old /passport/revoke
+        // pointer was a dead URL).
+        scopes_supported: [
+          "trust:read",
+          "scan:lite",
+          "passport:issue",
+          "badge:verify",
+          "requests:write",
+          "surveys:answer",
+        ],
+        revocation_endpoint: `${baseUrl}/admin/revoke`,
         agent_auth: {
           register_uri: `${baseUrl}/auth.md`,
           supported_identity_types: ["did:hcs", "nft-passport"],
           credential_types: ["nft", "hcs-signed-message"],
           claims_endpoint: `${baseUrl}/passport`,
-          revocation_endpoint: `${baseUrl}/passport/revoke`,
+          revocation_endpoint: `${baseUrl}/admin/revoke`,
         },
       },
       200,
@@ -159,7 +173,7 @@ aauthDiscoveryRoutes.get(
           supported_identity_types: ["did:hcs", "nft-passport"],
           credential_types: ["nft", "hcs-signed-message"],
           claims_endpoint: `${baseUrl}/passport`,
-          revocation_endpoint: `${baseUrl}/passport/revoke`,
+          revocation_endpoint: `${baseUrl}/admin/revoke`,
         },
         scope_descriptions: [
           {

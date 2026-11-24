@@ -177,6 +177,14 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
         team_contact: "/agent-guide/team/contact",
         work_requests: "/api/work-requests",
       },
+      // SLICE-259-40 (AB-154): machine-readable retry semantics —
+      // 429 → Retry-After + X-RateLimit-*; mutating POSTs accept
+      // Idempotency-Key; safe to retry with exponential backoff.
+      retry_semantics: {
+        over_limit: "429 responses carry Retry-After (seconds) and X-RateLimit-Reset",
+        idempotency: "mutating POSTs accept an Idempotency-Key header; retries with the same key return the original result",
+        guidance: "safe to retry after Retry-After; use exponential backoff for bursts",
+      },
       api_endpoints: [
         "GET /passport/request",
         "GET /passport/address/{address}",

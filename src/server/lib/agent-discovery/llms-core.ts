@@ -77,6 +77,14 @@ MCP access tiers: anonymous \`tools/list\` is a curated capability set (${src.mc
 
 All errors return JSON: \`{ error: string, code: string, retryable?: boolean, hint?: string }\`
 HTTP status codes: 400 (bad request), 401 (unauthorized), 402 (payment required), 403 (forbidden), 404 (not found), 409 (conflict), 429 (rate limit), 500 (internal)
+
+## Limits & policies
+
+- **Rate limit**: 60 requests per minute per IP on anonymous lanes; \`agb_\` keyed agents get a raised bucket. Over-limit returns 429 + \`Retry-After\` (seconds) + \`X-RateLimit-*\` headers. Each mutating POST accepts an \`Idempotency-Key\`; retry with the same key returns the original result.
+- **Idempotency**: repeated \`POST /api/total-scan\` on the same target within a short window may return the cached verdict — pass a fresh \`?url=\` or the idempotency key to force a new scan.
+- **Retry guidance**: safe to retry after \`Retry-After\`; use exponential backoff for bursts (4xx other than 429 are not retryable — fix the request first).
+- **Test environment**: a public sandbox probe is available — \`GET /api/scan?url=https://httpbin.org/get\` returns a full verdict JSON with no payment and no key; treat it as the staging path for integration checks.
+- **Cancellation & refund**: each paid x402 call settles per call — there is no subscription to cancel. If a paid scan fails after settlement, the 402 quote was already consumed; contact feedback@agentbadge.xyz with the tx hash for a refund review.
 `;
 }
 

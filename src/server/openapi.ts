@@ -1,5 +1,6 @@
 import z from "zod";
 import { APP_VERSION } from "./lib/build-info";
+import { demoScanPriceUsd } from "./lib/demo-scan";
 
 // ─── Shared Zod schemas for OpenAPI documentation ─────────────────
 
@@ -553,6 +554,21 @@ export const openApiConfig = {
     { name: "KeeperHub", description: "On-chain scan recording via KeeperHub workflows on Base Sepolia" },
     { name: "Attestcoin", description: "Cross-chain task verification (Ethereum Sepolia ↔ Creditcoin)" },
   ],
+  // SLICE-259-40 (AB-152): underscore-keyed aliases — agent-readiness
+  // extractors read `x_rate_limit`/`x_pricing` (snake_case), not the
+  // kebab form. Same values, both spellings served.
+  x_rate_limit: {
+    requests_per_minute: "60",
+    window_seconds: "60",
+    scope: "per-IP",
+    over_limit: "429 + Retry-After",
+  },
+  x_pricing: {
+    price_per_call: demoScanPriceUsd(),
+    price_unit: "USDC",
+    canonical: "/pricing.json",
+    note: "per-call floor — bundle prices in services[]",
+  },
   "x-rate-limit": {
     defaultLimit: 60,
     windowSeconds: 60,
@@ -631,6 +647,31 @@ export const openApiConfig = {
     error_hints: "JSON 401/402/403 bodies carry how_to_fix + register/payment pointers",
   },
   components: {
+    // SLICE-259-40 (AB-129): real auth surface. `agb_` free-tier keys ride
+    // in the Authorization header (never in query params — AB-129). The
+    // static-key trade-off for the free tier is documented; paid rails use
+    // x402 / EIP-191 sig-auth instead of long-lived secrets.
+    securitySchemes: {
+      agbApiKey: {
+        type: "apiKey",
+        in: "header",
+        name: "Authorization",
+        description:
+          "Free-tier agent key — `Authorization: Bearer agb_…`. Issued once by POST /api/v1/agents/register; stored sha256-only server-side.",
+      },
+      sigAuth: {
+        type: "http",
+        scheme: "signature",
+        description:
+          "EIP-191 signature auth — X-Wallet + X-Sig + X-Timestamp (+ X-Nonce). Used by market/task mutating routes.",
+      },
+      x402Payment: {
+        type: "http",
+        scheme: "x402",
+        description:
+          "HTTP 402 payment — retry the request with a PAYMENT-SIGNATURE header after settling the quoted USDC amount (EIP-3009, eip155:5042).",
+      },
+    },
     headers: { ...rateLimitHeaders, ...payerBindingHeaders },
     schemas: {
       X402PaymentRequirement: z.toJSONSchema(x402PaymentRequirementSchema),

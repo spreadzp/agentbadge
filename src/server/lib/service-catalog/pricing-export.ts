@@ -12,6 +12,7 @@
 import { allSkus, freeEntries } from "./index";
 import type { CatalogSources } from "./sources";
 import type { ServiceSku } from "./types";
+import { demoScanPriceUsd } from "../demo-scan";
 
 export interface PricingService {
   sku_id: string;
@@ -42,6 +43,12 @@ export interface PricingExport {
   chain: "eip155:5042";
   /** Canonical catalog this list is generated from. */
   canonical: string;
+  /** SLICE-259-40 (AB-152): machine-readable per-call floor —
+   * the cheapest priced call (demo scan-lite). Bundle prices
+   * live per-service in services[].price_usdc. */
+  price_per_call: string;
+  price_unit: string;
+  rate_limit: string;
   services: PricingService[];
   free: PricingFree[];
 }
@@ -86,6 +93,11 @@ export function buildPricingJson(src: CatalogSources): PricingExport {
     currency: "USDC",
     chain: "eip155:5042",
     canonical: "/api/v1/services",
+    // SLICE-259-40 (AB-152): cheapest priced call across the catalog —
+    // the demo scan-lite probe. Single source of truth stays services[].
+    price_per_call: demoScanPriceUsd(),
+    price_unit: "USDC",
+    rate_limit: "60 requests/minute per IP (anonymous)",
     services,
     free,
   };

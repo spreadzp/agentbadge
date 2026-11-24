@@ -88,15 +88,27 @@ export function createAgentRegisterRoutes(
         "Self-serve agent registration — mints into the canonical ERC-8004 " +
         "identity registry and returns a single-use-shown agb_ api key " +
         "(observer tier, keyed free-tier limits).",
+      // SLICE-259-40 (AB-148): real requestBody + response `example`
+      // media-type fields — scanner checkers read these, `x-examples`
+      // alone doesn't count.
+      requestBody: {
+        required: true,
+        content: { "application/json": { examples: {
+          basic: { value: REGISTER_X_EXAMPLES.request },
+          sponsored: { value: REGISTER_X_EXAMPLES.sponsoredRequest },
+        } } },
+      },
       responses: {
-        201: { description: "Registered agent + api key (shown once)" },
+        201: {
+          description: "Registered agent + api key (shown once)",
+          content: { "application/json": { example: REGISTER_X_EXAMPLES.response } },
+        },
         400: { description: "Invalid input" },
         429: { description: "Daily registration limit exceeded" },
         502: { description: "Registry mint failed — nothing was charged" },
         503: { description: "Registration disabled or signer misconfigured" },
       },
-      // SLICE-206-10: copy-pasteable request/response example.
-      "x-examples": REGISTER_X_EXAMPLES,
+      "x-examples": REGISTER_X_EXAMPLES, // SLICE-206-10: copy-pasteable example
     } as Parameters<typeof describeRoute>[0]),
     async (c) => {
       if (!deps.enabled || !deps.mint)
@@ -191,15 +203,7 @@ export function createAgentRegisterRoutes(
         );
       } catch (e) {
         if (e instanceof RegistrationError) {
-          if (e.code === "invalid_input") {
-            return errorResponse(
-              c,
-              400,
-              ErrorCodes.INVALID_INPUT,
-              e.message,
-            );
-          }
-          if (e.code === "uri_too_large") {
+          if (e.code === "invalid_input" || e.code === "uri_too_large") {
             return errorResponse(
               c,
               400,

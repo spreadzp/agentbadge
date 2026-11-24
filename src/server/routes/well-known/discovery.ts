@@ -9,8 +9,46 @@ import { aauthDiscoveryRoutes } from "./discovery-aauth";
 import { internalRequest } from "../../middleware/markdown-negotiation-helpers";
 import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "../../lib/agent-discovery/did-key";
 import { createHash } from "node:crypto";
+import { importPKCS8, SignJWT } from "jose";
 
 export const discoveryRoutes = new Hono();
+
+// SLICE-259-40 (AB-190): signed offer-receipt inside /.well-known/x402.json —
+// the offer object signed by the DID key (format: jws). Gated on
+// DID_SIGNING_KEY; absent when unsigned (honest absence, not a fake).
+let offerReceiptCache: Promise<Record<string, unknown> | null> | null = null;
+function signedOfferReceipt(arcNetwork: string): Promise<Record<string, unknown> | null> {
+  if (offerReceiptCache) return offerReceiptCache;
+  offerReceiptCache = (async () => {
+    const material = didKeyMaterialFromEnv();
+    if (!material) return null;
+    const host = new URL(BASE_URL).host;
+    const kid = `did:web:${host}${DID_VM_FRAGMENT}`;
+    const offer = {
+      issuer: `did:web:${host}`,
+      service: "demo-scan-lite",
+      endpoint: "GET /api/v1/demo/scan-lite",
+      asset: "USDC",
+      network: arcNetwork,
+      price: "0.001",
+      terms: "per-call settlement; no subscription; receipt issued on payment",
+    };
+    const key = await importPKCS8(material.pkcs8, "EdDSA");
+    const signature = await new SignJWT({ offer })
+      .setProtectedHeader({ alg: "EdDSA", kid, typ: "JWT" })
+      .setIssuer(`did:web:${host}`)
+      .setIssuedAt()
+      .setExpirationTime("365d")
+      .sign(key);
+    return {
+      info: {
+        spec: "Signed machine-readable offer — receipt of the published price/terms for the demo scan rail.",
+        offers: [{ format: "jws", signature, offer }],
+      },
+    };
+  })().catch(() => null);
+  return offerReceiptCache;
+}
 
 discoveryRoutes.route("/", aauthDiscoveryRoutes);
 
@@ -192,7 +230,7 @@ discoveryRoutes.get(
       },
     },
   }),
-  (c) => {
+  async (c) => {
     const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
     const payTo = process.env.X402_PAY_TO ?? process.env.x402_TREASURY ?? "";
     // CAIP-2 the pilots/rails actually charge on — same env the
@@ -287,6 +325,7 @@ discoveryRoutes.get(
       );
     }
 
+    const offerReceipt = await signedOfferReceipt(arcNetwork);
     const config = {
       x402Version: 1,
       name: "AgentBadge",
@@ -300,6 +339,9 @@ discoveryRoutes.get(
           provider: "AgentBadge",
           homepage: "https://agentbadge.xyz",
         },
+        // SLICE-259-40 (AB-190): signed offer — verifiable price/terms
+        // commitment; omitted when DID_SIGNING_KEY is unset.
+        ...(offerReceipt ? { "offer-receipt": offerReceipt } : {}),
       },
     };
 
@@ -511,6 +553,61 @@ discoveryRoutes.get(
         "Content-Type": "application/json",
         "Cache-Control": "public, max-age=3600",
       },
+    );
+  },
+);
+
+// ─── SLICE-259-40 (AB-102): MCP ↔ REST parity map ──────────────
+// Our MCP surface is intentionally curated (17 tools) while the REST
+// surface is full (~320 paths) — checkers reading tool_count vs
+// path_count as a coverage signal need the explicit mapping, not a
+// silent gap. This document makes the curation declarative.
+discoveryRoutes.get(
+  "/.well-known/mcp-rest-mapping.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "MCP tool ↔ REST endpoint parity map",
+    responses: {
+      200: {
+        description: "Tool-to-REST mapping",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const b = BASE_URL;
+    return c.json(
+      {
+        schema: "agentbadge.mcp-rest-mapping.v1",
+        policy:
+          "MCP tools are a curated ergonomic layer, not a 1:1 mirror of the REST surface. Every agent action reachable via MCP has a REST equivalent; the remaining REST paths are human/operator surfaces deliberately not tool-shaped.",
+        mcp_endpoint: `${b}/mcp`,
+        mcp_public_endpoint: `${b}/mcp/public`,
+        openapi: `${b}/api/specs`,
+        mappings: [
+          { tool: "scan_agent_readiness", rest: "GET /api/scan?url={url}", tier: "free" },
+          { tool: "total_scan", rest: "POST /api/total-scan", tier: "x402" },
+          { tool: "agent_register", rest: "POST /api/v1/agents/register", tier: "free" },
+          { tool: "services_catalog", rest: "GET /api/v1/services", tier: "free" },
+          { tool: "passport_lookup", rest: "GET /passport/{tokenId}/{serial}", tier: "free" },
+          { tool: "did_resolve", rest: "GET /did/{did}", tier: "free" },
+          { tool: "agents_lookup", rest: "GET /agents/{did}", tier: "free" },
+          { tool: "a2a_send", rest: "POST /a2a/send", tier: "agb_ + EIP-191" },
+          { tool: "a2a_inbox", rest: "GET /a2a/inbox", tier: "agb_" },
+          { tool: "market_tasks", rest: "GET /market/tasks", tier: "free" },
+          { tool: "market_claim", rest: "POST /market/tasks/{taskId}/claim", tier: "agb_ + EIP-191" },
+          { tool: "board_claim", rest: "POST /api/board/cards/{cardId}/claim", tier: "agb_ + EIP-191" },
+          { tool: "task_bid", rest: "POST /api/tasks/{taskId}/bids", tier: "sig-auth" },
+          { tool: "verdict_eaas", rest: "POST /api/eaas/verdict", tier: "x402" },
+          { tool: "scan_lite_demo", rest: "GET /api/v1/demo/scan-lite", tier: "x402" },
+          { tool: "knowledge_context", rest: "GET /agent-guide/context", tier: "free" },
+          { tool: "llms_summary", rest: "GET /llms.txt", tier: "free" },
+        ],
+        rest_only_note:
+          "Admin, ops, and human-UI paths are intentionally excluded from MCP — see /api/specs for the full public REST contract.",
+      },
+      200,
+      { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
     );
   },
 );
