@@ -60,8 +60,10 @@ endpoints:
       idField: query
 
   # EPIC-229: knowledge item create (admin). POST {slug?,kind,title,
-  # body,summary?} + x-admin-key + x-operator-id + idempotency-key →
-  # 201 {item:{id:"ki_*",slug,status:"DRAFT"},version}. lifecycleAdmin
+  # body,summary?} + x-admin-key=<operator cred opk_*> +
+  # idempotency-key → 201 {item:{id:"ki_*",slug,status:"DRAFT"},
+  # version}. Атрибуция — op_* principal из cred'а (264:
+  # x-operator-id мёртв под operatorAuth). lifecycleAdmin
   # НЕ ставим — interaction-lifecycle 228-формы (classify/respond)
   # на нас не распространяется; полный цикл закрывает
   # knowledge-lifecycle (transitions + published-проекция).

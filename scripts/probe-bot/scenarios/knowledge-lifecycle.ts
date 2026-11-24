@@ -4,11 +4,11 @@
  * search-visible → WITHDRAWN → search-invisible → терминал (409).
  * Плюс idempotent-replay на create (duplicate:true, item.id равен).
  *
- * Требует ADMIN_API_KEY в env (секрет только из .env). Атрибуция:
- * x-operator-id = probe-<case> (Arc R1 H2: строгий allowlist
- * [a-z0-9._@-] + agent-shape denylist — uppercase и bot-* формы
- * больше не проходят). Separation of duties:
- * submit/publish — probe-<case>, verify — probe-<case>-v;
+ * Требует PROBE_KEY_A/B/C в env (секреты только из .env;
+ * SLICE-264-15: service creds probe-a/b/c, capability probe+workflow).
+ * Атрибуция — op_* principal cred'а (x-operator-id мёртв под
+ * operatorAuth). Separation of duties: submit — probe_a,
+ * verify — probe_b, publish — probe_c;
  * VERIFIED требует evidence → шаг evidence-add перед верификацией.
  * Применяется к POST /admin/api/knowledge/items (contract.bodyTemplate +
  * contract.idField="item.id"). Мутирует — только local/dev,
@@ -27,51 +27,50 @@ const scenario: Scenario = {
     ep.method === "POST" &&
     !!ep.contract?.bodyTemplate &&
     ep.contract.idField === "item.id" &&
-    !!process.env.ADMIN_API_KEY,
+    !!(process.env.PROBE_KEY_A && process.env.PROBE_KEY_B &&
+      process.env.PROBE_KEY_C),
   variants: (ep, ctx) => {
     const c = ep.contract!;
-    const tok = caseToken(ep, "knowledge-lifecycle");
-    const adminKey = process.env.ADMIN_API_KEY!;
-    const body = contractBody(ep, "knowledge-lifecycle", ctx)!;
-    const submitH = {
+    const tok = caseToken(ep, "knowledge-lifecycle", "264-15");
+    const body = contractBody(ep, "knowledge-lifecycle", ctx, "264-15")!;
+    const credH = (key: string, idem: string) => ({
       "content-type": "application/json",
-      "x-admin-key": adminKey,
-      "x-operator-id": `probe-${tok}`,
-      "idempotency-key": `probe-${tok}`,
-    };
-    const adminH = (idem: string) => ({
-      "content-type": "application/json",
-      "x-admin-key": adminKey,
-      "x-operator-id": `probe-${tok}`,
+      "x-admin-key": key,
       "idempotency-key": `probe-${tok}-${idem}`,
     });
-    // Arc R1: verify идёт ДРУГИМ оператором (separation of duties —
-    // publisher ≠ verifier), и нужен evidence-шаг (гейт на ≥1
-    // evidence). Arc R2 H-2: evidence замораживается на PENDING —
-    // шаг до сабмита, пока DRAFT.
-    const verifyH = (idem: string) => ({
-      "content-type": "application/json",
-      "x-admin-key": adminKey,
-      "x-operator-id": `probe-${tok}-v`,
-      "idempotency-key": `probe-${tok}-${idem}`,
-    });
+    const submitH = credH(process.env.PROBE_KEY_A!, "create");
+    const adminH = (idem: string) => credH(process.env.PROBE_KEY_A!, idem);
+    // SoD (264): verify — ДРУГОЙ principal (probe_b ≠ submitter
+    // probe_a); publish — probe_c (publisher ≠ verifier). Evidence-
+    // шаг до сабмита, пока DRAFT (гейт на ≥1 evidence замораживается
+    // на PENDING).
+    const verifyH = (idem: string) => credH(process.env.PROBE_KEY_B!, idem);
+    const publishH = (idem: string) => credH(process.env.PROBE_KEY_C!, idem);
     const expect = {
       statusIn: [200, 201, 202, 400, 401, 402, 403, 404, 409, 422, 429],
       statusNotIn: [500, 502, 503, 504],
     };
     const adminBase = `/admin/api/knowledge/items/{step1.${c.idField}}/transition`;
-    const to = (status: string, n: number) => ({
+    const to = (status: string, n: number, h = adminH,
+      extra?: Record<string, unknown>) => ({
       method: "POST",
       path: adminBase,
-      headers: adminH(`t${n}`),
-      body: JSON.stringify({ to: status }),
+      headers: h(`t${n}`),
+      body: JSON.stringify({ to: status, ...extra }),
       note: `→ ${status}`,
     });
+    // Arc R3 M-11: VERIFIED/PUBLISHED требуют stale-page pins —
+    // expectedVersionId (+expectedEvidence для VERIFIED: sorted-ids
+    // через "|"), иначе store отказывает precondition_required.
     const verify = (n: number) => ({
       method: "POST",
       path: adminBase,
       headers: verifyH(`v${n}`),
-      body: JSON.stringify({ to: "VERIFIED" }),
+      body: JSON.stringify({
+        to: "VERIFIED",
+        expectedVersionId: "{step1.version.id}",
+        expectedEvidence: "{step4.evidence.id}",
+      }),
       note: "→ VERIFIED (op2)",
     });
     const evidenceStep = {
@@ -99,11 +98,15 @@ const scenario: Scenario = {
           { method: "POST", path: ep.path, headers: submitH, body, note: "create replay" },
           { method: "GET", path: searchPath, note: "draft invisible" },
           // Arc R2 H-2: evidence freezes at PENDING — attach while DRAFT.
-          evidenceStep, to("PENDING", 1), verify(2), to("PUBLISHED", 3),
+          evidenceStep, to("PENDING", 1), verify(2),
+          to("PUBLISHED", 3, publishH,
+            { expectedVersionId: "{step1.version.id}" }),
           { method: "GET", path: searchPath, note: "published visible" },
           to("WITHDRAWN", 4),
           { method: "GET", path: searchPath, note: "withdrawn invisible" },
-          { ...to("PUBLISHED", 5), note: "terminal 409",
+          { ...to("PUBLISHED", 5, publishH,
+            { expectedVersionId: "{step1.version.id}" }),
+            note: "terminal 409",
             expect: { statusIn: [409], statusNotIn: [500, 502, 503, 504] } },
         ],
         assert: obs => {
