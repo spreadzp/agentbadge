@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0ec7ac3ae9ecdc6a01ec7f4b635ed70f577462a115e138fbb366991c811d095d'>;
+  StorageHashBase<'c7f566ab20a8b3c767ae2e6447944c6d0ea632cd24c4079b36eba03b9a4a5b0d'>;
 export type ExecutionHash =
-  ExecutionHashBase<'43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475'>;
+  ExecutionHashBase<'4b072e2478a83ed531f6f2cf299da6415d9aca304e05e7111ab6e17b4287c38c'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -618,6 +618,71 @@ export type FieldOutputTypes = {
       readonly payload: CodecTypes['pg/json@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly DemandCluster: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly clusterKey: CodecTypes['pg/text@1']['output'];
+      readonly category: CodecTypes['pg/text@1']['output'] | null;
+      readonly feature: CodecTypes['pg/text@1']['output'] | null;
+      readonly capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly count: CodecTypes['pg/int4@1']['output'];
+      readonly uniqueActors: CodecTypes['pg/int4@1']['output'];
+      readonly levelBreakdown: CodecTypes['pg/json@1']['output'];
+      readonly level: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly DemandEvent: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly entityType: CodecTypes['pg/text@1']['output'];
+      readonly entityId: CodecTypes['pg/text@1']['output'];
+      readonly seq: CodecTypes['pg/int4@1']['output'];
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly visibility: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly DemandOpportunity: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly clusterId: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly hypothesis: CodecTypes['pg/text@1']['output'] | null;
+      readonly expectedValue: CodecTypes['pg/text@1']['output'] | null;
+      readonly metricsSnapshot: CodecTypes['pg/json@1']['output'] | null;
+      readonly backlogTaskId: CodecTypes['pg/text@1']['output'] | null;
+      readonly declineReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdBy: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly closedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    };
+    readonly DemandSignal: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly source: CodecTypes['pg/text@1']['output'];
+      readonly sourceRef: CodecTypes['pg/text@1']['output'] | null;
+      readonly dedupeScope: CodecTypes['pg/text@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly normalizedText: CodecTypes['pg/text@1']['output'];
+      readonly context: CodecTypes['pg/text@1']['output'] | null;
+      readonly contextRetainUntil: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly category: CodecTypes['pg/text@1']['output'] | null;
+      readonly feature: CodecTypes['pg/text@1']['output'] | null;
+      readonly capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly declaredLevel: CodecTypes['pg/text@1']['output'];
+      readonly level: CodecTypes['pg/text@1']['output'];
+      readonly actorResolution: CodecTypes['pg/text@1']['output'];
+      readonly actorRef: CodecTypes['pg/text@1']['output'] | null;
+      readonly sessionId: CodecTypes['pg/text@1']['output'] | null;
+      readonly dedupeKey: CodecTypes['pg/text@1']['output'];
+      readonly relatedCount: CodecTypes['pg/int4@1']['output'];
+      readonly relatedSignalId: CodecTypes['pg/text@1']['output'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly Dispute: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -1838,6 +1903,71 @@ export type FieldInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
+    readonly DemandCluster: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly clusterKey: CodecTypes['pg/text@1']['input'];
+      readonly category: CodecTypes['pg/text@1']['input'] | null;
+      readonly feature: CodecTypes['pg/text@1']['input'] | null;
+      readonly capabilityKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly count: CodecTypes['pg/int4@1']['input'];
+      readonly uniqueActors: CodecTypes['pg/int4@1']['input'];
+      readonly levelBreakdown: CodecTypes['pg/json@1']['input'];
+      readonly level: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly DemandEvent: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly entityType: CodecTypes['pg/text@1']['input'];
+      readonly entityId: CodecTypes['pg/text@1']['input'];
+      readonly seq: CodecTypes['pg/int4@1']['input'];
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly visibility: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly DemandOpportunity: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly clusterId: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly hypothesis: CodecTypes['pg/text@1']['input'] | null;
+      readonly expectedValue: CodecTypes['pg/text@1']['input'] | null;
+      readonly metricsSnapshot: CodecTypes['pg/json@1']['input'] | null;
+      readonly backlogTaskId: CodecTypes['pg/text@1']['input'] | null;
+      readonly declineReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdBy: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly closedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+    };
+    readonly DemandSignal: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly source: CodecTypes['pg/text@1']['input'];
+      readonly sourceRef: CodecTypes['pg/text@1']['input'] | null;
+      readonly dedupeScope: CodecTypes['pg/text@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly normalizedText: CodecTypes['pg/text@1']['input'];
+      readonly context: CodecTypes['pg/text@1']['input'] | null;
+      readonly contextRetainUntil: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly category: CodecTypes['pg/text@1']['input'] | null;
+      readonly feature: CodecTypes['pg/text@1']['input'] | null;
+      readonly capabilityKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly declaredLevel: CodecTypes['pg/text@1']['input'];
+      readonly level: CodecTypes['pg/text@1']['input'];
+      readonly actorResolution: CodecTypes['pg/text@1']['input'];
+      readonly actorRef: CodecTypes['pg/text@1']['input'] | null;
+      readonly sessionId: CodecTypes['pg/text@1']['input'] | null;
+      readonly dedupeKey: CodecTypes['pg/text@1']['input'];
+      readonly relatedCount: CodecTypes['pg/int4@1']['input'];
+      readonly relatedSignalId: CodecTypes['pg/text@1']['input'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
     readonly Dispute: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly subjectType: CodecTypes['pg/text@1']['input'];
@@ -3057,6 +3187,71 @@ export type StorageColumnTypes = {
       readonly spendCapUsd: CodecTypes['pg/numeric@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly demandCluster: {
+      readonly capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly category: CodecTypes['pg/text@1']['output'] | null;
+      readonly clusterKey: CodecTypes['pg/text@1']['output'];
+      readonly count: CodecTypes['pg/int4@1']['output'];
+      readonly feature: CodecTypes['pg/text@1']['output'] | null;
+      readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly level: CodecTypes['pg/text@1']['output'];
+      readonly levelBreakdown: CodecTypes['pg/json@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly uniqueActors: CodecTypes['pg/int4@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly demandEvent: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly entityId: CodecTypes['pg/text@1']['output'];
+      readonly entityType: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly seq: CodecTypes['pg/int4@1']['output'];
+      readonly visibility: CodecTypes['pg/text@1']['output'];
+    };
+    readonly demandOpportunity: {
+      readonly backlogTaskId: CodecTypes['pg/text@1']['output'] | null;
+      readonly closedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly createdBy: CodecTypes['pg/text@1']['output'];
+      readonly declineReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly expectedValue: CodecTypes['pg/text@1']['output'] | null;
+      readonly hypothesis: CodecTypes['pg/text@1']['output'] | null;
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly metricsSnapshot: CodecTypes['pg/json@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly demandSignal: {
+      readonly actorRef: CodecTypes['pg/text@1']['output'] | null;
+      readonly actorResolution: CodecTypes['pg/text@1']['output'];
+      readonly capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly category: CodecTypes['pg/text@1']['output'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['output'] | null;
+      readonly context: CodecTypes['pg/text@1']['output'] | null;
+      readonly contextRetainUntil: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly declaredLevel: CodecTypes['pg/text@1']['output'];
+      readonly dedupeKey: CodecTypes['pg/text@1']['output'];
+      readonly dedupeScope: CodecTypes['pg/text@1']['output'];
+      readonly feature: CodecTypes['pg/text@1']['output'] | null;
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly level: CodecTypes['pg/text@1']['output'];
+      readonly normalizedText: CodecTypes['pg/text@1']['output'];
+      readonly relatedCount: CodecTypes['pg/int4@1']['output'];
+      readonly relatedSignalId: CodecTypes['pg/text@1']['output'] | null;
+      readonly sessionId: CodecTypes['pg/text@1']['output'] | null;
+      readonly source: CodecTypes['pg/text@1']['output'];
+      readonly sourceRef: CodecTypes['pg/text@1']['output'] | null;
+    };
     readonly dispute: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
@@ -4275,6 +4470,71 @@ export type StorageColumnInputTypes = {
       readonly revokedAt: CodecTypes['pg/int8@1']['input'] | null;
       readonly spendCapUsd: CodecTypes['pg/numeric@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly demandCluster: {
+      readonly capabilityKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly category: CodecTypes['pg/text@1']['input'] | null;
+      readonly clusterKey: CodecTypes['pg/text@1']['input'];
+      readonly count: CodecTypes['pg/int4@1']['input'];
+      readonly feature: CodecTypes['pg/text@1']['input'] | null;
+      readonly firstSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly lastSeenAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly level: CodecTypes['pg/text@1']['input'];
+      readonly levelBreakdown: CodecTypes['pg/json@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly uniqueActors: CodecTypes['pg/int4@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly demandEvent: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly entityId: CodecTypes['pg/text@1']['input'];
+      readonly entityType: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly seq: CodecTypes['pg/int4@1']['input'];
+      readonly visibility: CodecTypes['pg/text@1']['input'];
+    };
+    readonly demandOpportunity: {
+      readonly backlogTaskId: CodecTypes['pg/text@1']['input'] | null;
+      readonly closedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly createdBy: CodecTypes['pg/text@1']['input'];
+      readonly declineReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly expectedValue: CodecTypes['pg/text@1']['input'] | null;
+      readonly hypothesis: CodecTypes['pg/text@1']['input'] | null;
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly metricsSnapshot: CodecTypes['pg/json@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly demandSignal: {
+      readonly actorRef: CodecTypes['pg/text@1']['input'] | null;
+      readonly actorResolution: CodecTypes['pg/text@1']['input'];
+      readonly capabilityKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly category: CodecTypes['pg/text@1']['input'] | null;
+      readonly clusterId: CodecTypes['pg/text@1']['input'] | null;
+      readonly context: CodecTypes['pg/text@1']['input'] | null;
+      readonly contextRetainUntil: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly declaredLevel: CodecTypes['pg/text@1']['input'];
+      readonly dedupeKey: CodecTypes['pg/text@1']['input'];
+      readonly dedupeScope: CodecTypes['pg/text@1']['input'];
+      readonly feature: CodecTypes['pg/text@1']['input'] | null;
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly level: CodecTypes['pg/text@1']['input'];
+      readonly normalizedText: CodecTypes['pg/text@1']['input'];
+      readonly relatedCount: CodecTypes['pg/int4@1']['input'];
+      readonly relatedSignalId: CodecTypes['pg/text@1']['input'] | null;
+      readonly sessionId: CodecTypes['pg/text@1']['input'] | null;
+      readonly source: CodecTypes['pg/text@1']['input'];
+      readonly sourceRef: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly dispute: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -6432,6 +6692,75 @@ export namespace Models {
     lastUsedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     readonly [RelationKeys]?: never;
   };
+  export type public_DemandSignal = {
+    id: CodecTypes['pg/text@1']['output'];
+    source: CodecTypes['pg/text@1']['output'];
+    sourceRef: CodecTypes['pg/text@1']['output'] | null;
+    dedupeScope: CodecTypes['pg/text@1']['output'];
+    idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+    normalizedText: CodecTypes['pg/text@1']['output'];
+    context: CodecTypes['pg/text@1']['output'] | null;
+    contextRetainUntil: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    category: CodecTypes['pg/text@1']['output'] | null;
+    feature: CodecTypes['pg/text@1']['output'] | null;
+    capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+    declaredLevel: CodecTypes['pg/text@1']['output'];
+    level: CodecTypes['pg/text@1']['output'];
+    actorResolution: CodecTypes['pg/text@1']['output'];
+    actorRef: CodecTypes['pg/text@1']['output'] | null;
+    sessionId: CodecTypes['pg/text@1']['output'] | null;
+    dedupeKey: CodecTypes['pg/text@1']['output'];
+    relatedCount: CodecTypes['pg/int4@1']['output'];
+    relatedSignalId: CodecTypes['pg/text@1']['output'] | null;
+    clusterId: CodecTypes['pg/text@1']['output'] | null;
+    createdAtMs: CodecTypes['pg/int8@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_DemandCluster = {
+    id: CodecTypes['pg/text@1']['output'];
+    clusterKey: CodecTypes['pg/text@1']['output'];
+    category: CodecTypes['pg/text@1']['output'] | null;
+    feature: CodecTypes['pg/text@1']['output'] | null;
+    capabilityKey: CodecTypes['pg/text@1']['output'] | null;
+    count: CodecTypes['pg/int4@1']['output'];
+    uniqueActors: CodecTypes['pg/int4@1']['output'];
+    levelBreakdown: CodecTypes['pg/json@1']['output'];
+    level: CodecTypes['pg/text@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    firstSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    lastSeenAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_DemandOpportunity = {
+    id: CodecTypes['pg/text@1']['output'];
+    clusterId: CodecTypes['pg/text@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    title: CodecTypes['pg/text@1']['output'];
+    hypothesis: CodecTypes['pg/text@1']['output'] | null;
+    expectedValue: CodecTypes['pg/text@1']['output'] | null;
+    metricsSnapshot: CodecTypes['pg/json@1']['output'] | null;
+    backlogTaskId: CodecTypes['pg/text@1']['output'] | null;
+    declineReason: CodecTypes['pg/text@1']['output'] | null;
+    createdBy: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    closedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    readonly [RelationKeys]?: never;
+  };
+  export type public_DemandEvent = {
+    id: CodecTypes['pg/text@1']['output'];
+    entityType: CodecTypes['pg/text@1']['output'];
+    entityId: CodecTypes['pg/text@1']['output'];
+    seq: CodecTypes['pg/int4@1']['output'];
+    kind: CodecTypes['pg/text@1']['output'];
+    visibility: CodecTypes['pg/text@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
 }
 
 export declare const models: {
@@ -6535,6 +6864,10 @@ export declare const models: {
     IntelConsent: Models.public_IntelConsent;
     AdminOperator: Models.public_AdminOperator;
     AdminOperatorCredential: Models.public_AdminOperatorCredential;
+    DemandSignal: Models.public_DemandSignal;
+    DemandCluster: Models.public_DemandCluster;
+    DemandOpportunity: Models.public_DemandOpportunity;
+    DemandEvent: Models.public_DemandEvent;
   };
 };
 
@@ -8919,6 +9252,439 @@ type ContractBase = Omit<
                   readonly name: 'delegateRecord_revokedAt_idx_f1d8e6b3';
                   readonly prefix: 'delegateRecord_revokedAt_idx';
                   readonly columns: readonly ['revokedAt'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly demandCluster: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly clusterKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly category: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly feature: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly capabilityKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly count: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly uniqueActors: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly levelBreakdown: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly level: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'OPEN'>;
+                  };
+                };
+                readonly firstSeenAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly lastSeenAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['clusterKey'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'demandCluster_status_count_idx_32483a08';
+                  readonly prefix: 'demandCluster_status_count_idx';
+                  readonly columns: readonly ['status', 'count'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandCluster_uniqueActors_idx_e1d3e7e5';
+                  readonly prefix: 'demandCluster_uniqueActors_idx';
+                  readonly columns: readonly ['uniqueActors'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandCluster_level_idx_30977cf3';
+                  readonly prefix: 'demandCluster_level_idx';
+                  readonly columns: readonly ['level'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly demandEvent: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly entityType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly entityId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly seq: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly kind: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly visibility: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly idempotencyKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['idempotencyKey'] },
+                { readonly columns: readonly ['entityType', 'entityId', 'seq'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'demandEvent_kind_idx_c9ca668f';
+                  readonly prefix: 'demandEvent_kind_idx';
+                  readonly columns: readonly ['kind'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandEvent_entityId_idx_18814ca5';
+                  readonly prefix: 'demandEvent_entityId_idx';
+                  readonly columns: readonly ['entityId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly demandOpportunity: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly clusterId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PROPOSED'>;
+                  };
+                };
+                readonly title: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly hypothesis: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly expectedValue: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly metricsSnapshot: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: true;
+                };
+                readonly backlogTaskId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly declineReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdBy: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly closedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'demandOpportunity_clusterId_idx_58f0e332';
+                  readonly prefix: 'demandOpportunity_clusterId_idx';
+                  readonly columns: readonly ['clusterId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandOpportunity_status_idx_e98638ab';
+                  readonly prefix: 'demandOpportunity_status_idx';
+                  readonly columns: readonly ['status'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly demandSignal: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly source: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly sourceRef: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly dedupeScope: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly idempotencyKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly normalizedText: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly context: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly contextRetainUntil: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly category: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly feature: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly capabilityKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly declaredLevel: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly level: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly actorResolution: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly actorRef: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly sessionId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly dedupeKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly relatedCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 1>;
+                  };
+                };
+                readonly relatedSignalId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly clusterId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['idempotencyKey', 'dedupeScope'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'demandSignal_dedupeKey_idx_99b3b4a9';
+                  readonly prefix: 'demandSignal_dedupeKey_idx';
+                  readonly columns: readonly ['dedupeKey'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_clusterId_idx_58f0e332';
+                  readonly prefix: 'demandSignal_clusterId_idx';
+                  readonly columns: readonly ['clusterId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_source_createdAt_idx_ca471564';
+                  readonly prefix: 'demandSignal_source_createdAt_idx';
+                  readonly columns: readonly ['source', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_level_idx_30977cf3';
+                  readonly prefix: 'demandSignal_level_idx';
+                  readonly columns: readonly ['level'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_actorResolution_actorRef_idx_c28d4a15';
+                  readonly prefix: 'demandSignal_actorResolution_actorRef_idx';
+                  readonly columns: readonly ['actorResolution', 'actorRef'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_category_feature_idx_5cdeb0b6';
+                  readonly prefix: 'demandSignal_category_feature_idx';
+                  readonly columns: readonly ['category', 'feature'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'demandSignal_relatedSignalId_idx_1f1a8fbf';
+                  readonly prefix: 'demandSignal_relatedSignalId_idx';
+                  readonly columns: readonly ['relatedSignalId'];
                   readonly unique: false;
                 },
               ];
@@ -14444,6 +15210,22 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'AdminOperatorCredential';
     };
+    readonly demandSignal: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DemandSignal';
+    };
+    readonly demandCluster: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DemandCluster';
+    };
+    readonly demandOpportunity: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DemandOpportunity';
+    };
+    readonly demandEvent: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DemandEvent';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -16516,6 +17298,362 @@ type ContractBase = Omit<
                 readonly payload: { readonly column: 'payload' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly DemandCluster: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly clusterKey: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly category: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly feature: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly capabilityKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly count: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly uniqueActors: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly levelBreakdown: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly level: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly firstSeenAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly lastSeenAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'demandCluster';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly clusterKey: { readonly column: 'clusterKey' };
+                readonly category: { readonly column: 'category' };
+                readonly feature: { readonly column: 'feature' };
+                readonly capabilityKey: { readonly column: 'capabilityKey' };
+                readonly count: { readonly column: 'count' };
+                readonly uniqueActors: { readonly column: 'uniqueActors' };
+                readonly levelBreakdown: { readonly column: 'levelBreakdown' };
+                readonly level: { readonly column: 'level' };
+                readonly status: { readonly column: 'status' };
+                readonly firstSeenAt: { readonly column: 'firstSeenAt' };
+                readonly lastSeenAt: { readonly column: 'lastSeenAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly DemandEvent: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly entityType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly entityId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly seq: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly visibility: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly idempotencyKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'demandEvent';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly entityType: { readonly column: 'entityType' };
+                readonly entityId: { readonly column: 'entityId' };
+                readonly seq: { readonly column: 'seq' };
+                readonly kind: { readonly column: 'kind' };
+                readonly visibility: { readonly column: 'visibility' };
+                readonly payload: { readonly column: 'payload' };
+                readonly idempotencyKey: { readonly column: 'idempotencyKey' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly DemandOpportunity: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly clusterId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly title: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly hypothesis: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly expectedValue: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly metricsSnapshot: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly backlogTaskId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly declineReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdBy: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly closedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'demandOpportunity';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly clusterId: { readonly column: 'clusterId' };
+                readonly status: { readonly column: 'status' };
+                readonly title: { readonly column: 'title' };
+                readonly hypothesis: { readonly column: 'hypothesis' };
+                readonly expectedValue: { readonly column: 'expectedValue' };
+                readonly metricsSnapshot: { readonly column: 'metricsSnapshot' };
+                readonly backlogTaskId: { readonly column: 'backlogTaskId' };
+                readonly declineReason: { readonly column: 'declineReason' };
+                readonly createdBy: { readonly column: 'createdBy' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+                readonly closedAt: { readonly column: 'closedAt' };
+              };
+            };
+          };
+          readonly DemandSignal: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly source: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly sourceRef: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly dedupeScope: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly idempotencyKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly normalizedText: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly context: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly contextRetainUntil: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly category: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly feature: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly capabilityKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly declaredLevel: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly level: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly actorResolution: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly actorRef: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly sessionId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly dedupeKey: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly relatedCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly relatedSignalId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly clusterId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAtMs: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'demandSignal';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly source: { readonly column: 'source' };
+                readonly sourceRef: { readonly column: 'sourceRef' };
+                readonly dedupeScope: { readonly column: 'dedupeScope' };
+                readonly idempotencyKey: { readonly column: 'idempotencyKey' };
+                readonly normalizedText: { readonly column: 'normalizedText' };
+                readonly context: { readonly column: 'context' };
+                readonly contextRetainUntil: { readonly column: 'contextRetainUntil' };
+                readonly category: { readonly column: 'category' };
+                readonly feature: { readonly column: 'feature' };
+                readonly capabilityKey: { readonly column: 'capabilityKey' };
+                readonly declaredLevel: { readonly column: 'declaredLevel' };
+                readonly level: { readonly column: 'level' };
+                readonly actorResolution: { readonly column: 'actorResolution' };
+                readonly actorRef: { readonly column: 'actorRef' };
+                readonly sessionId: { readonly column: 'sessionId' };
+                readonly dedupeKey: { readonly column: 'dedupeKey' };
+                readonly relatedCount: { readonly column: 'relatedCount' };
+                readonly relatedSignalId: { readonly column: 'relatedSignalId' };
+                readonly clusterId: { readonly column: 'clusterId' };
+                readonly createdAtMs: { readonly column: 'createdAtMs' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -21560,6 +22698,56 @@ type ContractBase = Omit<
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
           readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandCluster';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandCluster';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandEvent';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandOpportunity';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandOpportunity';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'demandSignal';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
         },
         {
           readonly ref: {

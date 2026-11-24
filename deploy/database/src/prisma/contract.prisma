@@ -1963,3 +1963,134 @@ model AdminOperatorCredential {
   @@index([operatorId, status])
   @@index([lastUsedAt])
 }
+
+// ─── EPIC-231: Demand Intelligence (D-231-1..5, O3) ──────────────
+// Persisted demand pipeline: DemandSignal (append) → DemandCluster
+// (mutable aggregate, upsert by clusterKey) → DemandOpportunity
+// (operator lifecycle) + DemandEvent (append-only, same-tx emit).
+// No FK constraints (house convention) — indexes only.
+//
+// Levels are a string enum: INTEREST < NEED < INTENT <
+// PURCHASE_INTENT < VERIFIED_DEMAND. `declaredLevel` is what the
+// signal SOURCE claimed — capped at PURCHASE_INTENT (D-231-3);
+// `level` is the effective level, set only by deterministic system
+// rules or an operator. An agent's own text can NEVER mint
+// VERIFIED_DEMAND (§16.1): that level requires a payment/escrow
+// fact, a confirmed deal, or an operator action.
+//
+// O3 (signal-text retention, §16): verbatim `context` is
+// retention-bounded — `contextRetainUntil` is stamped at write time
+// (default now+90d) and a retention janitor nulls `context` past it.
+// `normalizedText` (trim+lower+collapse-ws) is retained: it is the
+// dedup/clustering artifact the aggregate counts on, not a verbatim
+// payload. Erasure on actorRef (GDPR/§16): the operator nulls
+// `context` + `actorRef` via the same path — no auto-purge in v1.
+
+model DemandSignal {
+  id                 String            @id @default(uuid())
+  source             String // DEMAND_API|INTERACTION|KNOWLEDGE_GAP|FEEDBACK (D-231-2)
+  sourceRef          String? // originating row ref (agentRequest.id|KnowledgeGap.id|Feedback.id) — pull-model seams
+  dedupeScope        String // actor scope for the idempotency unique pair (230 convention)
+  idempotencyKey     String? // caller-supplied retry key
+  normalizedText     String // trim+lower+collapse-ws — dedupe input, retained (O3)
+  context            String? // verbatim caller context ≤1000 — retention-bounded (O3)
+  contextRetainUntil TimestamptzString? // purge horizon — janitor nulls `context` past this
+  category           String? // dictionary term (D-228-5 vocab); NULL = unclassified
+  feature            String? // dictionary term (D-228-5 vocab)
+  capabilityKey      String? // → KnowledgeCapability.name (229 registry)
+  declaredLevel      String // INTEREST|NEED|INTENT|PURCHASE_INTENT — source claim, capped
+  level              String // INTEREST|NEED|INTENT|PURCHASE_INTENT|VERIFIED_DEMAND — system/operator only
+  actorResolution    String // ANON|API_KEY|DID (D-228-1)
+  actorRef           String? // agentId|did|anon-bucket — NULL collapses to one unattributed actor in uniqueActors
+  sessionId          String? // → InteractionSession.id
+  dedupeKey          String // sha256(normalizedText+actorRef+window) — burst dedupe probe (D-231-4)
+  relatedCount       Int                @default(1) // repeat count on the canonical row
+  relatedSignalId    String? // → canonical DemandSignal.id (NULL = canonical)
+  clusterId          String? // → DemandCluster.id
+  createdAtMs        BigInt // domain timestamp (dedupe windows, metrics)
+  createdAt          TimestamptzString  @default(now())
+
+  @@unique([idempotencyKey, dedupeScope])
+  @@index([dedupeKey])
+  @@index([clusterId])
+  @@index([source, createdAt])
+  @@index([level])
+  @@index([actorResolution, actorRef])
+  @@index([category, feature])
+  @@index([relatedSignalId])
+}
+
+// D-231-4: mutable aggregate — deterministic upsert by clusterKey =
+// normalize(category+feature). count/uniqueActors/levelBreakdown are
+// recounted over CANONICAL signals (relatedSignalId IS NULL): burst
+// repeats link under relatedSignalId and never inflate demand
+// (§13.2). `level` is the effective cluster level — monotone-max on
+// signal level inside recordSignal, CAS-promoted by the level rules
+// via applyClusterLevel. status: OPEN → TRIAGED → LINKED | DISMISSED.
+model DemandCluster {
+  id             String            @id @default(uuid())
+  clusterKey     String            @unique // normalize(category+feature) — deterministic
+  category       String?
+  feature        String?
+  capabilityKey  String? // → KnowledgeCapability.name
+  count          Int               @default(0) // canonical signals attached
+  uniqueActors   Int               @default(0) // distinct (actorResolution, actorRef)
+  levelBreakdown Json // {"INTEREST":n,"NEED":n,...} over canonical signal.level
+  level          String // effective cluster level (max promotion)
+  status         String            @default("OPEN") // OPEN|TRIAGED|LINKED|DISMISSED
+  firstSeenAt    TimestamptzString @default(now())
+  lastSeenAt     TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([status, count])
+  @@index([uniqueActors])
+  @@index([level])
+}
+
+// D-231-5: operator-created product opportunity on a cluster —
+// lifecycle PROPOSED → EVALUATING → ACCEPTED|DECLINED → LINKED →
+// SHIPPED/CLOSED. metricsSnapshot freezes the cluster counters at
+// proposal time; backlogTaskId is set by the «→ Backlog task»
+// operator gesture (auto-creation of capabilities/tasks from demand
+// is forbidden by spec — operator-only).
+model DemandOpportunity {
+  id              String            @id @default(uuid())
+  clusterId       String // → DemandCluster.id
+  status          String            @default("PROPOSED") // PROPOSED|EVALUATING|ACCEPTED|DECLINED|LINKED|SHIPPED|CLOSED
+  title           String
+  hypothesis      String?
+  expectedValue   String?
+  metricsSnapshot Json? // {count, uniqueActors, levelBreakdown, level} at proposal
+  backlogTaskId   String? // set by «→ Backlog task» → status LINKED
+  declineReason   String?
+  createdBy       String // operatorRef
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+  closedAt        TimestamptzString?
+
+  @@index([clusterId])
+  @@index([status])
+}
+
+// D-231-1 + D-228-4/8 convention: append-only domain event log —
+// no update/delete by API shape; (entityType, entityId, seq) is the
+// ordering invariant. Events emit inside the same tx as the state
+// change (EPIC-207). INTERNAL payload never reaches public
+// projections (D-228-8). idempotencyKey carries the econ-ledger
+// format ev:{source}:{sourceId}:{seq} — replay-safe standalone
+// appends.
+model DemandEvent {
+  id             String            @id @default(uuid())
+  entityType     String // signal|cluster|opportunity
+  entityId       String
+  seq            Int
+  kind           String // demand.signal.created|demand.cluster.updated|demand.opportunity.*
+  visibility     String // PUBLIC|INTERNAL
+  payload        Json
+  idempotencyKey String?           @unique // ev:{source}:{sourceId}:{seq}
+  createdAt      TimestamptzString @default(now())
+
+  @@unique([entityType, entityId, seq])
+  @@index([kind])
+  @@index([entityId])
+}

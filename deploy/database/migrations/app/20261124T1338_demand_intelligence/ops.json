@@ -1,0 +1,872 @@
+[
+  {
+    "id": "table.demandCluster",
+    "label": "Create table \"demandCluster\"",
+    "summary": "Creates table \"demandCluster\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "demandCluster"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"demandCluster\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"demandCluster\"",
+        "sql": "CREATE TABLE \"public\".\"demandCluster\" (\n  \"capabilityKey\" text,\n  \"category\" text,\n  \"clusterKey\" text NOT NULL,\n  \"count\" int4 DEFAULT 0 NOT NULL,\n  \"feature\" text,\n  \"firstSeenAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastSeenAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"level\" text NOT NULL,\n  \"levelBreakdown\" json NOT NULL,\n  \"status\" text DEFAULT 'OPEN' NOT NULL,\n  \"uniqueActors\" int4 DEFAULT 0 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"demandCluster\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.demandEvent",
+    "label": "Create table \"demandEvent\"",
+    "summary": "Creates table \"demandEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "demandEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"demandEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"demandEvent\"",
+        "sql": "CREATE TABLE \"public\".\"demandEvent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"entityId\" text NOT NULL,\n  \"entityType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"visibility\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"demandEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.demandOpportunity",
+    "label": "Create table \"demandOpportunity\"",
+    "summary": "Creates table \"demandOpportunity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "demandOpportunity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"demandOpportunity\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"demandOpportunity\"",
+        "sql": "CREATE TABLE \"public\".\"demandOpportunity\" (\n  \"backlogTaskId\" text,\n  \"closedAt\" timestamptz,\n  \"clusterId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"declineReason\" text,\n  \"expectedValue\" text,\n  \"hypothesis\" text,\n  \"id\" text NOT NULL,\n  \"metricsSnapshot\" json,\n  \"status\" text DEFAULT 'PROPOSED' NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"demandOpportunity\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.demandSignal",
+    "label": "Create table \"demandSignal\"",
+    "summary": "Creates table \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"demandSignal\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"demandSignal\"",
+        "sql": "CREATE TABLE \"public\".\"demandSignal\" (\n  \"actorRef\" text,\n  \"actorResolution\" text NOT NULL,\n  \"capabilityKey\" text,\n  \"category\" text,\n  \"clusterId\" text,\n  \"context\" text,\n  \"contextRetainUntil\" timestamptz,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"declaredLevel\" text NOT NULL,\n  \"dedupeKey\" text NOT NULL,\n  \"dedupeScope\" text NOT NULL,\n  \"feature\" text,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"level\" text NOT NULL,\n  \"normalizedText\" text NOT NULL,\n  \"relatedCount\" int4 DEFAULT 1 NOT NULL,\n  \"relatedSignalId\" text,\n  \"sessionId\" text,\n  \"source\" text NOT NULL,\n  \"sourceRef\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"demandSignal\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.demandCluster.demandCluster_clusterKey_key",
+    "label": "Add unique constraint on \"demandCluster\" (clusterKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "demandCluster_clusterKey_key",
+        "table": "demandCluster"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"demandCluster_clusterKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandCluster_clusterKey_key",
+          "public",
+          "\"public\".\"demandCluster\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"demandCluster_clusterKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"demandCluster\" ADD CONSTRAINT \"demandCluster_clusterKey_key\" UNIQUE (\"clusterKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"demandCluster_clusterKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandCluster_clusterKey_key",
+          "public",
+          "\"public\".\"demandCluster\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.demandEvent.demandEvent_idempotencyKey_key",
+    "label": "Add unique constraint on \"demandEvent\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "demandEvent_idempotencyKey_key",
+        "table": "demandEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"demandEvent_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandEvent_idempotencyKey_key",
+          "public",
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"demandEvent_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"demandEvent\" ADD CONSTRAINT \"demandEvent_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"demandEvent_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandEvent_idempotencyKey_key",
+          "public",
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.demandEvent.demandEvent_entityType_entityId_seq_key",
+    "label": "Add unique constraint on \"demandEvent\" (entityType, entityId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "demandEvent_entityType_entityId_seq_key",
+        "table": "demandEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"demandEvent_entityType_entityId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandEvent_entityType_entityId_seq_key",
+          "public",
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"demandEvent_entityType_entityId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"demandEvent\" ADD CONSTRAINT \"demandEvent_entityType_entityId_seq_key\" UNIQUE (\"entityType\", \"entityId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"demandEvent_entityType_entityId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandEvent_entityType_entityId_seq_key",
+          "public",
+          "\"public\".\"demandEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.demandSignal.demandSignal_idempotencyKey_dedupeScope_key",
+    "label": "Add unique constraint on \"demandSignal\" (idempotencyKey, dedupeScope)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "demandSignal_idempotencyKey_dedupeScope_key",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"demandSignal_idempotencyKey_dedupeScope_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandSignal_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"demandSignal\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"demandSignal_idempotencyKey_dedupeScope_key\"",
+        "sql": "ALTER TABLE \"public\".\"demandSignal\" ADD CONSTRAINT \"demandSignal_idempotencyKey_dedupeScope_key\" UNIQUE (\"idempotencyKey\", \"dedupeScope\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"demandSignal_idempotencyKey_dedupeScope_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "demandSignal_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"demandSignal\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandCluster.demandCluster_level_idx_30977cf3",
+    "label": "Create index \"demandCluster_level_idx_30977cf3\" on \"demandCluster\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandCluster_level_idx_30977cf3",
+        "table": "demandCluster"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandCluster_level_idx_30977cf3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_level_idx_30977cf3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandCluster_level_idx_30977cf3\"",
+        "sql": "CREATE INDEX \"demandCluster_level_idx_30977cf3\" ON \"public\".\"demandCluster\" (\"level\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandCluster_level_idx_30977cf3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_level_idx_30977cf3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandCluster.demandCluster_status_count_idx_32483a08",
+    "label": "Create index \"demandCluster_status_count_idx_32483a08\" on \"demandCluster\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandCluster_status_count_idx_32483a08",
+        "table": "demandCluster"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandCluster_status_count_idx_32483a08\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_status_count_idx_32483a08\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandCluster_status_count_idx_32483a08\"",
+        "sql": "CREATE INDEX \"demandCluster_status_count_idx_32483a08\" ON \"public\".\"demandCluster\" (\"status\", \"count\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandCluster_status_count_idx_32483a08\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_status_count_idx_32483a08\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandCluster.demandCluster_uniqueActors_idx_e1d3e7e5",
+    "label": "Create index \"demandCluster_uniqueActors_idx_e1d3e7e5\" on \"demandCluster\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandCluster_uniqueActors_idx_e1d3e7e5",
+        "table": "demandCluster"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandCluster_uniqueActors_idx_e1d3e7e5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_uniqueActors_idx_e1d3e7e5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandCluster_uniqueActors_idx_e1d3e7e5\"",
+        "sql": "CREATE INDEX \"demandCluster_uniqueActors_idx_e1d3e7e5\" ON \"public\".\"demandCluster\" (\"uniqueActors\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandCluster_uniqueActors_idx_e1d3e7e5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandCluster_uniqueActors_idx_e1d3e7e5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandEvent.demandEvent_entityId_idx_18814ca5",
+    "label": "Create index \"demandEvent_entityId_idx_18814ca5\" on \"demandEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandEvent_entityId_idx_18814ca5",
+        "table": "demandEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandEvent_entityId_idx_18814ca5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent_entityId_idx_18814ca5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandEvent_entityId_idx_18814ca5\"",
+        "sql": "CREATE INDEX \"demandEvent_entityId_idx_18814ca5\" ON \"public\".\"demandEvent\" (\"entityId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandEvent_entityId_idx_18814ca5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent_entityId_idx_18814ca5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandEvent.demandEvent_kind_idx_c9ca668f",
+    "label": "Create index \"demandEvent_kind_idx_c9ca668f\" on \"demandEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandEvent_kind_idx_c9ca668f",
+        "table": "demandEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandEvent_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandEvent_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"demandEvent_kind_idx_c9ca668f\" ON \"public\".\"demandEvent\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandEvent_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandOpportunity.demandOpportunity_clusterId_idx_58f0e332",
+    "label": "Create index \"demandOpportunity_clusterId_idx_58f0e332\" on \"demandOpportunity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandOpportunity_clusterId_idx_58f0e332",
+        "table": "demandOpportunity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandOpportunity_clusterId_idx_58f0e332\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity_clusterId_idx_58f0e332\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandOpportunity_clusterId_idx_58f0e332\"",
+        "sql": "CREATE INDEX \"demandOpportunity_clusterId_idx_58f0e332\" ON \"public\".\"demandOpportunity\" (\"clusterId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandOpportunity_clusterId_idx_58f0e332\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity_clusterId_idx_58f0e332\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandOpportunity.demandOpportunity_status_idx_e98638ab",
+    "label": "Create index \"demandOpportunity_status_idx_e98638ab\" on \"demandOpportunity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandOpportunity_status_idx_e98638ab",
+        "table": "demandOpportunity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandOpportunity_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandOpportunity_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"demandOpportunity_status_idx_e98638ab\" ON \"public\".\"demandOpportunity\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandOpportunity_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandOpportunity_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_actorResolution_actorRef_idx_c28d4a15",
+    "label": "Create index \"demandSignal_actorResolution_actorRef_idx_c28d4a15\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_actorResolution_actorRef_idx_c28d4a15",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_actorResolution_actorRef_idx_c28d4a15\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_actorResolution_actorRef_idx_c28d4a15\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_actorResolution_actorRef_idx_c28d4a15\"",
+        "sql": "CREATE INDEX \"demandSignal_actorResolution_actorRef_idx_c28d4a15\" ON \"public\".\"demandSignal\" (\"actorResolution\", \"actorRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_actorResolution_actorRef_idx_c28d4a15\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_actorResolution_actorRef_idx_c28d4a15\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_category_feature_idx_5cdeb0b6",
+    "label": "Create index \"demandSignal_category_feature_idx_5cdeb0b6\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_category_feature_idx_5cdeb0b6",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_category_feature_idx_5cdeb0b6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_category_feature_idx_5cdeb0b6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_category_feature_idx_5cdeb0b6\"",
+        "sql": "CREATE INDEX \"demandSignal_category_feature_idx_5cdeb0b6\" ON \"public\".\"demandSignal\" (\"category\", \"feature\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_category_feature_idx_5cdeb0b6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_category_feature_idx_5cdeb0b6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_clusterId_idx_58f0e332",
+    "label": "Create index \"demandSignal_clusterId_idx_58f0e332\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_clusterId_idx_58f0e332",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_clusterId_idx_58f0e332\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_clusterId_idx_58f0e332\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_clusterId_idx_58f0e332\"",
+        "sql": "CREATE INDEX \"demandSignal_clusterId_idx_58f0e332\" ON \"public\".\"demandSignal\" (\"clusterId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_clusterId_idx_58f0e332\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_clusterId_idx_58f0e332\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_dedupeKey_idx_99b3b4a9",
+    "label": "Create index \"demandSignal_dedupeKey_idx_99b3b4a9\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_dedupeKey_idx_99b3b4a9",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_dedupeKey_idx_99b3b4a9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_dedupeKey_idx_99b3b4a9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_dedupeKey_idx_99b3b4a9\"",
+        "sql": "CREATE INDEX \"demandSignal_dedupeKey_idx_99b3b4a9\" ON \"public\".\"demandSignal\" (\"dedupeKey\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_dedupeKey_idx_99b3b4a9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_dedupeKey_idx_99b3b4a9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_level_idx_30977cf3",
+    "label": "Create index \"demandSignal_level_idx_30977cf3\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_level_idx_30977cf3",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_level_idx_30977cf3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_level_idx_30977cf3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_level_idx_30977cf3\"",
+        "sql": "CREATE INDEX \"demandSignal_level_idx_30977cf3\" ON \"public\".\"demandSignal\" (\"level\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_level_idx_30977cf3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_level_idx_30977cf3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_relatedSignalId_idx_1f1a8fbf",
+    "label": "Create index \"demandSignal_relatedSignalId_idx_1f1a8fbf\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_relatedSignalId_idx_1f1a8fbf",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_relatedSignalId_idx_1f1a8fbf\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_relatedSignalId_idx_1f1a8fbf\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_relatedSignalId_idx_1f1a8fbf\"",
+        "sql": "CREATE INDEX \"demandSignal_relatedSignalId_idx_1f1a8fbf\" ON \"public\".\"demandSignal\" (\"relatedSignalId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_relatedSignalId_idx_1f1a8fbf\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_relatedSignalId_idx_1f1a8fbf\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.demandSignal.demandSignal_source_createdAt_idx_ca471564",
+    "label": "Create index \"demandSignal_source_createdAt_idx_ca471564\" on \"demandSignal\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "demandSignal_source_createdAt_idx_ca471564",
+        "table": "demandSignal"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"demandSignal_source_createdAt_idx_ca471564\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_source_createdAt_idx_ca471564\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"demandSignal_source_createdAt_idx_ca471564\"",
+        "sql": "CREATE INDEX \"demandSignal_source_createdAt_idx_ca471564\" ON \"public\".\"demandSignal\" (\"source\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"demandSignal_source_createdAt_idx_ca471564\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"demandSignal_source_createdAt_idx_ca471564\""
+        ]
+      }
+    ]
+  }
+]
