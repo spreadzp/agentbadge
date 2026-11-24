@@ -17,8 +17,10 @@ export type ConsentKind = (typeof CONSENT_KINDS)[number];
 
 export type ConsentStatus = "granted" | "revoked";
 
-/** Who granted/revoked — the principal, not a free-form string. */
-export type ConsentPrincipal = "site_key" | "operator";
+/** Who granted/revoked — the principal, not a free-form string.
+ *  "system" (SLICE-262-22) is honest attribution for machine-issued
+ *  transitions like site-transfer consent reset (D-262-Q13). */
+export type ConsentPrincipal = "site_key" | "operator" | "system";
 
 export interface IntelConsent {
   id: string; // con_<ulid>

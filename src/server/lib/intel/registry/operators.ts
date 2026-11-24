@@ -35,6 +35,7 @@ export function rolePermitted(role: OperatorRole, op: string): boolean {
     "attestation",
     "report_diff",
     "entitlement",
+    "transfer",
   ].includes(op);
 }
 
