@@ -2,6 +2,7 @@
 // rows, separate scores, honest empty states (DESIGN §3).
 import { html } from "hono/html";
 import type { PortfolioRow } from "../../server/lib/intel/dashboard/data";
+import { attentionFor } from "../../server/lib/intel/dashboard/freshness";
 import {
   FreshnessCell,
   JobStateChip,
@@ -11,25 +12,21 @@ import {
 const esc = (s: unknown) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// attention-first sort (DESIGN §3): exposure fail → no data → stale
+// attention-first sort (DESIGN §S2.1): worst exposure → stale →
+// no data. One honest weight — the same attentionFor the digest uses.
 export function attentionSort(rows: PortfolioRow[]): PortfolioRow[] {
-  const score = (r: PortfolioRow) => {
-    const j = r.latestJob;
-    if (!j) return 0; // never scanned — most urgent
-    if (j.status === "failed") return 0.5;
-    const ex = j.report?.scores.exposure;
-    const fails = ex ? ex.evaluable - ex.pass : 0;
-    return fails > 0 ? 100 + fails : j.status === "partial" ? 50 : 10;
-  };
-  return [...rows].sort((a, b) => score(b) - score(a));
+  return [...rows].sort(
+    (a, b) => attentionFor(b).weight - attentionFor(a).weight,
+  );
 }
 
 export const IntelPortfolioPage = (rows: PortfolioRow[]) => {
   const sorted = attentionSort(rows);
-  const needsAttention = sorted.filter((r) => {
-    const ex = r.latestJob?.report?.scores.exposure;
-    return !r.latestJob || r.latestJob.status === "failed" || r.latestJob.status === "partial" || (ex && ex.evaluable - ex.pass > 0);
-  });
+  // SLICE-262-27a: any attention reason counts — stale and
+  // consent_revoked are no longer invisible.
+  const needsAttention = sorted.filter(
+    (r) => attentionFor(r).reasons.length > 0,
+  );
   return html`
     <div class="mx-auto max-w-6xl py-8">
       <div class="flex items-center justify-between">

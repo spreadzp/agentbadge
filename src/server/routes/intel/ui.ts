@@ -14,6 +14,7 @@ import {
 } from "../../lib/intel/registry/operators";
 import type { OperatorAuthContext } from "../../lib/intel/registry/types";
 import { listPortfolio, siteDetail } from "../../lib/intel/dashboard/data";
+import { buildDigest } from "../../lib/intel/dashboard/freshness";
 import {
   } from "../../lib/intel/client-report";
 import { hasActiveConsent } from "../../lib/intel/consent";
@@ -99,6 +100,21 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
     return c.html(
       page(IntelPortfolioPage(rows).toString(), "Portfolio — Agent Surface Intel", "/intel"),
     );
+  });
+
+  // SLICE-262-27a — pilot digest: the machine-readable attention
+  // strip. Same session guard + tenant scope as the portfolio;
+  // empty portfolio → honest zeros, never a stub.
+  app.get("/digest", async (c) => {
+    const op = c.get("intelOperator");
+    if (storesMissing()) return c.json(INTEL_KEY_MISSING, 503);
+    const rows = await listPortfolio(
+      deps.registryStores!,
+      deps.consent!,
+      deps.scanJobs!,
+      op.tenant_id,
+    );
+    return c.json(buildDigest(rows));
   });
 
   // site detail — 404 for foreign-tenant or unknown sites (no leak)

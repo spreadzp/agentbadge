@@ -14,6 +14,7 @@ import type {
 import type { IntelConsent } from "../consent";
 import type { ScanJob } from "../scan";
 import { computeMoMDelta, type MoMDelta } from "../delta";
+import { attentionFor } from "./freshness";
 
 export interface PortfolioRow {
   site: IntelSite;
@@ -42,6 +43,9 @@ export interface SiteDetail {
     provenance: string;
     receivedAt: string;
   }[];
+  /** SLICE-262-27a — view-time staleness (never on the signed doc) */
+  stale: boolean;
+  scanAgeDays: number | null;
 }
 
 const latest = (jobs: ScanJob[]): ScanJob | null =>
@@ -98,6 +102,14 @@ export async function siteDetail(
   const prevReport = jobs
     .filter((j) => job && j.id !== job.id && j.report !== null)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0]?.report ?? null;
+  // view-time staleness — consent "none" placeholder keeps the site's
+  // own freshness honest (consent state isn't part of scan age)
+  const attention = attentionFor({
+    site,
+    hostname: null,
+    latestJob: job,
+    consent: "none",
+  });
   return {
     site,
     domains,
@@ -117,5 +129,7 @@ export async function siteDetail(
     momDelta:
       job?.report != null ? computeMoMDelta(prevReport, job.report) : null,
     evidence: job ? await evidenceStore.forScan(siteId, job.scanId) : [],
+    stale: attention.stale,
+    scanAgeDays: attention.scanAgeDays,
   };
 }
