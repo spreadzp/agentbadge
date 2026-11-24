@@ -49,3 +49,24 @@ export interface KnowledgeGapOverduePending {
 /** kgo_<ulid> — ULID keeps same-ms writes sortable under a
  *  time-keyed index (the 264-11 gapEventId lesson). */
 export const gapOverdueId = () => `kgo_${generateReportId()}`;
+
+/** SLICE-264-14: accountability digest — counts are real COUNT(*)
+ *  aggregates (not page sizes); avg/median null on an empty
+ *  RESOLVED window — honest "no data", never NaN. Admin-only
+ *  (O-264-11: a public projection is a separate, deferred call). */
+export interface KnowledgeGapMetrics {
+  /** OPEN|TRIAGED && dueAt < now — same liveness rule as
+   *  isGapOverdue (keep in step). */
+  overdueCount: number;
+  /** OPEN|TRIAGED && assignedTo IS NULL — the pick-up pool. */
+  unassignedCount: number;
+  /** Durable breach rows ever recorded — historical counter,
+   *  not current state. */
+  breachesTotal: number;
+  /** RESOLVED rows inside the timeToClear window. */
+  resolvedInWindow: number;
+  /** Mean resolvedAt−firstSeenAt seconds in-window; null if none. */
+  timeToClearAvgSec: number | null;
+  /** percentile_cont(0.5) of the same durations; null if none. */
+  timeToClearMedianSec: number | null;
+}

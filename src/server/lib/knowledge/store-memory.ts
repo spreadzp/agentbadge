@@ -137,4 +137,6 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   markOverdueEmitted = (id: string) => this.overdue.markOverdueEmitted(id);
   listDueBreaches = (now: string) => this.overdue.listDueBreaches(now);
   listPendingOverdueEmits = () => this.overdue.listPendingOverdueEmits();
+  gapMetrics = (input: { now: string; resolvedSince: string }) =>
+    this.overdue.gapMetrics(input);
 }

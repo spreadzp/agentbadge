@@ -28,6 +28,7 @@ import type {
   KnowledgeGapOverdueInsert,
   KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
+  KnowledgeGapMetrics,
 } from "./gap-overdue";
 
 /**
@@ -257,6 +258,13 @@ export class DbKnowledgeStore implements KnowledgeStore {
   listPendingOverdueEmits(): Promise<KnowledgeGapOverduePending[]> {
     // Projection shape already matches — no mapping needed.
     return this.taxonomy.listPendingOverdueEmits();
+  }
+
+  gapMetrics(input: {
+    now: string;
+    resolvedSince: string;
+  }): Promise<KnowledgeGapMetrics> {
+    return this.taxonomy.gapMetrics(input);
   }
 }
 

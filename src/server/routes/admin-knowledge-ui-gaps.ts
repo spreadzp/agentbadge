@@ -23,6 +23,10 @@ import { page } from "./admin-knowledge-ui";
 import { knowledgeGapsPage } from "../../views/admin-knowledge/gaps";
 import { knowledgeGapDetailPage } from "../../views/admin-knowledge/gap-detail";
 
+/** 264-14: the header band's timeToClear window — matches the
+ *  JSON digest default. */
+const METRICS_WINDOW_DAYS = 30;
+
 export function registerKnowledgeUiGapPages(
   app: Hono,
   store: KnowledgeStore,
@@ -67,12 +71,23 @@ export function registerKnowledgeUiGapPages(
     });
     const displayById: Record<string, string> = {};
     for (const o of humans) displayById[o.id] = o.displayName;
+    // 264-14: the header band — same 30d default as the JSON
+    // digest; page render is a read (no auth extra).
+    const nowMs = Date.now();
+    const metrics = await store.gapMetrics({
+      now: new Date(nowMs).toISOString(),
+      resolvedSince: new Date(
+        nowMs - METRICS_WINDOW_DAYS * 86_400_000,
+      ).toISOString(),
+    });
     return page(
       c,
       knowledgeGapsPage({
         gaps,
         status,
         items,
+        metrics,
+        metricsWindowDays: METRICS_WINDOW_DAYS,
         offset,
         operators: humans.map((o) => ({
           id: o.id,

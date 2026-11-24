@@ -1,9 +1,9 @@
 /**
  * EPIC-229 (SLICE-229-9): gaps screen — the "repeated unanswered"
  * backlog (§17.2). SLICE-264-12: the queue is managed from here —
- * owner + due/OVERDUE badge (derived: dueAt<now && the gap still
- * needs work), per-row assign/claim/unassign forms, the
- * unassigned-pool filter; the audit feed lives on gap detail.
+ * owner + due/OVERDUE badge, per-row assign/claim/unassign forms,
+ * unassigned-pool filter; audit feed on gap detail. 264-14: the
+ * accountability metrics strip sits above the filter bar.
  */
 
 import { html } from "hono/html";
@@ -13,7 +13,9 @@ import type {
   KnowledgeItemRecord,
 } from "../../server/lib/knowledge/types";
 import { isGapOverdue } from "../../server/lib/knowledge/gap-events";
+import type { KnowledgeGapMetrics } from "../../server/lib/knowledge/gap-overdue";
 import { emptyMsg, tableShell, td } from "../finops/shared";
+import { gapMetricsStrip } from "./gap-metrics";
 import {
   flashBanner,
   gapPill,
@@ -26,13 +28,14 @@ export interface GapsInput {
   gaps: KnowledgeGapRecord[];
   status: string;
   items: KnowledgeItemRecord[];
-  /** Active human operators for the assignee select (D-264-Q8 —
-   *  service/break_glass principals can't own backlog work). */
+  /** 264-14: aggregated accountability digest + its clear window. */
+  metrics: KnowledgeGapMetrics;
+  metricsWindowDays: number;
+  /** Active humans for the assignee select (D-264-Q8). */
   operators: { id: string; displayName: string }[];
   /** operatorId → displayName for the owner column. */
   displayById: Record<string, string>;
-  /** PRG target for the row forms — the current filtered URL so a
-   *  mutation lands back on the same view (status/pool/offset). */
+  /** PRG target — the filtered URL a mutation lands back on. */
   next: string;
   /** "none" → the unassigned pick-up pool is filtered in. */
   assigned: string;
@@ -260,7 +263,7 @@ export function knowledgeGapsPage(input: GapsInput): string {
   const now = new Date().toISOString();
   const body = html`
     ${knowledgeNav("gaps")} ${flashBanner(input.flash ?? {})}
-    ${gapFilterBar(input)}
+    ${gapMetricsStrip(input.metrics, input.metricsWindowDays)} ${gapFilterBar(input)}
     ${input.gaps.length === 0
       ? emptyMsg("No gaps at this status.")
       : tableShell(
@@ -289,8 +292,8 @@ export function knowledgeGapsPage(input: GapsInput): string {
       Repeated unanswered agent queries land here (COMPOSER_REFUSAL
       from /ask, INTERACTION_SIGNAL from 228 classify, MANUAL).
       Sorted overdue-first — a deadline counts only while the gap
-      still needs work. Reassign/unassign never reset the deadline;
-      it moves only on the detail page, with a reason.
+      still needs work; it moves only on the detail page, with a
+      reason.
     </p>
   `;
   return knowledgeShell("Gaps", body).toString();

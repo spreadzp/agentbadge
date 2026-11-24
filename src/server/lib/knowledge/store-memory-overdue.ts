@@ -1,8 +1,10 @@
 import type { KnowledgeGapOverdueInsert } from "./store";
 import type {
+  KnowledgeGapMetrics,
   KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
 } from "./gap-overdue";
+import { gapTsMs, isGapOverdue } from "./gap-events";
 import type { KnowledgeGapRecord } from "./types";
 import { nowIso, type MemoryKnowledgeData } from "./memory-data";
 
@@ -86,5 +88,53 @@ export class MemoryKnowledgeOverdue {
         count: gap?.count ?? null,
       } satisfies KnowledgeGapOverduePending;
     });
+  }
+
+  /** 264-14: memory mirror of the SQL digest — same liveness
+   *  rule (isGapOverdue), same percentile_cont(0.5) interpolation
+   *  (even-n → mean of the two middle values). */
+  async gapMetrics(input: {
+    now: string;
+    resolvedSince: string;
+  }): Promise<KnowledgeGapMetrics> {
+    let overdueCount = 0;
+    let unassignedCount = 0;
+    const durationsMs: number[] = [];
+    const sinceMs = gapTsMs(input.resolvedSince);
+    for (const g of this.data.gaps.values()) {
+      if (isGapOverdue(g, input.now)) overdueCount++;
+      if (
+        (g.status === "OPEN" || g.status === "TRIAGED") &&
+        g.assignedTo === null
+      ) {
+        unassignedCount++;
+      }
+      if (
+        g.status === "RESOLVED" &&
+        g.resolvedAt !== null &&
+        gapTsMs(g.resolvedAt) >= sinceMs
+      ) {
+        durationsMs.push(gapTsMs(g.resolvedAt) - gapTsMs(g.firstSeenAt));
+      }
+    }
+    durationsMs.sort((a, b) => a - b);
+    const n = durationsMs.length;
+    const medianMs =
+      n === 0
+        ? null
+        : n % 2 === 1
+          ? durationsMs[(n - 1) / 2]
+          : (durationsMs[n / 2 - 1] + durationsMs[n / 2]) / 2;
+    return {
+      overdueCount,
+      unassignedCount,
+      breachesTotal: this.data.gapOverdues.size,
+      resolvedInWindow: n,
+      timeToClearAvgSec:
+        n === 0
+          ? null
+          : durationsMs.reduce((s, d) => s + d, 0) / n / 1000,
+      timeToClearMedianSec: medianMs === null ? null : medianMs / 1000,
+    };
   }
 }

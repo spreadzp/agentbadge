@@ -102,6 +102,34 @@ export function registerKnowledgeGapRoutes(
     },
   );
 
+  // 264-14: accountability digest — real COUNT(*) aggregates +
+  // resolve-time stats over a rolling window (default 30d).
+  // Admin-only (O-264-11: a public projection is deferred).
+  app.get(
+    "/admin/api/knowledge/gaps/metrics",
+    describeRoute({
+      summary:
+        "Gap accountability digest — overdue/unassigned counts, breach total, clearance times",
+      tags: ["Admin Knowledge"],
+      responses: {
+        200: {
+          description:
+            "{windowDays, overdueCount, unassignedCount, breachesTotal, resolvedInWindow, timeToClearAvgSec|null, timeToClearMedianSec|null}",
+        },
+      },
+    }),
+    async (c) => {
+      const n = Math.floor(Number(c.req.query("days") ?? 30));
+      const days = Number.isFinite(n) && n >= 1 ? Math.min(n, 365) : 30;
+      const nowMs = Date.now();
+      const metrics = await store.gapMetrics({
+        now: new Date(nowMs).toISOString(),
+        resolvedSince: new Date(nowMs - days * 86_400_000).toISOString(),
+      });
+      return c.json({ windowDays: days, ...metrics });
+    },
+  );
+
   // 264-11: persisted audit trail — append-only rows written in
   // the same tx as every ownership/lifecycle mutation.
   app.get(

@@ -18,6 +18,7 @@ import type {
   KnowledgeGapOverdueInsert,
   KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
+  KnowledgeGapMetrics,
 } from "./gap-overdue";
 import type {
   KnowledgeCapabilityUpsert,
@@ -241,6 +242,12 @@ export interface KnowledgeStore {
   /** The durable-intent drain — emittedAt IS NULL rows regardless
    *  of gap state (kill-stranded rows still owe their signal). */
   listPendingOverdueEmits(): Promise<KnowledgeGapOverduePending[]>;
+  /** 264-14: accountability digest — aggregated counts + resolve
+   *  times; `resolvedSince` bounds the timeToClear window. */
+  gapMetrics(input: {
+    now: string;
+    resolvedSince: string;
+  }): Promise<KnowledgeGapMetrics>;
 }
 
 // SLICE-264-10/11: gap write-input shapes live in gap-events.ts.
@@ -256,6 +263,7 @@ export type {
   KnowledgeGapOverdueInsert,
   KnowledgeGapOverduePending,
   KnowledgeGapOverdueRecord,
+  KnowledgeGapMetrics,
 } from "./gap-overdue";
 
 // Write-input shapes live in store-inputs.ts (300-cap split).
