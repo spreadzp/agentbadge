@@ -13,8 +13,11 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 ## Base Guides
 
 - [Context](/agent-guide/context) — What AgentBadge is, what Agent Readiness means
+- [Getting Started](/agent-guide/getting-started) — Register → free `agb_` API key → pay or earn (x402 USDC)
 - [Learning Path](/agent-guide/learn) — Step-by-step guide to make your API agent-ready
 - [Knowledge Map](/agent-guide/knowledge-map.json) — Structured graph of concepts and capabilities
+
+**Auth & access:** anonymous calls work on the curated public surface (per-IP rate limit). A free `agb_` API key — `POST /api/v1/agents/register`, shown once — unlocks the full public+authenticated tool list as `Authorization: Bearer agb_…`. Paid endpoints use x402 (HTTP 402 challenge → retry).
 
 ## Concepts
 
