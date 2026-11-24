@@ -1,0 +1,80 @@
+[
+  {
+    "id": "table.knowledgeGapEvent",
+    "label": "Create table \"knowledgeGapEvent\"",
+    "summary": "Creates table \"knowledgeGapEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeGapEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeGapEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGapEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeGapEvent\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeGapEvent\" (\n  \"actor\" text NOT NULL,\n  \"assignedTo\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dueAt\" timestamptz,\n  \"gapId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"occurredAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"previousAssignee\" text,\n  \"reason\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeGapEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGapEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeGapEvent.knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd",
+    "label": "Create index \"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\" on \"knowledgeGapEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd",
+        "table": "knowledgeGapEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\"",
+        "sql": "CREATE INDEX \"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\" ON \"public\".\"knowledgeGapEvent\" (\"gapId\", \"occurredAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd\""
+        ]
+      }
+    ]
+  }
+]

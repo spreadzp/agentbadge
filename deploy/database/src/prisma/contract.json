@@ -196,12 +196,20 @@
       "model": "ForensicsFunding",
       "namespace": "public"
     },
+    "intelBillingEvent": {
+      "model": "IntelBillingEvent",
+      "namespace": "public"
+    },
     "intelClientReport": {
       "model": "IntelClientReport",
       "namespace": "public"
     },
     "intelConsent": {
       "model": "IntelConsent",
+      "namespace": "public"
+    },
+    "intelConsentEvent": {
+      "model": "IntelConsentEvent",
       "namespace": "public"
     },
     "intelCustomer": {
@@ -214,6 +222,10 @@
     },
     "intelEntitlement": {
       "model": "IntelEntitlement",
+      "namespace": "public"
+    },
+    "intelEntitlementEvent": {
+      "model": "IntelEntitlementEvent",
       "namespace": "public"
     },
     "intelEnvelope": {
@@ -266,6 +278,10 @@
     },
     "knowledgeGap": {
       "model": "KnowledgeGap",
+      "namespace": "public"
+    },
+    "knowledgeGapEvent": {
+      "model": "KnowledgeGapEvent",
       "namespace": "public"
     },
     "knowledgeItem": {
@@ -6309,6 +6325,107 @@
               "table": "forensicsFunding"
             }
           },
+          "IntelBillingEvent": {
+            "fields": {
+              "applied": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "effect": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "externalId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "processedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "provider": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "applied": {
+                  "column": "applied"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "effect": {
+                  "column": "effect"
+                },
+                "externalId": {
+                  "column": "externalId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "processedAt": {
+                  "column": "processedAt"
+                },
+                "provider": {
+                  "column": "provider"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelBillingEvent"
+            }
+          },
           "IntelClientReport": {
             "fields": {
               "approvedBy": {
@@ -6569,6 +6686,97 @@
               },
               "namespaceId": "public",
               "table": "intelConsent"
+            }
+          },
+          "IntelConsentEvent": {
+            "fields": {
+              "action": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "at": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "principal": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "principalId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "siteId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "action": {
+                  "column": "action"
+                },
+                "at": {
+                  "column": "at"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "principal": {
+                  "column": "principal"
+                },
+                "principalId": {
+                  "column": "principalId"
+                },
+                "siteId": {
+                  "column": "siteId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelConsentEvent"
             }
           },
           "IntelCustomer": {
@@ -6832,6 +7040,117 @@
               },
               "namespaceId": "public",
               "table": "intelEntitlement"
+            }
+          },
+          "IntelEntitlementEvent": {
+            "fields": {
+              "action": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "actor": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "at": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "fromStatus": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "plan": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tenantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "toStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "action": {
+                  "column": "action"
+                },
+                "actor": {
+                  "column": "actor"
+                },
+                "at": {
+                  "column": "at"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "fromStatus": {
+                  "column": "fromStatus"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "plan": {
+                  "column": "plan"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "tenantId": {
+                  "column": "tenantId"
+                },
+                "toStatus": {
+                  "column": "toStatus"
+                }
+              },
+              "namespaceId": "public",
+              "table": "intelEntitlementEvent"
             }
           },
           "IntelEnvelope": {
@@ -7186,6 +7505,13 @@
                   "kind": "scalar"
                 }
               },
+              "correlationId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -7283,6 +7609,9 @@
               "fields": {
                 "baseUrl": {
                   "column": "baseUrl"
+                },
+                "correlationId": {
+                  "column": "correlationId"
                 },
                 "createdAt": {
                   "column": "createdAt"
@@ -8155,6 +8484,117 @@
               },
               "namespaceId": "public",
               "table": "knowledgeGap"
+            }
+          },
+          "KnowledgeGapEvent": {
+            "fields": {
+              "actor": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "assignedTo": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "dueAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "gapId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "occurredAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "previousAssignee": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "actor": {
+                  "column": "actor"
+                },
+                "assignedTo": {
+                  "column": "assignedTo"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "dueAt": {
+                  "column": "dueAt"
+                },
+                "gapId": {
+                  "column": "gapId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "occurredAt": {
+                  "column": "occurredAt"
+                },
+                "previousAssignee": {
+                  "column": "previousAssignee"
+                },
+                "reason": {
+                  "column": "reason"
+                }
+              },
+              "namespaceId": "public",
+              "table": "knowledgeGapEvent"
             }
           },
           "KnowledgeItem": {
@@ -17102,6 +17542,83 @@
                 }
               ]
             },
+            "intelBillingEvent": {
+              "columns": {
+                "applied": {
+                  "codecId": "pg/bool@1",
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "effect": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "externalId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "processedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "provider": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "tenantId"
+                  ],
+                  "name": "intelBillingEvent_tenantId_idx_c93ed4f1",
+                  "prefix": "intelBillingEvent_tenantId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "provider",
+                    "externalId"
+                  ]
+                }
+              ]
+            },
             "intelClientReport": {
               "columns": {
                 "approvedBy": {
@@ -17285,6 +17802,72 @@
                   ]
                 }
               ]
+            },
+            "intelConsentEvent": {
+              "columns": {
+                "action": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "principal": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "principalId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "siteId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "siteId",
+                    "at"
+                  ],
+                  "name": "intelConsentEvent_siteId_at_idx_b0aeaa80",
+                  "prefix": "intelConsentEvent_siteId_at_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "intelCustomer": {
               "columns": {
@@ -17490,6 +18073,82 @@
                   ]
                 }
               ]
+            },
+            "intelEntitlementEvent": {
+              "columns": {
+                "action": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "actor": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "fromStatus": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "plan": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "tenantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "toStatus": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "tenantId",
+                    "at"
+                  ],
+                  "name": "intelEntitlementEvent_tenantId_at_idx_21a9eddd",
+                  "prefix": "intelEntitlementEvent_tenantId_at_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "intelEnvelope": {
               "columns": {
@@ -17780,6 +18439,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "correlationId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -17860,6 +18524,14 @@
               },
               "foreignKeys": [],
               "indexes": [
+                {
+                  "columns": [
+                    "scanId"
+                  ],
+                  "name": "intelScanJob_scanId_idx_7c201901",
+                  "prefix": "intelScanJob_scanId_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "siteId",
@@ -18572,6 +19244,86 @@
                   ]
                 }
               ]
+            },
+            "knowledgeGapEvent": {
+              "columns": {
+                "actor": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "assignedTo": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "dueAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "gapId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "occurredAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "previousAssignee": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "gapId",
+                    "occurredAt"
+                  ],
+                  "name": "knowledgeGapEvent_gapId_occurredAt_idx_f8d605bd",
+                  "prefix": "knowledgeGapEvent_gapId_occurredAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "knowledgeItem": {
               "columns": {
@@ -21990,10 +22742,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "9dbca36b71816d7a9f4ca16fd430f30b0ac5c5c076d0fe1d3fb9bab43c4cec17"
+    "storageHash": "570892a8c43d524d1a9419a371c1ff54e80f72b43afbfd8957c26cfe11eb9557"
   },
   "execution": {
-    "executionHash": "4b072e2478a83ed531f6f2cf299da6415d9aca304e05e7111ab6e17b4287c38c",
+    "executionHash": "eb3b7c41fe4829c99ab236d12834ce48fcf87d2f42f4884c1115729fca26d83e",
     "mutations": {
       "defaults": [
         {
@@ -23109,6 +23861,17 @@
             "column": "id",
             "namespace": "public",
             "table": "knowledgeGap"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "knowledgeGapEvent"
           }
         },
         {

@@ -18,6 +18,7 @@ export * from "./evidence";
 export * from "./gaps";
 export * from "./gaps-interaction";
 export * from "./gaps-ownership";
+export * from "./gap-events";
 export * from "./form-tokens";
 export * from "./terms";
 export * from "./relations";

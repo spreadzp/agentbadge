@@ -1,6 +1,7 @@
 /**
  * EPIC-229 (SLICE-229-8): admin knowledge-gap endpoints —
  *   GET  /admin/api/knowledge/gaps?status=&sort=
+ *   GET  /admin/api/knowledge/gaps/:id/events   (264-11 audit trail)
  *   POST /admin/api/knowledge/gaps/:id/triage
  *   POST /admin/api/knowledge/gaps/:id/resolve  {linkedItemId}
  *   POST /admin/api/knowledge/gaps/:id/wontfix
@@ -80,6 +81,36 @@ export function registerKnowledgeGapRoutes(
         offset,
       });
       return c.json({ gaps: rows, count: rows.length, limit, offset });
+    },
+  );
+
+  // 264-11: persisted audit trail — append-only rows written in
+  // the same tx as every ownership/lifecycle mutation.
+  app.get(
+    "/admin/api/knowledge/gaps/:id/events",
+    describeRoute({
+      summary: "Gap audit trail — persisted ownership/lifecycle events",
+      tags: ["Admin Knowledge"],
+      responses: {
+        200: { description: "{events[], count}" },
+        404: { description: "Unknown gap" },
+      },
+    }),
+    async (c) => {
+      const gapId = c.req.param("id") ?? "";
+      const ctrlBad = rejectCtrl(c, gapId);
+      if (ctrlBad) return ctrlBad;
+      const gap = await store.getGap(gapId);
+      if (!gap) {
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.RESOURCE_NOT_FOUND,
+          "gap not found",
+        );
+      }
+      const events = await store.listGapEvents(gapId);
+      return c.json({ events, count: events.length });
     },
   );
 

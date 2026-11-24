@@ -6,7 +6,8 @@ import type {
 import type {
   KnowledgeCapabilityUpsert,
   KnowledgeEvidenceInsert,
-  KnowledgeGapAssignment,
+  KnowledgeGapAssignInput,
+  KnowledgeGapTransitionInput,
   KnowledgeGapUpsert,
   KnowledgeItemInsert,
   KnowledgeRelationInsert,
@@ -19,6 +20,10 @@ import type {
 } from "./store";
 import { cjkTerms, orTsquery } from "./terms";
 import type { KnowledgeGapRecord } from "./types";
+import type {
+  KnowledgeGapEventInsert,
+  KnowledgeGapEventRecord,
+} from "./gap-events";
 
 /**
  * EPIC-229 (SLICE-229-1): Postgres adapter — KnowledgeRepository +
@@ -231,15 +236,7 @@ export class DbKnowledgeStore implements KnowledgeStore {
     return rows.map(mapGap);
   }
 
-  async transitionGap(
-    id: string,
-    input: {
-      from: string;
-      to: string;
-      linkedItemId?: string | null;
-      resolvedAt: string | null;
-    },
-  ) {
+  async transitionGap(id: string, input: KnowledgeGapTransitionInput) {
     const r = await this.taxonomy.transitionGap(id, input);
     return {
       gap: r.gap ? mapGap(r.gap) : null,
@@ -248,13 +245,24 @@ export class DbKnowledgeStore implements KnowledgeStore {
     };
   }
 
-  async assignGap(id: string, input: KnowledgeGapAssignment) {
+  async assignGap(id: string, input: KnowledgeGapAssignInput) {
     const r = await this.taxonomy.assignGap(id, input);
     return {
       gap: r.gap ? mapGap(r.gap) : null,
       updated: r.updated,
       reason: r.reason as "missing" | undefined,
     };
+  }
+
+  // ─── 264-11: persisted gap audit ──
+
+  appendGapEvent(event: KnowledgeGapEventInsert) {
+    return this.taxonomy.appendGapEvent(event);
+  }
+
+  async listGapEvents(gapId: string): Promise<KnowledgeGapEventRecord[]> {
+    // Row shape already matches the record — no mapping needed.
+    return this.taxonomy.listGapEvents(gapId);
   }
 }
 

@@ -1588,6 +1588,26 @@ model KnowledgeGap {
   @@index([status, dueAt])
 }
 
+// ─── EPIC-264 (264-11): persisted gap audit — append-only event
+// rows. assignedTo on the gap says WHO owns it now; these rows say
+// who/when handed it over (and cover lifecycle actors that used to
+// live only in non-persisted domain events). Written in the SAME tx
+// as the gap mutation (KnowledgeStatusEvent precedent).
+model KnowledgeGapEvent {
+  id               String            @id @default(uuid())
+  gapId            String // → KnowledgeGap.id
+  kind             String // assigned|unassigned|reassigned|due_set|due_cleared|triaged|resolved|wontfix|reopened
+  actor            String // principal.id (op_*); "system" on auto-reopen
+  previousAssignee String? // who held it before (reassign/unassign chain)
+  assignedTo       String? // new owner (null on unassigned)
+  dueAt            TimestamptzString? // deadline after this event
+  reason           String? // REQUIRED on due_* (C3 anti-laundering)
+  occurredAt       TimestamptzString @default(now())
+  createdAt        TimestamptzString @default(now())
+
+  @@index([gapId, occurredAt])
+}
+
 // ─── EPIC-230: Feedback & Review Infrastructure (D-230-1..9) ──────
 // Two domains sharing the 228 conventions: actor tiers + actorRef,
 // idempotent intake on (idempotencyKey, dedupeScope), append-only
@@ -1869,12 +1889,16 @@ model IntelScanJob {
   error         String?
   reportId      String?
   report        Json? // signed canonical report — verbatim
+  // SLICE-262-31: cross-surface trace id — was process-local until
+  // 0.6.36 (same known-gap batch as the events tables)
+  correlationId String?
   createdAt     TimestamptzString @default(now())
   updatedAt     temporal.updatedAtString()
   finishedAt    TimestamptzString?
 
   @@index([siteId, createdAt])
   @@index([tenantId])
+  @@index([scanId]) // attest route resolves scan_<ulid> → job
 }
 
 // ─── EPIC-262 (SLICE-262-11) Client monthly report — canonical
@@ -1942,7 +1966,65 @@ model IntelConsent {
   @@index([siteId])
 }
 
-// ─── EPIC-264 (SLICE-264-1) Operator accountability — the admin
+// ─── EPIC-262 (SLICE-262-23) Consent events — append-only history of
+// every grant/revoke including no-ops (a re-assertion is still a fact
+// about what a principal did). The upserted IntelConsent row carries
+// only latest state; this log is the audit trail. Process-local until
+// 0.6.36.
+
+model IntelConsentEvent {
+  id          String            @id // cev_<ulid>
+  siteId      String
+  kind        String // audit|inside_diagnostics|apply|publication
+  action      String // granted|revoked
+  principal   String // site_key|operator|system (262-22 transfer reset)
+  principalId String // site_key_id | operator_id | system:<reason>
+  at          TimestamptzString
+  createdAt   TimestamptzString @default(now())
+
+  @@index([siteId, at])
+}
+
+// ─── EPIC-262 (SLICE-262-19b) Entitlement events — append-only log
+// of every lifecycle transition (assign_plan|activate|renew|
+// payment_failed|payment_recovered|expire|cancel|sweep_*|transfer_*).
+// Billing state changes are auditable, never edits. Process-local
+// until 0.6.36.
+
+model IntelEntitlementEvent {
+  id         String            @id // eev_<ulid>
+  tenantId   String
+  actor      String // operator:<id> | system:<source>
+  action     String
+  fromStatus String? // null on the first assign
+  toStatus   String
+  plan       String
+  reason     String?
+  at         TimestamptzString
+  createdAt  TimestamptzString @default(now())
+
+  @@index([tenantId, at])
+}
+
+// ─── EPIC-262 (SLICE-262-21) Billing events — provider webhook
+// dedupe + audit. @@unique(provider, externalId) IS the idempotency
+// mechanism: the insert either lands (first delivery) or conflicts
+// (retry) — cross-instance safe unlike a process-local Set.
+
+model IntelBillingEvent {
+  id          String            @id // bev_<ulid>
+  provider    String // stripe|freemius
+  externalId  String // provider event id
+  tenantId    String? // resolved binding; null when unmapped (422 still audited)
+  effect      Json // normalized BillingSignal.effect verbatim
+  applied     Boolean
+  reason      String? // duplicate|unmapped|no_tenant_binding|…
+  processedAt TimestamptzString
+  createdAt   TimestamptzString @default(now())
+
+  @@unique([provider, externalId])
+  @@index([tenantId])
+}
 // principal model (D-264-Q2/Q3/Q17, C1, C11). Operator ≠ credential:
 // issue/rotate/revoke touches credential rows, never the operator's
 // identity. Shape borrowed from IntelOperator (262); no tenant/role —

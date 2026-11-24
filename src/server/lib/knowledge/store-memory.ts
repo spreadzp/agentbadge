@@ -1,7 +1,8 @@
 import type {
   KnowledgeCapabilityUpsert,
   KnowledgeEvidenceInsert,
-  KnowledgeGapAssignment,
+  KnowledgeGapAssignInput,
+  KnowledgeGapTransitionInput,
   KnowledgeGapUpsert,
   KnowledgeItemInsert,
   KnowledgeRelationInsert,
@@ -11,6 +12,7 @@ import type {
   KnowledgeTransitionInput,
   KnowledgeVersionInsert,
 } from "./store";
+import type { KnowledgeGapEventInsert } from "./gap-events";
 import type { MemoryKnowledgeData } from "./memory-data";
 import { MemoryKnowledgeCore } from "./store-memory-core";
 import { MemoryKnowledgeEvidence } from "./store-memory-evidence";
@@ -117,15 +119,11 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
     limit?: number;
     offset?: number;
   }) => this.gaps.listGaps(opts);
-  transitionGap = (
-    id: string,
-    input: {
-      from: string;
-      to: string;
-      linkedItemId?: string | null;
-      resolvedAt: string | null;
-    },
-  ) => this.gaps.transitionGap(id, input);
-  assignGap = (id: string, input: KnowledgeGapAssignment) =>
+  transitionGap = (id: string, input: KnowledgeGapTransitionInput) =>
+    this.gaps.transitionGap(id, input);
+  assignGap = (id: string, input: KnowledgeGapAssignInput) =>
     this.gaps.assignGap(id, input);
+  appendGapEvent = (event: KnowledgeGapEventInsert) =>
+    this.gaps.appendGapEvent(event);
+  listGapEvents = (gapId: string) => this.gaps.listGapEvents(gapId);
 }

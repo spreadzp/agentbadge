@@ -7,6 +7,7 @@ import type {
   KnowledgeStatusEventRecord,
   KnowledgeVersionRecord,
 } from "./types";
+import type { KnowledgeGapEventRecord } from "./gap-events";
 
 /** D-229-9: ≤50 evidence refs per version. */
 export const KNOWLEDGE_EVIDENCE_CAP = 50;
@@ -22,6 +23,9 @@ export interface MemoryKnowledgeData {
   relations: Map<string, KnowledgeRelationRecord>;
   evidence: Map<string, KnowledgeEvidenceRecord>;
   gaps: Map<string, KnowledgeGapRecord>;
+  /** 264-11: persisted gap audit — same invariant as PG (append
+   *  only, written atomically with the gap mutation). */
+  gapEvents: Map<string, KnowledgeGapEventRecord>;
 }
 
 export function createMemoryKnowledgeData(): MemoryKnowledgeData {
@@ -34,6 +38,7 @@ export function createMemoryKnowledgeData(): MemoryKnowledgeData {
     relations: new Map(),
     evidence: new Map(),
     gaps: new Map(),
+    gapEvents: new Map(),
   };
 }
 

@@ -1,0 +1,359 @@
+[
+  {
+    "id": "table.intelBillingEvent",
+    "label": "Create table \"intelBillingEvent\"",
+    "summary": "Creates table \"intelBillingEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelBillingEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelBillingEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelBillingEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelBillingEvent\"",
+        "sql": "CREATE TABLE \"public\".\"intelBillingEvent\" (\n  \"applied\" bool NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"effect\" json NOT NULL,\n  \"externalId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"processedAt\" timestamptz NOT NULL,\n  \"provider\" text NOT NULL,\n  \"reason\" text,\n  \"tenantId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelBillingEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelBillingEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelConsentEvent",
+    "label": "Create table \"intelConsentEvent\"",
+    "summary": "Creates table \"intelConsentEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelConsentEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelConsentEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsentEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelConsentEvent\"",
+        "sql": "CREATE TABLE \"public\".\"intelConsentEvent\" (\n  \"action\" text NOT NULL,\n  \"at\" timestamptz NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"principal\" text NOT NULL,\n  \"principalId\" text NOT NULL,\n  \"siteId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelConsentEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsentEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelEntitlementEvent",
+    "label": "Create table \"intelEntitlementEvent\"",
+    "summary": "Creates table \"intelEntitlementEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelEntitlementEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelEntitlementEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlementEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelEntitlementEvent\"",
+        "sql": "CREATE TABLE \"public\".\"intelEntitlementEvent\" (\n  \"action\" text NOT NULL,\n  \"actor\" text NOT NULL,\n  \"at\" timestamptz NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"fromStatus\" text,\n  \"id\" text NOT NULL,\n  \"plan\" text NOT NULL,\n  \"reason\" text,\n  \"tenantId\" text NOT NULL,\n  \"toStatus\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelEntitlementEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlementEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.intelScanJob.correlationId",
+    "label": "Add column \"correlationId\" to \"intelScanJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "correlationId",
+        "table": "intelScanJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"correlationId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "intelScanJob",
+          "correlationId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"correlationId\"",
+        "sql": "ALTER TABLE \"public\".\"intelScanJob\" ADD COLUMN \"correlationId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"correlationId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "intelScanJob",
+          "correlationId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.intelBillingEvent.intelBillingEvent_provider_externalId_key",
+    "label": "Add unique constraint on \"intelBillingEvent\" (provider, externalId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "intelBillingEvent_provider_externalId_key",
+        "table": "intelBillingEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"intelBillingEvent_provider_externalId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelBillingEvent_provider_externalId_key",
+          "public",
+          "\"public\".\"intelBillingEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"intelBillingEvent_provider_externalId_key\"",
+        "sql": "ALTER TABLE \"public\".\"intelBillingEvent\" ADD CONSTRAINT \"intelBillingEvent_provider_externalId_key\" UNIQUE (\"provider\", \"externalId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"intelBillingEvent_provider_externalId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "intelBillingEvent_provider_externalId_key",
+          "public",
+          "\"public\".\"intelBillingEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelBillingEvent.intelBillingEvent_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelBillingEvent_tenantId_idx_c93ed4f1\" on \"intelBillingEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelBillingEvent_tenantId_idx_c93ed4f1",
+        "table": "intelBillingEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelBillingEvent_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelBillingEvent_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelBillingEvent_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelBillingEvent_tenantId_idx_c93ed4f1\" ON \"public\".\"intelBillingEvent\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelBillingEvent_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelBillingEvent_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelConsentEvent.intelConsentEvent_siteId_at_idx_b0aeaa80",
+    "label": "Create index \"intelConsentEvent_siteId_at_idx_b0aeaa80\" on \"intelConsentEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelConsentEvent_siteId_at_idx_b0aeaa80",
+        "table": "intelConsentEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelConsentEvent_siteId_at_idx_b0aeaa80\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsentEvent_siteId_at_idx_b0aeaa80\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelConsentEvent_siteId_at_idx_b0aeaa80\"",
+        "sql": "CREATE INDEX \"intelConsentEvent_siteId_at_idx_b0aeaa80\" ON \"public\".\"intelConsentEvent\" (\"siteId\", \"at\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelConsentEvent_siteId_at_idx_b0aeaa80\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelConsentEvent_siteId_at_idx_b0aeaa80\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelEntitlementEvent.intelEntitlementEvent_tenantId_at_idx_21a9eddd",
+    "label": "Create index \"intelEntitlementEvent_tenantId_at_idx_21a9eddd\" on \"intelEntitlementEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelEntitlementEvent_tenantId_at_idx_21a9eddd",
+        "table": "intelEntitlementEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelEntitlementEvent_tenantId_at_idx_21a9eddd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlementEvent_tenantId_at_idx_21a9eddd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelEntitlementEvent_tenantId_at_idx_21a9eddd\"",
+        "sql": "CREATE INDEX \"intelEntitlementEvent_tenantId_at_idx_21a9eddd\" ON \"public\".\"intelEntitlementEvent\" (\"tenantId\", \"at\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelEntitlementEvent_tenantId_at_idx_21a9eddd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelEntitlementEvent_tenantId_at_idx_21a9eddd\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelScanJob.intelScanJob_scanId_idx_7c201901",
+    "label": "Create index \"intelScanJob_scanId_idx_7c201901\" on \"intelScanJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelScanJob_scanId_idx_7c201901",
+        "table": "intelScanJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelScanJob_scanId_idx_7c201901\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_scanId_idx_7c201901\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelScanJob_scanId_idx_7c201901\"",
+        "sql": "CREATE INDEX \"intelScanJob_scanId_idx_7c201901\" ON \"public\".\"intelScanJob\" (\"scanId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelScanJob_scanId_idx_7c201901\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelScanJob_scanId_idx_7c201901\""
+        ]
+      }
+    ]
+  }
+]

@@ -4,6 +4,7 @@ import type { DemandStore } from "../demand/store";
 import { recordGapDemand } from "../demand/seams";
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
+import { lifecycleGapEvent } from "./gap-events";
 import type { KnowledgeStore } from "./store";
 import {
   KNOWLEDGE_GAP_SOURCES,
@@ -19,9 +20,9 @@ import {
  * Sources: COMPOSER_REFUSAL (229-7 composer), INTERACTION_SIGNAL
  * (EPIC-228 classify seam), MANUAL.
  *
- * `knowledge.gap_detected` emits ONLY on first sighting — count++
- * on a known gap is not news.
- */
+ * `knowledge.gap_detected` emits ONLY on first sighting — count++ on
+ * a known gap is not news. */
+
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   OPEN: ["TRIAGED"],
@@ -172,8 +173,7 @@ export async function recordGap(
 /** Arc R1 M8: the 228 hook's fields are validated inside recordGap
  *  (ireq_* sourceRef shape, bounded single-line intent/capabilityRef). */
 
-/** 229-7 composer seam — the KnowledgeGapRecorder interface impl.
- *  Arc R1 H3 + R2 M-1: reports whether the write actually LANDED
+/** 229-7 composer seam — reports whether the write actually LANDED
  *  (a WONTFIX-hit or cap-blocked row isn't a recording) so the
  *  refusal hint stays honest. */
 export function knowledgeGapRecorder(
@@ -256,9 +256,9 @@ async function transition(
     from: gap.status,
     to,
     linkedItemId: linkedItemId ?? null,
-    // SLICE-264-10: RESOLVED stamps resolvedAt; other transitions
-    // write null — nothing stale survives (WONTFIX ≠ resolution).
+    // 264-10/11: RESOLVED stamps; the actor's row rides the write.
     resolvedAt: to === "RESOLVED" ? new Date().toISOString() : null,
+    event: lifecycleGapEvent(gap, to, actorRef),
   });
   if (!res.transitioned || !res.gap) {
     return { ok: false, error: "status_race" };

@@ -1,4 +1,10 @@
-import type { KnowledgeGapUpsert } from "./store";
+import type {
+  KnowledgeGapAssignInput,
+  KnowledgeGapTransitionInput,
+  KnowledgeGapUpsert,
+} from "./store";
+import { gapEventId, type KnowledgeGapEventInsert } from "./gap-events";
+import type { KnowledgeGapEventRecord } from "./gap-events";
 import type { KnowledgeGapRecord } from "./types";
 import {
   KNOWLEDGE_GAP_SAMPLES_CAP,
@@ -14,6 +20,27 @@ import {
  */
 export class MemoryKnowledgeGaps {
   constructor(protected readonly data: MemoryKnowledgeData) {}
+
+  /** 264-11: normalize an insert into a stored record — same
+   *  defaults as the PG INSERT (null fields, now() stamps). Called
+   *  inside each mutation so event+state land together — the
+   *  memory-store equivalent of the PG same-tx guarantee. */
+  private pushEvent(e: KnowledgeGapEventInsert): KnowledgeGapEventRecord {
+    const row: KnowledgeGapEventRecord = {
+      id: e.id,
+      gapId: e.gapId,
+      kind: e.kind,
+      actor: e.actor,
+      previousAssignee: e.previousAssignee ?? null,
+      assignedTo: e.assignedTo ?? null,
+      dueAt: e.dueAt ?? null,
+      reason: e.reason ?? null,
+      occurredAt: e.occurredAt ?? nowIso(),
+      createdAt: nowIso(),
+    };
+    this.data.gapEvents.set(row.id, row);
+    return row;
+  }
 
   async recordGap(input: KnowledgeGapUpsert, opts?: { openCap?: number }) {
     const now = nowIso();
@@ -58,6 +85,16 @@ export class MemoryKnowledgeGaps {
         // SLICE-264-10: the resolution is un-done — the stamp must
         // not survive the reopen (PG bump path clears it too).
         gap.resolvedAt = null;
+        // 264-11: the audit row lands in the same write — actor
+        // "system" (a sighting reopened it, no principal acted).
+        this.pushEvent({
+          id: gapEventId(),
+          gapId: gap.id,
+          kind: "reopened",
+          actor: "system",
+          assignedTo: gap.assignedTo,
+          dueAt: gap.dueAt,
+        });
       }
       if (
         gap.sampleQueries.length < KNOWLEDGE_GAP_SAMPLES_CAP &&
@@ -132,15 +169,7 @@ export class MemoryKnowledgeGaps {
     return n;
   }
 
-  async transitionGap(
-    id: string,
-    input: {
-      from: string;
-      to: string;
-      linkedItemId?: string | null;
-      resolvedAt: string | null;
-    },
-  ) {
+  async transitionGap(id: string, input: KnowledgeGapTransitionInput) {
     const gap = this.data.gaps.get(id);
     if (!gap) {
       return { gap: null, transitioned: false, reason: "missing" as const };
@@ -157,19 +186,13 @@ export class MemoryKnowledgeGaps {
     // SLICE-264-10: always written (PG mirrors) — RESOLVED stamps,
     // everything else writes null.
     gap.resolvedAt = input.resolvedAt;
+    // 264-11: audit row in the same call — never a mutation alone.
+    if (input.event !== undefined) this.pushEvent(input.event);
     return { gap, transitioned: true };
   }
 
   /** SLICE-264-10: idempotent overwrite — see KnowledgeStore.assignGap. */
-  async assignGap(
-    id: string,
-    input: {
-      assignedTo: string | null;
-      assignedBy: string | null;
-      assignedAt: string | null;
-      dueAt: string | null;
-    },
-  ) {
+  async assignGap(id: string, input: KnowledgeGapAssignInput) {
     const gap = this.data.gaps.get(id);
     if (!gap) {
       return { gap: null, updated: false, reason: "missing" as const };
@@ -178,6 +201,24 @@ export class MemoryKnowledgeGaps {
     gap.assignedBy = input.assignedBy;
     gap.assignedAt = input.assignedAt;
     gap.dueAt = input.dueAt;
+    if (input.event !== undefined) this.pushEvent(input.event);
     return { gap, updated: true };
+  }
+
+  /** 264-11: standalone audit append (see KnowledgeStore.appendGapEvent). */
+  async appendGapEvent(event: KnowledgeGapEventInsert) {
+    this.pushEvent(event);
+    return true;
+  }
+
+  /** 264-11: chronological audit — occurredAt ASC. Sort is stable:
+   *  same-stamp rows keep insertion order, which IS write order —
+   *  the memory analog of PG's µs-precision now() ordering. */
+  async listGapEvents(gapId: string) {
+    const rows = [...this.data.gapEvents.values()].filter(
+      (e) => e.gapId === gapId,
+    );
+    rows.sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+    return rows;
   }
 }

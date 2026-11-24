@@ -1,27 +1,22 @@
-import { afterAll, describe, expect, it } from "vitest";
-import { createDatabase, type Database } from "@agentbadge/database";
+import { describe, expect, it } from "vitest";
 
 import {
-  addEvidence,
   assignGap,
-  createMemoryKnowledgeStores,
-  createKnowledgeItem,
-  DbKnowledgeStore,
-  recordGap,
   reassignGap,
+  recordGap,
   resolveGap,
   setGapDueAt,
   triageGap,
   unassignGap,
   wontfixGap,
 } from "../src/server/lib/knowledge";
-import type { OperatorStore } from "../src/server/lib/operators";
-import { generateReportId } from "../src/agent-readiness/integrity/ulid";
+import { seedOperator } from "./helpers/operators";
 import {
-  createMemoryOperatorStore,
-  seedOperator,
-} from "./helpers/operators";
-import { approveTransition } from "./helpers/knowledge";
+  mkGap,
+  mkGapStore as mkStore,
+  mkPublishedItem,
+  mkServiceOp,
+} from "./helpers/knowledge";
 
 /**
  * SLICE-264-10 DoD — gap ownership fields:
@@ -31,57 +26,10 @@ import { approveTransition } from "./helpers/knowledge";
  * - setGapDueAt without reason → reason_required; bad ts → bad_due_at
  * - RESOLVED transition stamps resolvedAt; reopen clears it
  * - terminal gaps refuse assignment
+ *
+ * The 264-11 persisted-audit coverage lives in
+ * knowledge-gap-audit.test.ts (token-limit split).
  */
-
-async function mkStore() {
-  const store = createMemoryKnowledgeStores();
-  const operators = createMemoryOperatorStore();
-  return { store, operators };
-}
-
-async function mkGap(store: ReturnType<typeof createMemoryKnowledgeStores>) {
-  const r = await recordGap(store, {
-    query: "How does escrow settlement work?",
-    source: "COMPOSER_REFUSAL",
-  });
-  if (!r.ok || !r.gap) throw new Error("gap seed failed");
-  return r.gap;
-}
-
-async function mkServiceOp(operators: OperatorStore, type = "service") {
-  const op = await operators.createOperator({
-    id: `op_${generateReportId()}`,
-    displayName: `${type} principal`,
-    principalType: type,
-    capabilities: ["read"],
-  });
-  if (!op.ok) throw new Error(`seed failed: ${op.reason}`);
-  return op.operator.id;
-}
-
-/** RESOLVED needs a PUBLISHED linked item — create + evidence +
- *  the PENDING→VERIFIED→PUBLISHED walk (same recipe as
- *  knowledge-gaps.test.ts). */
-async function mkPublishedItem(
-  store: ReturnType<typeof createMemoryKnowledgeStores>,
-  slug: string,
-) {
-  const c = await createKnowledgeItem(
-    store, { kind: "GUIDE", slug, title: "t", body: "b" }, "ops",
-  );
-  if (!c.ok) throw new Error(`create failed: ${c.error}`);
-  const ev = await addEvidence(store, c.version.id, {
-    type: "INTERNAL_DOC", uri: `internal://runbook/${slug}`, addedBy: "ops",
-  });
-  if (!ev.ok) throw new Error("evidence failed");
-  for (const [to, actor] of [
-    ["PENDING", "ops"], ["VERIFIED", "ops_review"], ["PUBLISHED", "ops"],
-  ] as const) {
-    const t = await approveTransition(store, c.item.id, to, actor);
-    if (!t.ok) throw new Error(`transition ${to} failed`);
-  }
-  return c.item.id;
-}
 
 describe("gap ownership (SLICE-264-10)", () => {
   it("assign writes all four fields", async () => {
@@ -232,7 +180,7 @@ describe("gap ownership (SLICE-264-10)", () => {
     }
     // unassign keeps dueAt; re-adding an owner keeps it too —
     // and explicitly changing it here is still refused.
-    await unassignGap(store, { gapId: gap.id });
+    await unassignGap(store, { gapId: gap.id, actor: "op_admin" });
     const sneak = await assignGap(
       store,
       { gapId: gap.id, assignedTo: b.operatorId, assignedBy: "op_admin", dueAt: "2027-06-01T00:00:00.000Z" },
@@ -273,7 +221,7 @@ describe("gap ownership (SLICE-264-10)", () => {
     expect(re.gap.assignedBy).toBe("op_admin2");
     expect(re.gap.dueAt).toBe(due); // anti-laundering: deadline survives
 
-    const un = await unassignGap(store, { gapId: gap.id });
+    const un = await unassignGap(store, { gapId: gap.id, actor: "op_admin" });
     expect(un.ok).toBe(true);
     if (!un.ok) return;
     expect(un.gap.assignedTo).toBeNull();
@@ -295,19 +243,19 @@ describe("gap ownership (SLICE-264-10)", () => {
     const noReason = await setGapDueAt(store, {
       gapId: gap.id,
       dueAt: "2026-12-20T00:00:00.000Z",
-      reason: "  ",
+      reason: "  ", actor: "op_admin",
     });
     expect(noReason.ok).toBe(false);
     if (!noReason.ok) expect(noReason.error).toBe("reason_required");
 
     const badTs = await setGapDueAt(store, {
-      gapId: gap.id, dueAt: "tomorrow-ish", reason: "reprioritize",
+      gapId: gap.id, dueAt: "tomorrow-ish", reason: "reprioritize", actor: "op_admin",
     });
     expect(badTs.ok).toBe(false);
     if (!badTs.ok) expect(badTs.error).toBe("bad_due_at");
 
     const moved = await setGapDueAt(store, {
-      gapId: gap.id, dueAt: "2026-12-20T00:00:00.000Z", reason: "sprint slip",
+      gapId: gap.id, dueAt: "2026-12-20T00:00:00.000Z", reason: "sprint slip", actor: "op_admin",
     });
     expect(moved.ok).toBe(true);
     if (!moved.ok) return;
@@ -315,7 +263,7 @@ describe("gap ownership (SLICE-264-10)", () => {
     expect(moved.gap.assignedTo).toBe(operatorId); // assignment untouched
 
     const cleared = await setGapDueAt(store, {
-      gapId: gap.id, dueAt: null, reason: "deprioritized",
+      gapId: gap.id, dueAt: null, reason: "deprioritized", actor: "op_admin",
     });
     expect(cleared.ok).toBe(true);
     if (!cleared.ok) return;
@@ -365,83 +313,5 @@ describe("gap ownership (SLICE-264-10)", () => {
     expect(term.ok).toBe(false);
     if (!term.ok) expect(term.error).toBe("gap_terminal");
     void stamp;
-  });
-});
-
-/** Opt-in PG run — the server's own DATABASE_URL DB doesn't carry
- *  the package migrations; point KNOWLEDGE_PG_URL at a migrated
- *  dev PG (e.g. packages/database's) to exercise the real
- *  DbKnowledgeStore.assignGap/mapGap glue the memory suite can't. */
-const PG_URL = process.env["KNOWLEDGE_PG_URL"];
-describe.skipIf(!PG_URL)("gap ownership — PG backend", () => {
-  let database: Database | undefined;
-  afterAll(async () => {
-    await database?.close();
-  });
-
-  it("assign/reassign/unassign/dueAt + resolvedAt lifecycle on DbKnowledgeStore", async () => {
-    database = createDatabase({ url: PG_URL, enabled: true });
-    const k = database.knowledge;
-    if (!k) throw new Error("knowledge repos missing");
-    const store = new DbKnowledgeStore(k.core, k.taxonomy);
-    const operators = createMemoryOperatorStore();
-    const a = await seedOperator(operators, "pg-a");
-    const b = await seedOperator(operators, "pg-b");
-
-    const nq = `pg-own-${Date.now().toString(36)}`;
-    const g = await recordGap(store, { query: nq, source: "MANUAL" });
-    if (!g.ok || !g.gap) throw new Error("gap seed failed");
-    expect(g.gap.assignedTo).toBeNull();
-    expect(g.gap.resolvedAt).toBeNull();
-
-    const due = "2026-12-15T00:00:00.000Z";
-    const a1 = await assignGap(
-      store,
-      { gapId: g.gap.id, assignedTo: a.operatorId, assignedBy: "op_admin", dueAt: due },
-      { operators },
-    );
-    expect(a1.ok).toBe(true);
-    if (!a1.ok) return;
-    expect(a1.gap.assignedTo).toBe(a.operatorId);
-    expect(new Date(a1.gap.dueAt!).toISOString()).toBe(due);
-
-    // reassign keeps dueAt; unassign clears the triple, keeps it.
-    const re = await reassignGap(
-      store,
-      { gapId: g.gap.id, assignedTo: b.operatorId, assignedBy: "op_admin" },
-      { operators },
-    );
-    expect(re.ok).toBe(true);
-    if (!re.ok) return;
-    expect(re.gap.assignedTo).toBe(b.operatorId);
-    expect(new Date(re.gap.dueAt!).toISOString()).toBe(due);
-    const un = await unassignGap(store, { gapId: g.gap.id });
-    expect(un.ok).toBe(true);
-    if (!un.ok) return;
-    expect(un.gap.assignedTo).toBeNull();
-    expect(new Date(un.gap.dueAt!).toISOString()).toBe(due);
-
-    // RESOLVED stamps; dedupe-hit reopen clears resolvedAt too.
-    await store.transitionGap(g.gap.id, {
-      from: "OPEN", to: "TRIAGED", resolvedAt: null,
-    });
-    const res = await store.transitionGap(g.gap.id, {
-      from: "TRIAGED", to: "RESOLVED", linkedItemId: "item_pg",
-      resolvedAt: "2026-11-24T12:00:00.000Z",
-    });
-    expect(res.transitioned).toBe(true);
-    expect(res.gap?.resolvedAt).not.toBeNull();
-    const again = await recordGap(store, { query: nq.toUpperCase(), source: "MANUAL" });
-    expect(again.ok).toBe(true);
-    if (!again.ok) return;
-    expect(again.reopened).toBe(true);
-    expect(again.gap!.resolvedAt).toBeNull();
-    expect(again.gap!.status).toBe("OPEN");
-
-    // listGaps surfaces the columns through mapGap.
-    const listed = await store.listGaps({ status: "OPEN" });
-    const ours = listed.find((r) => r.id === g.gap!.id);
-    expect(ours?.assignedTo).toBeNull();
-    expect(new Date(ours!.dueAt!).toISOString()).toBe(due);
   });
 });

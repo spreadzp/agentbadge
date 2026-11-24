@@ -8,6 +8,12 @@ import type {
   KnowledgeStatusEventRecord,
   KnowledgeVersionRecord,
 } from "./types";
+import type {
+  KnowledgeGapAssignInput,
+  KnowledgeGapEventInsert,
+  KnowledgeGapEventRecord,
+  KnowledgeGapTransitionInput,
+} from "./gap-events";
 
 /**
  * EPIC-229 (SLICE-229-1, D-143/D-229-1): knowledge store contract —
@@ -259,40 +265,36 @@ export interface KnowledgeStore {
   }): Promise<KnowledgeGapRecord[]>;
   transitionGap(
     id: string,
-    input: {
-      from: string;
-      to: string;
-      linkedItemId?: string | null;
-      /** SLICE-264-10: written on EVERY transition — REQUIRED so an
-       *  omission can't silently wipe the stamp (RESOLVED → ISO,
-       *  anything else → null). */
-      resolvedAt: string | null;
-    },
+    input: KnowledgeGapTransitionInput,
   ): Promise<{
     gap: KnowledgeGapRecord | null;
     transitioned: boolean;
     reason?: "missing" | "status_mismatch";
   }>;
-  /** SLICE-264-10: idempotent ownership overwrite — assign,
-   *  unassign (null fields), reassign and dueAt changes all funnel
-   *  here. No CAS on the values themselves: a lost race is covered
-   *  by the 264-11 assignment audit events, not by refusing. */
+  /** SLICE-264-10: idempotent ownership overwrite — no CAS on the
+   *  values: a lost race is covered by the audit events (input
+   *  `event` rides the same write), not by refusing. */
   assignGap(
     id: string,
-    input: KnowledgeGapAssignment,
+    input: KnowledgeGapAssignInput,
   ): Promise<{
     gap: KnowledgeGapRecord | null;
     updated: boolean;
     reason?: "missing";
   }>;
+
+  // ─── 264-11: persisted gap audit ──
+  /** Standalone event append — for audit without a mutation;
+   *  state+audit pairs pass `event` through the mutation instead. */
+  appendGapEvent(event: KnowledgeGapEventInsert): Promise<boolean>;
+  /** Chronological audit trail for one gap (occurredAt ASC). */
+  listGapEvents(gapId: string): Promise<KnowledgeGapEventRecord[]>;
 }
 
-/** SLICE-264-10: the four ownership columns, written atomically.
- *  All nullable — unassign clears the triple; setGapDueAt passes
- *  the current row's values through unchanged. */
-export interface KnowledgeGapAssignment {
-  assignedTo: string | null;
-  assignedBy: string | null;
-  assignedAt: string | null;
-  dueAt: string | null;
-}
+// SLICE-264-10/11: gap write-input shapes live in gap-events.ts.
+export type {
+  KnowledgeGapAssignInput,
+  KnowledgeGapAssignment,
+  KnowledgeGapEventInsert,
+  KnowledgeGapTransitionInput,
+} from "./gap-events";
