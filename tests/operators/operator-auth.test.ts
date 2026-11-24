@@ -226,6 +226,46 @@ describe("operatorAuth — credential → principal (memory backend)", () => {
     expect(after2).toBe(after1);
   });
 
+  it("x-operator-id presence is a typed 400 — it dies at the boundary (D-264-Q16)", async () => {
+    const store = createMemoryOperatorStore();
+    const { key } = await seedOperator(store);
+    const app = makeApp(store);
+    // valid credential + self-asserted header → 400, not silent ignore
+    const res = await app.request("/admin/whoami", {
+      headers: { "X-Admin-Key": key, "X-Operator-Id": "mallory" },
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error:
+        "x-operator-id is not accepted — identity comes from the credential",
+      code: "OPERATOR_HEADER_REJECTED",
+    });
+    // even anonymous + header → still 400 (rule is presence, not auth state)
+    const anon = await app.request("/admin/whoami", {
+      headers: { "X-Operator-Id": "mallory" },
+    });
+    expect(anon.status).toBe(400);
+  });
+
+  it("store failure is a typed 500, never a folded 401", async () => {
+    const broken = {
+      getOperatorByKeyHash: () => {
+        throw new Error("pg down");
+      },
+    } as unknown as OperatorStore;
+    const app = new Hono();
+    app.use("/admin/*", operatorAuth(broken));
+    app.get("/admin/whoami", (c) => c.json(getPrincipal(c) ?? null));
+    const res = await app.request("/admin/whoami", {
+      headers: { "X-Admin-Key": generateAdminKeyPlaintext() },
+    });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      error: "Operator store unavailable",
+      code: "INTERNAL_ERROR",
+    });
+  });
+
   it("no resolved operator → requireCapability answers 401, not 403", async () => {
     const app = new Hono();
     app.get("/open", (c) => {
@@ -266,6 +306,8 @@ describe("CAPABILITY_BY_SURFACE — O-264-8 mapping", () => {
     expect(
       capabilityForSurface("/admin/operators/new", "POST"),
     ).toBe("operator-admin");
+    // segment boundary — /admin/operatorsX is NOT an operators surface
+    expect(capabilityForSurface("/admin/operatorsX", "GET")).toBe("read");
     // unmapped surfaces: read-only verbs → read, mutations → workflow
     expect(capabilityForSurface("/admin/api/knowledge/gaps", "GET")).toBe(
       "read",

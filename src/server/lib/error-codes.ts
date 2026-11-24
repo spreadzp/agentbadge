@@ -106,6 +106,10 @@ export const ErrorCodes = {
   // lacks the capability the surface requires (C7)
   INSUFFICIENT_CAPABILITY: "INSUFFICIENT_CAPABILITY",
 
+  // 400 — EPIC-264 operatorAuth: self-asserted x-operator-id header
+  // present (D-264-Q16 — attribution comes from the credential only)
+  OPERATOR_HEADER_REJECTED: "OPERATOR_HEADER_REJECTED",
+
   // 4xx — witness layer (EPIC-185; snake_case wire values,
   // charge:never in the catalog — endpoints are free)
   WITNESS_DISABLED: "witness_disabled",

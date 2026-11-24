@@ -15,10 +15,19 @@
  *  - unknown key / revoked credential / disabled operator → the SAME
  *    401 envelope byte-for-byte; the refusal never leaks which leg
  *    failed.
+ *  - x-operator-id is REJECTED at this boundary with a typed 400
+ *    (D-264-Q16 — it dies here, not silently): a drop-in mount on an
+ *    unmigrated mutation surface fails LOUD instead of letting the
+ *    self-asserted header keep spoofing attribution until 264-6..8
+ *    rewrite the call sites to getPrincipal(c).
  *  - success → c.set("principal", Principal) for audit attribution +
  *    c.set("operator", full record) for requireCapability.
  *  - lastUsedAt is a throttled (>=5min) fire-and-forget write — the
  *    diagnostics column never blocks or fails the request.
+ *
+ * Transport precedence differs from adminBrowserAuth deliberately:
+ * X-Admin-Key > Bearer > Basic first-match — a bogus secondary
+ * transport can no longer veto a valid primary credential.
  *
  * ADMIN_API_KEY is deliberately NOT consulted: the shared key is the
  * dual-auth window's business (SLICE-264-5) and break-glass after
@@ -66,23 +75,67 @@ function unauthorized(c: Context): Response {
   return errorResponse(c, 401, ErrorCodes.UNAUTHORIZED, "Unauthorized");
 }
 
+// Constant-work pad for the unknown-key path: the digest compare runs
+// even when the lookup missed. (Residual asymmetry is the extra
+// operator fetch on a hit — lookup-then-check is inherent; the
+// envelope stays byte-identical and keys are 192-bit, so the oracle
+// buys nothing.)
+const DUMMY_DIGEST = Buffer.alloc(32);
+const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
+
 export function operatorAuth(store: OperatorStore) {
   return async function operatorAuthMiddleware(
     c: Context,
     next: Next,
   ): Promise<Response | void> {
+    // x-operator-id dies HERE (D-264-Q16) — presence is a typed 400 on
+    // every verb, so an unmigrated surface can't keep attributing
+    // writes to a self-asserted string.
+    if (c.req.header("x-operator-id") !== undefined) {
+      return errorResponse(
+        c,
+        400,
+        ErrorCodes.OPERATOR_HEADER_REJECTED,
+        "x-operator-id is not accepted — identity comes from the credential",
+      );
+    }
+
     const provided = extractOperatorKey(c);
     if (!provided) return unauthorized(c);
 
     const keyHash = hashAdminKey(provided);
-    const pair = await store.getOperatorByKeyHash(keyHash);
-    if (!pair) return unauthorized(c);
+    let pair;
+    try {
+      pair = await store.getOperatorByKeyHash(keyHash);
+    } catch {
+      // store failure is an infrastructure 500 in the typed envelope —
+      // never folded into a 401 (adminAuth misconfig precedent).
+      return errorResponse(
+        c,
+        500,
+        ErrorCodes.INTERNAL_ERROR,
+        "Operator store unavailable",
+      );
+    }
 
-    // Digest compare — equal-length sha256 outputs, no length or
-    // prefix side channel (adminAuth safeCompare precedent).
+    const stored = pair?.credential.keyHash;
+    if (pair === null || stored === undefined) {
+      timingSafeEqual(Buffer.from(keyHash, "hex"), DUMMY_DIGEST);
+      return unauthorized(c);
+    }
+    // A store that hands back a non-sha256 row is a data-integrity
+    // failure — loud 500, never an uncaught RangeError on the compare.
+    if (!SHA256_HEX_RE.test(stored)) {
+      return errorResponse(
+        c,
+        500,
+        ErrorCodes.INTERNAL_ERROR,
+        "Credential store returned malformed keyHash",
+      );
+    }
     if (
       !timingSafeEqual(
-        Buffer.from(pair.credential.keyHash, "hex"),
+        Buffer.from(stored, "hex"),
         Buffer.from(keyHash, "hex"),
       )
     ) {
@@ -96,15 +149,26 @@ export function operatorAuth(store: OperatorStore) {
       return unauthorized(c);
     }
 
-    // Throttled diagnostics touch — fire-and-forget, never awaited.
-    const last = pair.credential.lastUsedAt;
+    // Throttled diagnostics touch — fire-and-forget. NaN/future-dated
+    // lastUsedAt counts as stale so a malformed row self-heals.
+    const nowMs = Date.now();
+    const lastMs =
+      pair.credential.lastUsedAt === null
+        ? NaN
+        : Date.parse(pair.credential.lastUsedAt);
     if (
-      last === null ||
-      Date.now() - Date.parse(last) >= LAST_USED_MIN_INTERVAL_MS
+      !Number.isFinite(lastMs) ||
+      lastMs > nowMs ||
+      nowMs - lastMs >= LAST_USED_MIN_INTERVAL_MS
     ) {
-      void store
-        .touchLastUsed(pair.credential.id, new Date().toISOString())
-        .catch(() => {});
+      try {
+        void store
+          .touchLastUsed(pair.credential.id, new Date(nowMs).toISOString())
+          .catch(() => {});
+      } catch {
+        // diagnostics column never fails the request — even a
+        // synchronously-throwing store impl is swallowed here
+      }
     }
 
     const { operator, credential } = pair;
@@ -191,6 +255,12 @@ export const CAPABILITY_BY_SURFACE: ReadonlyArray<{
   // inventory — their creds hold "probe" on the credential record.
 ];
 
+/**
+ * `path` must be the DECODED route path (`c.req.path`) — a raw
+ * %-encoded URL could evade the prefix and fall to the weaker
+ * method fallback (under-restriction). Segment-boundary matching:
+ * `/admin/operatorsX` does NOT match `/admin/operators`.
+ */
 export function capabilityForSurface(
   path: string,
   method: string,
@@ -198,7 +268,9 @@ export function capabilityForSurface(
   let best: AdminCapability | undefined;
   let bestLen = -1;
   for (const row of CAPABILITY_BY_SURFACE) {
-    if (path.startsWith(row.prefix) && row.prefix.length > bestLen) {
+    const hit =
+      path === row.prefix || path.startsWith(`${row.prefix}/`);
+    if (hit && row.prefix.length > bestLen) {
       best = row.capability;
       bestLen = row.prefix.length;
     }
