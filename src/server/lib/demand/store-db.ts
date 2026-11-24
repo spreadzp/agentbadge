@@ -1,0 +1,287 @@
+import type {
+  DemandRepository,
+  DemandEventInput as RepoEventInput,
+} from "@agentbadge/database";
+
+import type {
+  DemandStore,
+  DemandTransitionResult,
+} from "./store";
+import type {
+  DemandClusterRecord,
+  DemandOpportunityRecord,
+} from "./types";
+import {
+  repoEvent,
+  repoEvents,
+  toCluster,
+  toEvent,
+  toOpportunity,
+  toSignal,
+} from "./store-db-mappers";
+
+/**
+ * EPIC-231 (SLICE-231-1): Postgres adapter — DemandRepository rows
+ * → DemandStore domain records (feedback/store-db.ts precedent).
+ * Row mappers live in store-db-mappers.ts (max-lines).
+ */
+
+export function createDbDemandStore(repo: DemandRepository): DemandStore {
+  return {
+    backend: "postgres",
+
+    // ─── signals ──────────────────────────────────────────────
+
+    async getSignal(id) {
+      const row = await repo.getSignal(id);
+      return row ? toSignal(row) : null;
+    },
+
+    async findSignalByIdempotency(idempotencyKey, dedupeScope) {
+      const row = await repo.findSignalByIdempotency(
+        idempotencyKey,
+        dedupeScope,
+      );
+      return row ? toSignal(row) : null;
+    },
+
+    async listSignals(opts) {
+      const rows = await repo.listSignals({
+        clusterId: opts?.clusterId,
+        source: opts?.source,
+        level: opts?.level,
+        actorRef: opts?.actorRef,
+        canonicalOnly: opts?.canonicalOnly,
+        limit: opts?.limit,
+        offset: opts?.offset,
+      });
+      return rows.map(toSignal);
+    },
+
+    async recordSignal(input, clusterKey, events) {
+      const out = await repo.recordSignal(
+        {
+          id: input.id,
+          source: input.source,
+          sourceRef: input.sourceRef ?? null,
+          dedupeScope: input.dedupeScope,
+          idempotencyKey: input.idempotencyKey ?? null,
+          normalizedText: input.normalizedText,
+          context: input.context ?? null,
+          contextRetainUntil: input.contextRetainUntil ?? null,
+          category: input.category ?? null,
+          feature: input.feature ?? null,
+          capabilityKey: input.capabilityKey ?? null,
+          declaredLevel: input.declaredLevel,
+          level: input.level,
+          actorResolution: input.actorResolution,
+          actorRef: input.actorRef ?? null,
+          sessionId: input.sessionId ?? null,
+          dedupeKey: input.dedupeKey,
+          createdAtMs: input.createdAtMs,
+        },
+        clusterKey,
+        events
+          ? {
+              signal: events.signal ? repoEvents(events.signal) : undefined,
+              cluster: events.cluster ? repoEvents(events.cluster) : undefined,
+            }
+          : undefined,
+      );
+      return {
+        signal: toSignal(out.signal),
+        cluster: toCluster(out.cluster),
+        canonicalOf: out.canonicalOf,
+        duplicate: out.duplicate,
+      };
+    },
+
+    async retagSignal(id, patch, events) {
+      const out = await repo.retagSignal(
+        id,
+        {
+          clusterKey: patch.clusterKey,
+          category: patch.category ?? null,
+          feature: patch.feature ?? null,
+          capabilityKey: patch.capabilityKey ?? null,
+        },
+        events
+          ? {
+              signal: events.signal ? repoEvents(events.signal) : undefined,
+              cluster: events.cluster ? repoEvents(events.cluster) : undefined,
+            }
+          : undefined,
+      );
+      return {
+        signal: out.signal ? toSignal(out.signal) : null,
+        cluster: out.cluster ? toCluster(out.cluster) : null,
+        detached: out.detached,
+      };
+    },
+
+    // ─── clusters ─────────────────────────────────────────────
+
+    async getCluster(id) {
+      const row = await repo.getCluster(id);
+      return row ? toCluster(row) : null;
+    },
+
+    async getClusterByKey(clusterKey) {
+      const row = await repo.getClusterByKey(clusterKey);
+      return row ? toCluster(row) : null;
+    },
+
+    async listClusters(opts) {
+      const rows = await repo.listClusters({
+        status: opts?.status,
+        level: opts?.level,
+        sortBy: opts?.sortBy,
+        limit: opts?.limit,
+        offset: opts?.offset,
+      });
+      return rows.map(toCluster);
+    },
+
+    async applyClusterLevel(id, input, event): Promise<DemandTransitionResult<DemandClusterRecord>> {
+      const out = await repo.applyClusterLevel(
+        id,
+        { from: input.from, to: input.to },
+        repoEvent(event),
+      );
+      if (out.transitioned) {
+        return {
+          record: toCluster(out.row),
+          event: toEvent(out.event),
+          transitioned: true,
+        };
+      }
+      return {
+        record: out.row ? toCluster(out.row) : null,
+        event: null,
+        transitioned: false,
+        reason: out.reason,
+      };
+    },
+
+    async transitionCluster(id, input, event): Promise<DemandTransitionResult<DemandClusterRecord>> {
+      const out = await repo.transitionCluster(
+        id,
+        {
+          from: input.from,
+          to: input.to,
+          actor: input.actor,
+          reason: input.reason ?? null,
+          now: input.now,
+        },
+        repoEvent(event),
+      );
+      if (out.transitioned) {
+        return {
+          record: toCluster(out.row),
+          event: toEvent(out.event),
+          transitioned: true,
+        };
+      }
+      return {
+        record: out.row ? toCluster(out.row) : null,
+        event: null,
+        transitioned: false,
+        reason: out.reason,
+      };
+    },
+
+    // ─── opportunities ────────────────────────────────────────
+
+    async getOpportunity(id) {
+      const row = await repo.getOpportunity(id);
+      return row ? toOpportunity(row) : null;
+    },
+
+    async listOpportunities(opts) {
+      const rows = await repo.listOpportunities({
+        status: opts?.status,
+        clusterId: opts?.clusterId,
+        limit: opts?.limit,
+        offset: opts?.offset,
+      });
+      return rows.map(toOpportunity);
+    },
+
+    async createOpportunity(input, events) {
+      const out = await repo.createOpportunity(
+        {
+          id: input.id,
+          clusterId: input.clusterId,
+          title: input.title,
+          hypothesis: input.hypothesis ?? null,
+          expectedValue: input.expectedValue ?? null,
+          metricsSnapshot: (input.metricsSnapshot ?? null) as RepoEventInput["payload"] | null,
+          createdBy: input.createdBy,
+        },
+        repoEvents(events),
+      );
+      return {
+        record: out.row ? toOpportunity(out.row) : null,
+        created: out.created,
+      };
+    },
+
+    async transitionOpportunity(id, input, event): Promise<DemandTransitionResult<DemandOpportunityRecord>> {
+      const out = await repo.transitionOpportunity(
+        id,
+        {
+          from: input.from,
+          to: input.to,
+          actor: input.actor,
+          reason: input.reason ?? null,
+          patch: input.patch,
+          now: input.now,
+        },
+        repoEvent(event),
+      );
+      if (out.transitioned) {
+        return {
+          record: toOpportunity(out.row),
+          event: toEvent(out.event),
+          transitioned: true,
+        };
+      }
+      return {
+        record: out.row ? toOpportunity(out.row) : null,
+        event: null,
+        transitioned: false,
+        reason: out.reason,
+      };
+    },
+
+    async linkBacklogTask(id, backlogTaskId, expected, event) {
+      const res = await repo.linkBacklogTask(
+        id,
+        backlogTaskId,
+        expected,
+        repoEvent(event),
+      );
+      return res.linked
+        ? { linked: true, record: toOpportunity(res.row) }
+        : res;
+    },
+
+    // ─── events ───────────────────────────────────────────────
+
+    async appendEvents(entityType, entityId, events) {
+      const rows = await repo.appendEvents(
+        entityType,
+        entityId,
+        repoEvents(events),
+      );
+      return rows.map(toEvent);
+    },
+
+    async listEvents(entityType, entityId, opts) {
+      const rows = await repo.listEvents(entityType, entityId, {
+        visibility: opts?.visibility,
+      });
+      return rows.map(toEvent);
+    },
+  };
+}
