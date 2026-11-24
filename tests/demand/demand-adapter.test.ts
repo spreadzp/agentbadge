@@ -121,6 +121,40 @@ describe("SLICE-231-3: POST /api/demand/request → pipeline adapter", () => {
     expect(events.some((e) => e.visibility === "INTERNAL")).toBe(true);
   });
 
+  it("optional Idempotency-Key replays to the same record", async () => {
+    const key = "adapter-idem-key-1";
+    const postKeyed = () =>
+      app.request("/api/demand/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": key,
+        },
+        body: JSON.stringify({ capability_query: "solidity audit" }),
+      });
+    const r1 = await postKeyed();
+    const r2 = await postKeyed();
+    const j1 = await r1.json();
+    const j2 = await r2.json();
+    expect(r1.status).toBe(202);
+    expect(r2.status).toBe(202);
+    expect(j2.demand_id).toBe(j1.demand_id);
+    expect(j2.count).toBe(j1.count);
+    expect((await store().listSignals()).length).toBe(1);
+  });
+
+  it("400 on malformed Idempotency-Key", async () => {
+    const res = await app.request("/api/demand/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "x",
+      },
+      body: JSON.stringify({ capability_query: "solidity audit" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
   it("400 on missing/empty/oversized capability_query", async () => {
     expect((await post({ context: "no query" })).status).toBe(400);
     expect((await post({ capability_query: "  " })).status).toBe(400);

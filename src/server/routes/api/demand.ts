@@ -13,6 +13,7 @@
  */
 
 import { Hono } from "hono";
+import { idempotencyKeySchema } from "../../lib/contract-guards";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { resolveActor } from "../../lib/agent-interaction/actor";
@@ -111,6 +112,23 @@ demandRoutes.post("/api/demand/request", async (c) => {
     return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, error);
   }
 
+  // Idempotency-Key stays OPTIONAL (frozen contract) — when sent it
+  // is validated and threaded into the store's replay probe.
+  let idempotencyKey: string | null = null;
+  const rawKey = c.req.header("idempotency-key");
+  if (rawKey !== undefined) {
+    const parsed = idempotencyKeySchema.safeParse(rawKey);
+    if (!parsed.success) {
+      return errorResponse(
+        c,
+        400,
+        ErrorCodes.INVALID_INPUT,
+        "idempotency-key header is malformed",
+      );
+    }
+    idempotencyKey = parsed.data;
+  }
+
   // ANON callers have no identity ref — bucket them by the same
   // truncated IP the limiter uses so unidentified callers never
   // merge into one unattributed actor (decisions.md: ANON-bucket).
@@ -132,6 +150,7 @@ demandRoutes.post("/api/demand/request", async (c) => {
         source: "DEMAND_API",
       },
       demandActor,
+      { idempotencyKey },
     );
   } catch {
     return errorResponse(

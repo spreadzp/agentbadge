@@ -47,6 +47,9 @@ Register demand for a capability.
 
 **Rate limiting:** 10 requests per hour per IP.
 
+**Idempotency:** An optional \`Idempotency-Key\` header makes retries safe —
+a replayed write returns the same demand record without double-counting.
+
 ### Query Normalization
 
 Queries are normalized (lowercase, trimmed, whitespace collapsed).
@@ -72,7 +75,8 @@ and update \`last_seen\`.
 
 - Demand does NOT auto-create capabilities
 - Human review required for REQUESTED → AVAILABLE transition
-- In-memory storage (data may reset on restart)
+- Demand signals are persisted (durable storage; repeats inside a
+  24h window thread onto the same demand record)
 `;
 
 const DEMAND_SCHEMA = {
