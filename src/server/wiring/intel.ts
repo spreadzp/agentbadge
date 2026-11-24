@@ -19,6 +19,7 @@ import {
   pickIntelPullJobStore,
   pickIntelSecurityEventStore,
 } from "../lib/intel/pull/db-stores";
+import { createMemoryAttestationStore } from "../lib/intel/attestation";
 import { INTEL_WP_PROFILE_V1 } from "../lib/intel/rules";
 import {
   createSafeScanFetch,
@@ -62,6 +63,8 @@ export function wireIntel(app: Hono): void {
       clientReports: clientReports.store,
       pullJobs,
       securityEvents,
+      attestations: createMemoryAttestationStore(),
+      attestationValidityDays: cfg.attestationValidityDays,
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));

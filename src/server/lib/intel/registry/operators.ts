@@ -32,6 +32,7 @@ export function rolePermitted(role: OperatorRole, op: string): boolean {
     "fix_apply",
     "ownership_verify",
     "consent",
+    "attestation",
   ].includes(op);
 }
 

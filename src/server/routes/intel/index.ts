@@ -58,6 +58,12 @@ export interface IntelRouteDeps {
    * on /support even for their own ids — support is ops-side.
    */
   supportAdminTenantIds?: string[];
+  /**
+   * SLICE-262-28 — attestation store + validity window (days,
+   * env INTEL_ATTESTATION_VALIDITY_DAYS, default 90).
+   */
+  attestations?: import("../../lib/intel/attestation").IntelAttestationStore;
+  attestationValidityDays?: number;
 }
 
 export const INTEL_KEY_MISSING = {

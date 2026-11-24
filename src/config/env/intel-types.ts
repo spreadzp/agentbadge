@@ -32,4 +32,9 @@ export interface IntelEnvConfig {
    * (SLICE-262-32, Pryme ops). Empty → support route always 403.
    */
   supportAdminTenantIds?: string[];
+  /**
+   * INTEL_ATTESTATION_VALIDITY_DAYS — attestation valid_until =
+   * issued + N days (SLICE-262-28). Default 90.
+   */
+  attestationValidityDays?: number;
 }

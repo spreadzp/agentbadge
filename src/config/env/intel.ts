@@ -21,5 +21,10 @@ export function loadIntel(): IntelEnvConfig {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
+    attestationValidityDays: (() => {
+      const raw = process.env.INTEL_ATTESTATION_VALIDITY_DAYS;
+      const n = raw === undefined ? 90 : Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : 90;
+    })(),
   };
 }
