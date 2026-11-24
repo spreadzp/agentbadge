@@ -132,6 +132,7 @@ export function createMemoryDemandCore(data: DemandMemoryData) {
       updatedAt: now(),
     };
     clusters.set(clusterId, fresh);
+    byClusterKey.set(fresh.clusterKey, fresh);
     return fresh;
   };
 
