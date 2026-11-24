@@ -17,6 +17,8 @@ import { z } from "zod";
 import { adminAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
+import { getDatabase } from "../../lib/database";
+import { pickDemandStore } from "../../lib/demand/db-stores";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 import { statusOfState } from "../../lib/request-inbox/interaction-types";
@@ -92,6 +94,7 @@ export function registerInteractionMutationRoutes(
         id,
         body.data,
         operatorRefOf(c),
+        { demand: pickDemandStore(getDatabase()) },
       );
       if (!r.ok && r.error === "not_found") return notFound(c);
       if (!r.ok) {

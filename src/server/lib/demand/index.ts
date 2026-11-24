@@ -9,3 +9,4 @@ export * from "./vocabulary";
 export * from "./level-rules";
 export * from "./events";
 export * from "./pipeline";
+export * from "./seams";

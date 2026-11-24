@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import type { DemandStore } from "../demand/store";
+import { recordGapDemand } from "../demand/seams";
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
@@ -62,6 +64,7 @@ export async function recordGap(
     intent?: string | null;
     sourceRef?: string | null;
   },
+  deps?: { demand?: DemandStore },
 ): Promise<
   KnowledgeResult<{
     gap: KnowledgeGapRecord | null;
@@ -126,6 +129,17 @@ export async function recordGap(
       intent: res.row.intent,
       sourceRef: res.row.sourceRef,
     });
+    // 231-4 seam (soft-dep, fire-and-forget): a first-sighting gap is
+    // asked-for demand — an answer an agent wanted and we lacked.
+    if (deps?.demand) {
+      const row = res.row;
+      void recordGapDemand(deps.demand, {
+        gapId: row.id,
+        query: row.sampleQueries[0] ?? row.normalizedQuery,
+        capabilityRef: row.capabilityRef,
+        reason: "detected",
+      }).catch(() => {});
+    }
   }
   // Arc R2 M-1: a RESOLVED gap that reopens is an event too — the
   // operator queue silently filling back up is exactly the signal
@@ -136,6 +150,17 @@ export async function recordGap(
       normalizedQuery: res.row.normalizedQuery,
       source: res.row.source,
     });
+    // A reopened gap is demand resurfacing after RESOLVED — one extra
+    // re-signal (distinct idempotency key), then replays dedupe.
+    if (deps?.demand) {
+      const row = res.row;
+      void recordGapDemand(deps.demand, {
+        gapId: row.id,
+        query: row.sampleQueries[0] ?? row.normalizedQuery,
+        capabilityRef: row.capabilityRef,
+        reason: "reopened",
+      }).catch(() => {});
+    }
   }
   return {
     ok: true,
@@ -153,17 +178,24 @@ export async function recordGap(
  *  Arc R1 H3 + R2 M-1: reports whether the write actually LANDED
  *  (a WONTFIX-hit or cap-blocked row isn't a recording) so the
  *  refusal hint stays honest. */
-export function knowledgeGapRecorder(store: KnowledgeStore) {
+export function knowledgeGapRecorder(
+  store: KnowledgeStore,
+  deps?: { demand?: DemandStore },
+) {
   return {
     async recordGap(input: {
       query: string;
       source: "COMPOSER_REFUSAL";
       confidence: number;
     }): Promise<boolean> {
-      const r = await recordGap(store, {
-        query: input.query,
-        source: input.source,
-      });
+      const r = await recordGap(
+        store,
+        {
+          query: input.query,
+          source: input.source,
+        },
+        deps,
+      );
       return r.ok && r.recorded === true;
     },
   };

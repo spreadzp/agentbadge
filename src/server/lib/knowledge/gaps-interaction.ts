@@ -5,6 +5,7 @@
  * `sourceRef` = the ireq_* id, bounded single-line intent/cap.
  */
 
+import type { DemandStore } from "../demand/store";
 import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
 import type { KnowledgeGapRecord } from "./types";
@@ -23,6 +24,7 @@ export function recordInteractionGap(
     intent?: string | null;
     capabilityRef?: string | null;
   },
+  deps?: { demand?: DemandStore },
 ): Promise<
   KnowledgeResult<{
     gap: KnowledgeGapRecord | null;
@@ -41,12 +43,16 @@ export function recordInteractionGap(
       field: "sourceRef",
     });
   }
-  return recordGap(store, {
-    query: input.query,
-    source: "INTERACTION_SIGNAL",
-    sourceRef: input.requestId,
-    intent: input.intent,
-    capabilityRef: input.capabilityRef,
-  });
+  return recordGap(
+    store,
+    {
+      query: input.query,
+      source: "INTERACTION_SIGNAL",
+      sourceRef: input.requestId,
+      intent: input.intent,
+      capabilityRef: input.capabilityRef,
+    },
+    deps,
+  );
 }
 

@@ -18,6 +18,8 @@ import type { Context } from "hono";
 import { adminBrowserAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
+import { getDatabase } from "../../lib/database";
+import { pickDemandStore } from "../../lib/demand/db-stores";
 import { wrapFragment } from "../ui/helpers";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
@@ -212,6 +214,7 @@ export function createAgentInteractionAdminUi(
         demandSignals: csvToList(b.demandSignals),
       },
       operator,
+      { demand: pickDemandStore(getDatabase()) },
     );
     if (!r.ok) {
       return c.redirect(

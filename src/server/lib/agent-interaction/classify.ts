@@ -11,6 +11,8 @@
 
 import type { InboxRequestRecord } from "../request-inbox/types";
 import type { RequestInboxStores } from "../request-inbox/store";
+import type { DemandStore } from "../demand/store";
+import { recordInteractionDemand } from "../demand/seams";
 import { buildEvent, emitInteractionHooks } from "./events";
 import {
   validateClassifyInput,
@@ -27,6 +29,7 @@ export async function classify(
   requestId: string,
   input: ClassifyInput,
   operatorRef: string,
+  deps?: { demand?: DemandStore },
 ): Promise<ClassifyResult> {
   const v = validateClassifyInput(input);
   if (!v.ok) return { ok: false, error: v.error, field: v.field };
@@ -50,5 +53,30 @@ export async function classify(
   );
   if (!res) return { ok: false, error: "not_found" };
   emitInteractionHooks(requestId, [event]);
+  // 231-4 seam (soft-dep): operator-typed demandSignals[] file demand
+  // under the REQUEST's actor — the operator is never the demander.
+  // Fire-and-forget: classification never waits on demand intel.
+  const signals = Array.isArray(res.record.demandSignals)
+    ? res.record.demandSignals.filter(
+        (s): s is string => typeof s === "string" && s.length > 0,
+      )
+    : [];
+  if (deps?.demand && signals.length > 0) {
+    const demandActor = {
+      resolution: (res.record.actorResolution ?? "ANON") as
+        | "ANON"
+        | "API_KEY"
+        | "DID",
+      actorRef: res.record.actorRef,
+    };
+    for (const signal of signals) {
+      void recordInteractionDemand(deps.demand, {
+        signal,
+        requestId: res.record.id,
+        actor: demandActor,
+        sessionId: res.record.sessionId,
+      }).catch(() => {});
+    }
+  }
   return { ok: true, record: res.record, transitioned: res.transitioned };
 }

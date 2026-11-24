@@ -16,6 +16,8 @@
 import { randomUUID } from "node:crypto";
 
 import type { ResolvedActor } from "../agent-interaction/actor";
+import type { DemandStore } from "../demand/store";
+import { recordFeedbackDemand } from "../demand/seams";
 import { buildFeedbackEvent, emitFeedbackHooks } from "./events";
 import { normalizeFeedbackKey } from "./normalize";
 import type { FeedbackStore } from "./store";
@@ -46,7 +48,12 @@ export async function submitFeedback(
   store: FeedbackStore,
   raw: unknown,
   actor: ResolvedActor,
-  opts?: { idempotencyKey?: string | null; dedupeScope?: string },
+  opts?: {
+    idempotencyKey?: string | null;
+    dedupeScope?: string;
+    /** 231-4 soft-dep — FEATURE feedback files demand fire-and-forget. */
+    demand?: DemandStore;
+  },
 ): Promise<
   FeedbackResult<{
     record: FeedbackRecord;
@@ -127,6 +134,17 @@ export async function submitFeedback(
     }
   } else {
     emitFeedbackHooks(id, events);
+    // 231-4 seam (soft-dep, fire-and-forget): kind=FEATURE is
+    // agent-declared capability demand — same claim level as the
+    // /api/demand/request adapter (INTENT). Replays never re-file.
+    if (opts?.demand && input.kind === "FEATURE") {
+      const fb = res.record;
+      void recordFeedbackDemand(opts.demand, {
+        feedbackId: fb.id,
+        text: fb.text,
+        actor: { resolution: actor.resolution, actorRef: actor.actorRef },
+      }).catch(() => {});
+    }
   }
   return {
     ok: true,

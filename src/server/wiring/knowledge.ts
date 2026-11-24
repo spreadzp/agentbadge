@@ -8,6 +8,7 @@
 import type { Hono } from "hono";
 
 import { getDatabase } from "../lib/database";
+import { pickDemandStore } from "../lib/demand/db-stores";
 import {
   knowledgeGapRecorder,
   pickKnowledgeStores,
@@ -33,7 +34,9 @@ export function wireKnowledge(app: Hono): void {
     "/",
     createAgentKnowledgeRoutes({
       store,
-      gapRecorder: knowledgeGapRecorder(store),
+      gapRecorder: knowledgeGapRecorder(store, {
+        demand: pickDemandStore(getDatabase()),
+      }),
     }),
   );
 }

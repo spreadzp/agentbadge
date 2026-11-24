@@ -17,6 +17,8 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { readIdempotencyKey } from "../../lib/contract-guards";
 import { resolveActor } from "../../lib/agent-interaction/actor";
+import { getDatabase } from "../../lib/database";
+import { pickDemandStore } from "../../lib/demand/db-stores";
 import {
   submitFeedback,
   getFeedbackStatus,
@@ -86,6 +88,7 @@ export function createAgentFeedbackRoutes(
 
       const res = await submitFeedback(store, parsed, actor, {
         idempotencyKey: key,
+        demand: pickDemandStore(getDatabase()),
       });
       if (!res.ok) {
         if (res.error === "actor_mismatch") {
