@@ -64,6 +64,11 @@ export interface IntelRouteDeps {
    */
   attestations?: import("../../lib/intel/attestation").IntelAttestationStore;
   attestationValidityDays?: number;
+  /**
+   * SLICE-262-34 — per-site scan cooldown (seconds) bounding the
+   * CI scan+diff pair. Absent → no cooldown (tests/dev).
+   */
+  scanCooldownSeconds?: number;
 }
 
 export const INTEL_KEY_MISSING = {

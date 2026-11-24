@@ -1,0 +1,45 @@
+name: "AgentBadge Intel Scan"
+description: >-
+  Run an agent-surface scan and gate the pipeline on the signed
+  report-diff. All logic lives on the backend — this action is a thin
+  verifiable wrapper (scan → diff → SARIF → exit code).
+branding:
+  icon: shield
+  color: blue
+inputs:
+  api_base:
+    description: "AgentBadge API base URL"
+    required: false
+    default: "https://agentbadge.xyz"
+  site_key:
+    description: "absk_ site key (store in GitHub Secrets)"
+    required: true
+  site_id:
+    description: "site_<id> — optional; the site_key already binds a site"
+    required: false
+    default: ""
+  scan:
+    description: "run POST /scans before diffing (respects per-site cooldown)"
+    required: false
+    default: "true"
+  fail_on:
+    description: "new_finding | score_drop | none"
+    required: false
+    default: "new_finding"
+  min_score:
+    description: "fail when head readiness score drops below this (0 = off)"
+    required: false
+    default: "0"
+outputs:
+  diff:
+    description: "signed report-diff JSON"
+    value: ${{ steps.intel.outputs.diff }}
+  sarif_file:
+    description: "path to the emitted SARIF file"
+    value: ${{ steps.intel.outputs.sarif_file }}
+  mode:
+    description: "diff | bootstrap | no_reports | chain_broken"
+    value: ${{ steps.intel.outputs.mode }}
+runs:
+  using: "node20"
+  main: "src/index.mjs"

@@ -123,6 +123,33 @@ export function registerScanRoute(app: Hono, deps: IntelRouteDeps): void {
       );
     }
 
+    // SLICE-262-34 — per-site cooldown: a CI "scan then diff" on
+    // every push would amplify into external fetches against the
+    // client's own site. Derived from stored jobs — nothing extra
+    // persisted; Retry-After makes the wait actionable.
+    const cooldown = deps.scanCooldownSeconds ?? 0;
+    if (cooldown > 0) {
+      const latest = (await deps.scanJobs.forSite(siteId))
+        .map((j) => j.createdAt)
+        .sort()
+        .at(-1);
+      if (latest) {
+        const elapsed = (now.getTime() - Date.parse(latest)) / 1000;
+        if (elapsed < cooldown) {
+          const retryAfter = Math.ceil(cooldown - elapsed);
+          c.header("Retry-After", String(retryAfter));
+          return c.json(
+            {
+              error: "scan_cooldown",
+              retry_after_seconds: retryAfter,
+              message: `site was scanned ${Math.floor(elapsed)}s ago; cooldown is ${cooldown}s`,
+            },
+            429,
+          );
+        }
+      }
+    }
+
     // SLICE-262-31 — the request's correlation id follows the job
     // (and every pull-job it spawns) for support diagnostics.
     const correlationId =

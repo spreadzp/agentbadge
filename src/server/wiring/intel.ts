@@ -67,6 +67,7 @@ export function wireIntel(app: Hono): void {
       securityEvents,
       attestations,
       attestationValidityDays: cfg.attestationValidityDays,
+      scanCooldownSeconds: cfg.scanCooldownSeconds,
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));

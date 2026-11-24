@@ -1,0 +1,10 @@
+{
+  "name": "@agentbadge/scan-action-src",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Source of the agentbadge/scan-action GitHub Action (published to its own repo at release)",
+  "scripts": {
+    "test": "echo 'tests live in the repo vitest suite: tests/intel/scan-action.test.ts'"
+  }
+}

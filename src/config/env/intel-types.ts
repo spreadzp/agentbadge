@@ -37,4 +37,11 @@ export interface IntelEnvConfig {
    * issued + N days (SLICE-262-28). Default 90.
    */
   attestationValidityDays?: number;
+  /**
+   * INTEL_SCAN_COOLDOWN_SECONDS — per-site minimum interval between
+   * POST /scans runs (SLICE-262-34). CI "scan then diff" on every
+   * push would amplify into external fetches against the client's
+   * site; the cooldown caps it. Default 300; 0 disables (dev only).
+   */
+  scanCooldownSeconds?: number;
 }

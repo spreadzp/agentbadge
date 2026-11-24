@@ -8,6 +8,7 @@ export const INTEL_PAID_OPERATIONS = [
   "deep_scan",
   "inside_diagnostics",
   "fix_apply",
+  "report_diff",
 ] as const;
 export type IntelPaidOperation = (typeof INTEL_PAID_OPERATIONS)[number];
 

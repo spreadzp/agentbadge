@@ -26,5 +26,10 @@ export function loadIntel(): IntelEnvConfig {
       const n = raw === undefined ? 90 : Number(raw);
       return Number.isFinite(n) && n > 0 ? n : 90;
     })(),
+    scanCooldownSeconds: (() => {
+      const raw = process.env.INTEL_SCAN_COOLDOWN_SECONDS;
+      const n = raw === undefined ? 300 : Number(raw);
+      return Number.isFinite(n) && n >= 0 ? n : 300;
+    })(),
   };
 }
