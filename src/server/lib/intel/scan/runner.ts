@@ -17,6 +17,9 @@ import type { IntelScanJobStore } from "./store";
 import type { ScanJob } from "./types";
 
 const DAY_MS = 86_400_000;
+// D-262-Q33: self-observed facts older than this are stale, not
+// missing — but they must not feed a fresh report
+const SELF_REPORT_FRESHNESS_MS = 48 * 3_600_000;
 
 export interface ScanRunDeps {
   fetch: ScanFetch;
@@ -116,7 +119,13 @@ export async function runScanJob(
   const priors = (await deps.jobs.forSite(job.siteId))
     .filter((j) => j.id !== job.id && j.report !== null && j.createdAt < job.createdAt)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  const report = assembleIntelReport(envelopes, {
+  // SLICE-262-14: plugin self-report envelopes submitted between
+  // scans still feed the ruleset — bounded by the freshness
+  // window (48h, D-262-Q33) and deduped to the latest accepted
+  // value per fact, so a stale superseded value can't poison a
+  // rule that already saw the newer one
+  const selfReported = await freshSelfReportedEvidence(deps, job);
+  const report = assembleIntelReport([...envelopes, ...selfReported], {
     site_id: job.siteId,
     scan_id: job.scanId,
     completeness,
@@ -136,4 +145,45 @@ export async function runScanJob(
     updatedAt: iso(),
   };
   return deps.jobs.update(job);
+}
+
+/** Subject identity used to dedupe repeated self-reports of one fact. */
+function selfReportKey(e: {
+  payload: { type: string } & Record<string, unknown>;
+  subject: Record<string, unknown>;
+}): string {
+  const p = e.payload;
+  const s = e.subject;
+  if (p.type === "wp_option_read") return `opt:${String(s.name ?? p.name)}`;
+  if (p.type === "file_presence") return `file:${String(s.path ?? p.path)}`;
+  if (p.type === "http_observation") return `obs:${String(s.url ?? p.url)}`;
+  if (p.type === "document_fact") return `doc:${String(s.url ?? p.doc_type)}`;
+  return `${p.type}:${JSON.stringify(s)}`;
+}
+
+/**
+ * PLUGIN_SELF_REPORTED envelopes accepted in the last 48h for this
+ * site, deduped to the newest received_at per fact. Self-report can
+ * only ever add PLUGIN_SELF_REPORTED evidence — never upgrade it.
+ */
+async function freshSelfReportedEvidence(
+  deps: ScanRunDeps,
+  job: ScanJob,
+) {
+  const cutoff = (deps.now?.() ?? new Date()).getTime() - SELF_REPORT_FRESHNESS_MS;
+  const latest = new Map<string, (typeof all)[number]>();
+  const all = (await deps.evidence.forSite(job.siteId)).filter(
+    (e) =>
+      e.provenance === "PLUGIN_SELF_REPORTED" &&
+      e.scanId !== job.scanId &&
+      Date.parse(e.receivedAt) > cutoff,
+  );
+  for (const rec of all) {
+    const k = selfReportKey(rec.envelope);
+    const prev = latest.get(k);
+    if (!prev || Date.parse(rec.receivedAt) > Date.parse(prev.receivedAt)) {
+      latest.set(k, rec);
+    }
+  }
+  return [...latest.values()].map((r) => r.envelope);
 }

@@ -10,6 +10,7 @@ import {
 } from "../../src/server/lib/intel/registry";
 import { inviteOperator } from "../../src/server/lib/intel/registry/operators";
 import { createMemoryIntelEvidenceStore } from "../../src/server/lib/intel/evidence/store";
+import { acceptSubmission } from "../../src/server/lib/intel/evidence/boundary";
 import { createMemoryEntitlementStore } from "../../src/server/lib/intel/entitlement";
 import {
   createMemoryIntelConsentStore,
@@ -138,6 +139,67 @@ describe("runScanJob", () => {
     await runScanJob(mkJob({ id: "job_a", scanId: "scan_a" }), deps);
     await runScanJob(mkJob({ id: "job_b", scanId: "scan_b" }), deps);
     expect((await evidence.forSite("site_t")).length).toBe((SCAN_PLAN.length + 3) * 2);
+  });
+
+  // ── SLICE-262-14: plugin self-report feeds the ruleset ──
+  const selfReport = async (
+    evidence: ReturnType<typeof createMemoryIntelEvidenceStore>,
+    name: string,
+    value: unknown,
+    receivedAt: string,
+  ) => {
+    const env = acceptSubmission(
+      {
+        collector_id: "wp_plugin@site_t",
+        scan_id: `self_${receivedAt}`,
+        site_ref: "site_t",
+        collected_at: receivedAt,
+        subject: { type: "wp_option", name },
+        payload: { type: "wp_option_read", name, value },
+        evidence_refs: [],
+      },
+      { collector: { type: "wp_plugin", id: "wp_plugin@site_t", version: "0.1" }, site_id: "site_t" },
+      key,
+      new Date(receivedAt),
+    );
+    await evidence.insert({
+      id: env.envelope_id,
+      schemaVersion: env.schema_version,
+      siteId: "site_t",
+      scanId: `self_${receivedAt}`,
+      collectorId: env.collector.id,
+      provenance: env.provenance,
+      dedupeHash: `h_${env.envelope_id}`,
+      receivedAt,
+      expiresAt: null,
+      envelope: env,
+    });
+  };
+
+  it("fresh plugin self-report feeds rules (WP_DEBUG truthy → X-009 fail)", async () => {
+    const evidence = createMemoryIntelEvidenceStore();
+    await selfReport(evidence, "WP_DEBUG", true, "2026-11-20T09:00:00Z");
+    const job = await runScanJob(mkJob(), depsFor(happyFetch, evidence));
+    const x009 = job.report!.findings.find((f) => f.rule_id === "AB-INTEL-X-009")!;
+    expect(x009.status).toBe("fail");
+    expect(x009.evidence_ids.length).toBeGreaterThan(0);
+  });
+
+  it("stale self-report (>48h) does NOT feed rules — stays unknown", async () => {
+    const evidence = createMemoryIntelEvidenceStore();
+    await selfReport(evidence, "WP_DEBUG", true, "2026-11-17T09:00:00Z");
+    const job = await runScanJob(mkJob(), depsFor(happyFetch, evidence));
+    const x009 = job.report!.findings.find((f) => f.rule_id === "AB-INTEL-X-009")!;
+    expect(x009.status).toBe("unknown");
+  });
+
+  it("superseded self-report (true then false) — latest wins → pass", async () => {
+    const evidence = createMemoryIntelEvidenceStore();
+    await selfReport(evidence, "WP_DEBUG", true, "2026-11-20T08:00:00Z");
+    await selfReport(evidence, "WP_DEBUG", false, "2026-11-20T09:00:00Z");
+    const job = await runScanJob(mkJob(), depsFor(happyFetch, evidence));
+    const x009 = job.report!.findings.find((f) => f.rule_id === "AB-INTEL-X-009")!;
+    expect(x009.status).toBe("pass");
   });
 });
 
