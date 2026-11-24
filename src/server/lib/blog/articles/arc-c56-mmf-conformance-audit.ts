@@ -114,7 +114,7 @@ export const article: BlogArticle = {
     {
       question: "What did the audit change in the MMF spec itself?",
       answer:
-        "The delta findings shipped as an open issue on the Mandata repo with eight spec questions; the author's rulings moved one classification (V36 MODEL to BUG) and confirmed the rest. Our 13 delegation divergences became his v0.5 draft for optional clamp-to-owner-cap semantics (issue #33) with 21 new vectors, frozen at a91b7f4 with two of our review asks adopted. With his TypeScript port merged (PR #34), MMF has three implementations - ours the first written by someone who did not write the spec.",
+        "The delta findings shipped as an open issue on the Mandata repo with eight spec questions; the author's rulings moved one classification (V36 MODEL to BUG) and confirmed the rest. Our 13 delegation divergences became his v0.5 draft for optional clamp-to-owner-cap semantics (issue #33) with 21 new vectors, frozen at a91b7f4 with three of our review asks adopted. With his TypeScript port merged (PR #34), MMF has three implementations - ours the first written by someone who did not write the spec.",
     },
   ],
   claims: [
@@ -166,7 +166,7 @@ export const article: BlogArticle = {
     {
       id: "c56-run-spawned-v05-clamp-proposal",
       status: "VERIFIED",
-      text: "The divergence table was reviewed by the spec author before publication: eight spec questions answered with rulings on ashedrack/mandata#32, and the 13 delegation divergences became his v0.5 draft for optional clamp-to-owner-cap semantics (#33) - 21 new vectors (K01-K16, KD01-KD05), frozen at a91b7f4 with two AgentBadge review asks adopted (mandatory effective_cap, check-id-not-denial line). His own zero-dependency TypeScript port merged as PR #34, making MMF a three-implementation spec.",
+      text: "The divergence table was reviewed by the spec author before publication: eight spec questions answered with rulings on ashedrack/mandata#32, and the 13 delegation divergences became his v0.5 draft for optional clamp-to-owner-cap semantics (#33) - 21 new vectors (K01-K16, KD01-KD05), frozen at a91b7f4 with three AgentBadge review asks adopted (mandatory effective_cap, check-id-not-denial line, and the §7 sentence marking 'same amount, new tx_id, after cap change' as deliberately deferred pending a tighten op). His own zero-dependency TypeScript port merged as PR #34, making MMF a three-implementation spec.",
       evidence: [
         {
           type: "github",
