@@ -1929,3 +1929,36 @@ model IntelConsent {
   @@unique([siteId, kind])
   @@index([siteId])
 }
+
+// ─── EPIC-264 (SLICE-264-1) Operator accountability — the admin
+// principal model (D-264-Q2/Q3/Q17, C1, C11). Operator ≠ credential:
+// issue/rotate/revoke touches credential rows, never the operator's
+// identity. Shape borrowed from IntelOperator (262); no tenant/role —
+// admin principals are instance-scoped, capability-scoped. No
+// @@relation constraints — indexes only (house convention).
+
+model AdminOperator {
+  id            String              @id // op_<ulid>
+  displayName   String // shown on consoles/audit instead of raw id
+  principalType String // human|service|break_glass — security boundary (C11), never inferred from name
+  capabilities  Json // string[] from ADMIN_CAPABILITIES closed vocab (read|probe|workflow|operator-admin)
+  status        String              @default("active") // active|disabled
+  createdAt     TimestamptzString   @default(now())
+  disabledAt    TimestamptzString?
+
+  @@index([principalType, status])
+}
+
+model AdminOperatorCredential {
+  id         String            @id // opc_<ulid>
+  operatorId String // → AdminOperator.id (no FK — index only)
+  keyHash    String            @unique // sha256 hex of opk_ plaintext
+  keyPrefix  String // "opk_"+8 — identification only, no secret
+  status     String            @default("active") // active|revoked
+  issuedAt   TimestamptzString @default(now())
+  revokedAt  TimestamptzString?
+  lastUsedAt TimestamptzString? // throttled touch — diagnostics, not auth
+
+  @@index([operatorId, status])
+  @@index([lastUsedAt])
+}

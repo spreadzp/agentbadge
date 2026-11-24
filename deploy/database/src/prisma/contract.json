@@ -24,6 +24,14 @@
       "model": "AdminAction",
       "namespace": "public"
     },
+    "adminOperator": {
+      "model": "AdminOperator",
+      "namespace": "public"
+    },
+    "adminOperatorCredential": {
+      "model": "AdminOperatorCredential",
+      "namespace": "public"
+    },
     "agentQAPair": {
       "model": "AgentQAPair",
       "namespace": "public"
@@ -860,6 +868,178 @@
               },
               "namespaceId": "public",
               "table": "adminAction"
+            }
+          },
+          "AdminOperator": {
+            "fields": {
+              "capabilities": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "disabledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "displayName": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "principalType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "capabilities": {
+                  "column": "capabilities"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "disabledAt": {
+                  "column": "disabledAt"
+                },
+                "displayName": {
+                  "column": "displayName"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "principalType": {
+                  "column": "principalType"
+                },
+                "status": {
+                  "column": "status"
+                }
+              },
+              "namespaceId": "public",
+              "table": "adminOperator"
+            }
+          },
+          "AdminOperatorCredential": {
+            "fields": {
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "issuedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "keyHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "keyPrefix": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastUsedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "operatorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "revokedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "id": {
+                  "column": "id"
+                },
+                "issuedAt": {
+                  "column": "issuedAt"
+                },
+                "keyHash": {
+                  "column": "keyHash"
+                },
+                "keyPrefix": {
+                  "column": "keyPrefix"
+                },
+                "lastUsedAt": {
+                  "column": "lastUsedAt"
+                },
+                "operatorId": {
+                  "column": "operatorId"
+                },
+                "revokedAt": {
+                  "column": "revokedAt"
+                },
+                "status": {
+                  "column": "status"
+                }
+              },
+              "namespaceId": "public",
+              "table": "adminOperatorCredential"
             }
           },
           "AgentQAPair": {
@@ -11884,6 +12064,155 @@
               },
               "uniques": []
             },
+            "adminOperator": {
+              "columns": {
+                "capabilities": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "disabledAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "displayName": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "principalType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "active"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "principalType",
+                    "status"
+                  ],
+                  "name": "adminOperator_principalType_status_idx_2577b345",
+                  "prefix": "adminOperator_principalType_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "adminOperatorCredential": {
+              "columns": {
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "issuedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "keyHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "keyPrefix": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "lastUsedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "operatorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "revokedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "active"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "lastUsedAt"
+                  ],
+                  "name": "adminOperatorCredential_lastUsedAt_idx_fee97fdf",
+                  "prefix": "adminOperatorCredential_lastUsedAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "operatorId",
+                    "status"
+                  ],
+                  "name": "adminOperatorCredential_operatorId_status_idx_0096ad1f",
+                  "prefix": "adminOperatorCredential_operatorId_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "keyHash"
+                  ]
+                }
+              ]
+            },
             "agentQAPair": {
               "columns": {
                 "createdAt": {
@@ -20404,7 +20733,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "f77931a1964860f33fa3f46f7c6209f885e7f613298ace482fd7dd45c995e95a"
+    "storageHash": "bd5320ac2cc47ee11b63a2933307aa4f940b5e3a06e91f678ef66de79d8d7b8e"
   },
   "execution": {
     "executionHash": "43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475",

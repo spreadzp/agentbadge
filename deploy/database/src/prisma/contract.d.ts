@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'f77931a1964860f33fa3f46f7c6209f885e7f613298ace482fd7dd45c995e95a'>;
+  StorageHashBase<'bd5320ac2cc47ee11b63a2933307aa4f940b5e3a06e91f678ef66de79d8d7b8e'>;
 export type ExecutionHash =
   ExecutionHashBase<'43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475'>;
 export type ProfileHash =
@@ -292,6 +292,25 @@ export type FieldOutputTypes = {
       readonly evidence: CodecTypes['pg/json@1']['output'] | null;
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly AdminOperator: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly displayName: CodecTypes['pg/text@1']['output'];
+      readonly principalType: CodecTypes['pg/text@1']['output'];
+      readonly capabilities: CodecTypes['pg/json@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly disabledAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    };
+    readonly AdminOperatorCredential: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly operatorId: CodecTypes['pg/text@1']['output'];
+      readonly keyHash: CodecTypes['pg/text@1']['output'];
+      readonly keyPrefix: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly issuedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly lastUsedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     };
     readonly AgentQAPair: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -1492,6 +1511,25 @@ export type FieldInputTypes = {
       readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
+    readonly AdminOperator: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly displayName: CodecTypes['pg/text@1']['input'];
+      readonly principalType: CodecTypes['pg/text@1']['input'];
+      readonly capabilities: CodecTypes['pg/json@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly disabledAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+    };
+    readonly AdminOperatorCredential: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly operatorId: CodecTypes['pg/text@1']['input'];
+      readonly keyHash: CodecTypes['pg/text@1']['input'];
+      readonly keyPrefix: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly issuedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly lastUsedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+    };
     readonly AgentQAPair: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly questionHash: CodecTypes['pg/text@1']['input'];
@@ -2691,6 +2729,25 @@ export type StorageColumnTypes = {
       readonly subjectId: CodecTypes['pg/text@1']['output'];
       readonly subjectType: CodecTypes['pg/text@1']['output'];
     };
+    readonly adminOperator: {
+      readonly capabilities: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly disabledAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly displayName: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly principalType: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+    };
+    readonly adminOperatorCredential: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly issuedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly keyHash: CodecTypes['pg/text@1']['output'];
+      readonly keyPrefix: CodecTypes['pg/text@1']['output'];
+      readonly lastUsedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly operatorId: CodecTypes['pg/text@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+    };
     readonly agentQAPair: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
@@ -3889,6 +3946,25 @@ export type StorageColumnInputTypes = {
       readonly operator: CodecTypes['pg/text@1']['input'];
       readonly subjectId: CodecTypes['pg/text@1']['input'];
       readonly subjectType: CodecTypes['pg/text@1']['input'];
+    };
+    readonly adminOperator: {
+      readonly capabilities: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly disabledAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly displayName: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly principalType: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+    };
+    readonly adminOperatorCredential: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly issuedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly keyHash: CodecTypes['pg/text@1']['input'];
+      readonly keyPrefix: CodecTypes['pg/text@1']['input'];
+      readonly lastUsedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly operatorId: CodecTypes['pg/text@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
     };
     readonly agentQAPair: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -6330,6 +6406,27 @@ export namespace Models {
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     readonly [RelationKeys]?: never;
   };
+  export type public_AdminOperator = {
+    id: CodecTypes['pg/text@1']['output'];
+    displayName: CodecTypes['pg/text@1']['output'];
+    principalType: CodecTypes['pg/text@1']['output'];
+    capabilities: CodecTypes['pg/json@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    disabledAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    readonly [RelationKeys]?: never;
+  };
+  export type public_AdminOperatorCredential = {
+    id: CodecTypes['pg/text@1']['output'];
+    operatorId: CodecTypes['pg/text@1']['output'];
+    keyHash: CodecTypes['pg/text@1']['output'];
+    keyPrefix: CodecTypes['pg/text@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    issuedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    lastUsedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+    readonly [RelationKeys]?: never;
+  };
 }
 
 export declare const models: {
@@ -6431,6 +6528,8 @@ export declare const models: {
     IntelClientReport: Models.public_IntelClientReport;
     IntelOperator: Models.public_IntelOperator;
     IntelConsent: Models.public_IntelConsent;
+    AdminOperator: Models.public_AdminOperator;
+    AdminOperatorCredential: Models.public_AdminOperatorCredential;
   };
 };
 
@@ -6780,6 +6879,127 @@ type ContractBase = Omit<
                   readonly name: 'adminAction_operator_createdAtMs_idx_cb0bc76e';
                   readonly prefix: 'adminAction_operator_createdAtMs_idx';
                   readonly columns: readonly ['operator', 'createdAtMs'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly adminOperator: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly displayName: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly principalType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly capabilities: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'active'>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly disabledAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'adminOperator_principalType_status_idx_2577b345';
+                  readonly prefix: 'adminOperator_principalType_status_idx';
+                  readonly columns: readonly ['principalType', 'status'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly adminOperatorCredential: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly operatorId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly keyHash: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly keyPrefix: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'active'>;
+                  };
+                };
+                readonly issuedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly revokedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly lastUsedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['keyHash'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'adminOperatorCredential_operatorId_status_idx_0096ad1f';
+                  readonly prefix: 'adminOperatorCredential_operatorId_status_idx';
+                  readonly columns: readonly ['operatorId', 'status'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'adminOperatorCredential_lastUsedAt_idx_fee97fdf';
+                  readonly prefix: 'adminOperatorCredential_lastUsedAt_idx';
+                  readonly columns: readonly ['lastUsedAt'];
                   readonly unique: false;
                 },
               ];
@@ -14206,6 +14426,14 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'IntelConsent';
     };
+    readonly adminOperator: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'AdminOperator';
+    };
+    readonly adminOperatorCredential: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'AdminOperatorCredential';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -14489,6 +14717,118 @@ type ContractBase = Omit<
                 readonly evidence: { readonly column: 'evidence' };
                 readonly createdAtMs: { readonly column: 'createdAtMs' };
                 readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly AdminOperator: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly displayName: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly principalType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly capabilities: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly disabledAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'adminOperator';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly displayName: { readonly column: 'displayName' };
+                readonly principalType: { readonly column: 'principalType' };
+                readonly capabilities: { readonly column: 'capabilities' };
+                readonly status: { readonly column: 'status' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly disabledAt: { readonly column: 'disabledAt' };
+              };
+            };
+          };
+          readonly AdminOperatorCredential: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly operatorId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly keyHash: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly keyPrefix: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly issuedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly lastUsedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'adminOperatorCredential';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly operatorId: { readonly column: 'operatorId' };
+                readonly keyHash: { readonly column: 'keyHash' };
+                readonly keyPrefix: { readonly column: 'keyPrefix' };
+                readonly status: { readonly column: 'status' };
+                readonly issuedAt: { readonly column: 'issuedAt' };
+                readonly revokedAt: { readonly column: 'revokedAt' };
+                readonly lastUsedAt: { readonly column: 'lastUsedAt' };
               };
             };
           };

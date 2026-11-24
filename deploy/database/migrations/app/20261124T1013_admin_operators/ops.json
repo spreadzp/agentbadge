@@ -1,0 +1,239 @@
+[
+  {
+    "id": "table.adminOperator",
+    "label": "Create table \"adminOperator\"",
+    "summary": "Creates table \"adminOperator\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adminOperator"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adminOperator\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperator\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adminOperator\"",
+        "sql": "CREATE TABLE \"public\".\"adminOperator\" (\n  \"capabilities\" json NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"disabledAt\" timestamptz,\n  \"displayName\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"principalType\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adminOperator\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperator\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.adminOperatorCredential",
+    "label": "Create table \"adminOperatorCredential\"",
+    "summary": "Creates table \"adminOperatorCredential\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adminOperatorCredential"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adminOperatorCredential\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adminOperatorCredential\"",
+        "sql": "CREATE TABLE \"public\".\"adminOperatorCredential\" (\n  \"id\" text NOT NULL,\n  \"issuedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"keyHash\" text NOT NULL,\n  \"keyPrefix\" text NOT NULL,\n  \"lastUsedAt\" timestamptz,\n  \"operatorId\" text NOT NULL,\n  \"revokedAt\" timestamptz,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adminOperatorCredential\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.adminOperatorCredential.adminOperatorCredential_keyHash_key",
+    "label": "Add unique constraint on \"adminOperatorCredential\" (keyHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "adminOperatorCredential_keyHash_key",
+        "table": "adminOperatorCredential"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"adminOperatorCredential_keyHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminOperatorCredential_keyHash_key",
+          "public",
+          "\"public\".\"adminOperatorCredential\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"adminOperatorCredential_keyHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"adminOperatorCredential\" ADD CONSTRAINT \"adminOperatorCredential_keyHash_key\" UNIQUE (\"keyHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"adminOperatorCredential_keyHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminOperatorCredential_keyHash_key",
+          "public",
+          "\"public\".\"adminOperatorCredential\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminOperator.adminOperator_principalType_status_idx_2577b345",
+    "label": "Create index \"adminOperator_principalType_status_idx_2577b345\" on \"adminOperator\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminOperator_principalType_status_idx_2577b345",
+        "table": "adminOperator"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminOperator_principalType_status_idx_2577b345\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperator_principalType_status_idx_2577b345\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminOperator_principalType_status_idx_2577b345\"",
+        "sql": "CREATE INDEX \"adminOperator_principalType_status_idx_2577b345\" ON \"public\".\"adminOperator\" (\"principalType\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminOperator_principalType_status_idx_2577b345\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperator_principalType_status_idx_2577b345\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminOperatorCredential.adminOperatorCredential_lastUsedAt_idx_fee97fdf",
+    "label": "Create index \"adminOperatorCredential_lastUsedAt_idx_fee97fdf\" on \"adminOperatorCredential\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminOperatorCredential_lastUsedAt_idx_fee97fdf",
+        "table": "adminOperatorCredential"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminOperatorCredential_lastUsedAt_idx_fee97fdf\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential_lastUsedAt_idx_fee97fdf\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminOperatorCredential_lastUsedAt_idx_fee97fdf\"",
+        "sql": "CREATE INDEX \"adminOperatorCredential_lastUsedAt_idx_fee97fdf\" ON \"public\".\"adminOperatorCredential\" (\"lastUsedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminOperatorCredential_lastUsedAt_idx_fee97fdf\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential_lastUsedAt_idx_fee97fdf\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminOperatorCredential.adminOperatorCredential_operatorId_status_idx_0096ad1f",
+    "label": "Create index \"adminOperatorCredential_operatorId_status_idx_0096ad1f\" on \"adminOperatorCredential\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminOperatorCredential_operatorId_status_idx_0096ad1f",
+        "table": "adminOperatorCredential"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminOperatorCredential_operatorId_status_idx_0096ad1f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential_operatorId_status_idx_0096ad1f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminOperatorCredential_operatorId_status_idx_0096ad1f\"",
+        "sql": "CREATE INDEX \"adminOperatorCredential_operatorId_status_idx_0096ad1f\" ON \"public\".\"adminOperatorCredential\" (\"operatorId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminOperatorCredential_operatorId_status_idx_0096ad1f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminOperatorCredential_operatorId_status_idx_0096ad1f\""
+        ]
+      }
+    ]
+  }
+]
