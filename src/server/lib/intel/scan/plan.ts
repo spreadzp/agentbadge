@@ -5,6 +5,7 @@
 
 import type { CollectorSubmission } from "../evidence/submission";
 import type { ScanObservation } from "./fetcher";
+import { DECLARATION_PATHS, wellKnownFacts } from "./declarations";
 
 export interface ScanProbe {
   /** path appended to baseUrl */
@@ -27,7 +28,9 @@ export const SCAN_PLAN: ScanProbe[] = [
   { path: "/robots.txt", docType: "robots" },
   { path: "/sitemap.xml", docType: "sitemap" },
   { path: "/llms.txt", docType: "llms_txt" },
-  { path: "/.well-known/agent.json", docType: "well_known" },
+  // SLICE-262-4 corpus: agent-surface declaration documents —
+  // parsed into facts the consistency rules (R-023…R-027) consume.
+  ...DECLARATION_PATHS.map((path): ScanProbe => ({ path, docType: "well_known" })),
   { path: "/wp-json/", docType: "wp_json" },
   { path: "/wp-json/wp/v2/users" },
   { path: "/wp-content/uploads/", docType: "html" },
@@ -201,7 +204,9 @@ export function probeToSubmissions(opts: {
               ? htmlFacts(obs.bodyText)
               : probe.docType === "wp_json"
                 ? wpJsonFacts(obs.bodyText)
-                : {};
+                : probe.docType === "well_known"
+                  ? wellKnownFacts(obs.bodyText)
+                  : {};
     const docFact: CollectorSubmission = {
       ...base,
       subject: { type: "url", url },

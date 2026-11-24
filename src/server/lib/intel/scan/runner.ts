@@ -4,6 +4,7 @@
 // failure produces NO evidence (honest) and counts toward partial;
 // every probe failing ⇒ failed, no report (EXPLAINED §3).
 import type { SigningKey } from "../../../../agent-readiness/integrity/key-manager";
+import type { CanonicalEnvelope } from "../evidence/envelope";
 import { generateReportId } from "../../../../agent-readiness/integrity/ulid";
 import { acceptSubmission } from "../evidence/boundary";
 import { computeDedupeHash } from "../evidence/store";
@@ -11,8 +12,12 @@ import type { IntelEvidenceStore } from "../evidence/store";
 import { INTEL_API_VERSION } from "../keys";
 import { assembleIntelReport } from "../report";
 import type { IntelRuleset } from "../rules";
-import type { ScanFetch } from "./fetcher";
+import type { ScanFetch, ScanObservation } from "./fetcher";
 import { SCAN_PLAN, probeToSubmissions } from "./plan";
+import {
+  collectAdvertisedUrls,
+  fannedToSubmissions,
+} from "./declarations";
 import type { IntelScanJobStore } from "./store";
 import type { ScanJob } from "./types";
 
@@ -51,8 +56,42 @@ export async function runScanJob(
   await deps.jobs.update(job);
 
   const collectorId = `external_scan@${job.siteId}`;
-  const envelopes = [];
+  const envelopes: CanonicalEnvelope[] = [];
   let probeFailures = 0;
+
+  const mint = async (sub: ReturnType<typeof probeToSubmissions>[number]) => {
+    const envelope = acceptSubmission(
+      sub,
+      {
+        collector: {
+          type: "external_scan",
+          id: collectorId,
+          version: INTEL_API_VERSION,
+        },
+        site_id: job.siteId,
+      },
+      deps.key,
+      now(),
+    );
+    envelopes.push(envelope);
+    const receivedAt = envelope.received_at;
+    const days = deps.evidenceRetentionDays ?? 0;
+    await deps.evidence.insert({
+      id: envelope.envelope_id,
+      schemaVersion: envelope.schema_version,
+      siteId: job.siteId,
+      scanId: job.scanId,
+      collectorId,
+      provenance: envelope.provenance,
+      dedupeHash: computeDedupeHash(sub, job.siteId),
+      receivedAt,
+      expiresAt:
+        days > 0
+          ? new Date(new Date(receivedAt).getTime() + days * DAY_MS).toISOString()
+          : null,
+      envelope,
+    });
+  };
 
   for (const probe of SCAN_PLAN) {
     const url = new URL(probe.path, job.baseUrl).href;
@@ -73,38 +112,29 @@ export async function runScanJob(
       obs,
       nowIso: iso(),
     })) {
-      const envelope = acceptSubmission(
-        sub,
-        {
-          collector: {
-            type: "external_scan",
-            id: collectorId,
-            version: INTEL_API_VERSION,
-          },
-          site_id: job.siteId,
-        },
-        deps.key,
-        now(),
-      );
-      envelopes.push(envelope);
+      await mint(sub);
+    }
+  }
 
-    const receivedAt = envelope.received_at;
-    const days = deps.evidenceRetentionDays ?? 0;
-    await deps.evidence.insert({
-      id: envelope.envelope_id,
-      schemaVersion: envelope.schema_version,
+  // SLICE-262-4 corpus: bounded advertised-URL fan-out — the
+  // declarations a site publishes are probed same-origin ≤8 (dead
+  // advertised URLs + real 402 prices are findings, not guesses).
+  for (const url of collectAdvertisedUrls(envelopes, job.baseUrl)) {
+    let obs: ScanObservation | null = null;
+    try {
+      obs = await deps.fetch(url);
+    } catch {
+      obs = null; // transport failure ⇒ reachable:false marker, not silence
+    }
+    for (const sub of fannedToSubmissions({
       siteId: job.siteId,
       scanId: job.scanId,
       collectorId,
-      provenance: envelope.provenance,
-      dedupeHash: computeDedupeHash(sub, job.siteId),
-      receivedAt,
-      expiresAt:
-        days > 0
-          ? new Date(new Date(receivedAt).getTime() + days * DAY_MS).toISOString()
-          : null,
-      envelope,
-    });
+      collectedAt: iso(),
+      url,
+      obs,
+    })) {
+      await mint(sub);
     }
   }
 

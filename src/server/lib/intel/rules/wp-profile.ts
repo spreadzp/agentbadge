@@ -6,6 +6,7 @@
 // contract shape is document_fact.facts (record), the KEYS live here.
 
 import type { IntelRule, IntelRuleset } from "./types";
+import { DECLARATION_RULES } from "./declaration-rules";
 import {
   docWhere,
   fileWhere,
@@ -79,7 +80,8 @@ const uaAllowed = (ua: string): IntelRule =>
   );
 
 export const INTEL_WP_PROFILE_V1: IntelRuleset = {
-  ruleset_version: "1.0.0",
+  // 1.1.0 — additive: audit-259 declaration corpus (R-023…R-027)
+  ruleset_version: "1.1.0",
   rules: [
     // ─── readiness ────────────────────────────────────────────────
     R("001", "critical", "homepage reachable", rootObs, (m) =>
@@ -292,5 +294,7 @@ export const INTEL_WP_PROFILE_V1: IntelRuleset = {
       m.some((e) => facts(e).sql_error === true)
         ? fail("database error text leaked")
         : pass("no sql error text")),
+
+    ...DECLARATION_RULES, // audit-259 declaration-consistency corpus
   ],
 };

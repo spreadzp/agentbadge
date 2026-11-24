@@ -75,7 +75,7 @@ describe("assembleIntelReport", () => {
     const parsed = intelReportSchema.safeParse(report);
     expect(parsed.success).toBe(true);
     expect(report.report_id).toBe("01KABCDEFGHJKMNPQRSTVWXYZ0");
-    expect(report.ruleset.version).toBe("1.0.0");
+    expect(report.ruleset.version).toBe("1.1.0");
     expect(report.scan.completeness).toBe("complete");
     expect(report.integrity.signature.algorithm).toBe("ed25519");
     expect(report.integrity.signature.value).toBeTruthy();

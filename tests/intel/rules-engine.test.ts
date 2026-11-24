@@ -160,7 +160,7 @@ describe("scoreFindings — two independent axes (D-UX-Q3)", () => {
     const s = scoreFindings(findings, INTEL_WP_PROFILE_V1.ruleset_version);
     expect(s.readiness.score).toBeNull();
     expect(s.exposure.score).toBeNull();
-    expect(s.readiness.unknown).toBe(22);
+    expect(s.readiness.unknown).toBe(27);
     expect(s.exposure.unknown).toBe(15);
   });
 
