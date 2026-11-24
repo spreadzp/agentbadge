@@ -182,6 +182,8 @@ export const ConsentPanel = (
               ${status === "granted" ? `granted ${row.grantedAt.slice(0, 10)}` : ""}${status === "revoked" ? `granted ${row.grantedAt.slice(0, 10)} · revoked ${row.revokedAt!.slice(0, 10)}` : ""}
               · by ${esc(row.grantedByPrincipal)} ${esc(row.grantedById)}
             </p>` : ""}
+            ${kind === "publication" && status === "granted" ? html`
+              <p class="mt-1 text-xs"><a href="/verify/agent-surface/${siteId}" class="text-emerald-300 hover:text-emerald-200">public status page → /verify/agent-surface/${siteId}</a></p>` : ""}
           </div>
           ${canManage ? html`
             <form method="post" action="/intel/sites/${siteId}/consent" class="shrink-0">

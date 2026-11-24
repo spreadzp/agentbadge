@@ -29,6 +29,7 @@ import {
   createIntelApiRoutes,
   createIntelKeysRoutes,
   createIntelUiRoutes,
+  createIntelVerifyRoutes,
 } from "../routes/intel";
 
 export function wireIntel(app: Hono): void {
@@ -46,6 +47,7 @@ export function wireIntel(app: Hono): void {
   const clientReports = pickIntelClientReportStore(db);
   const pullJobs = pickIntelPullJobStore(db);
   const securityEvents = pickIntelSecurityEventStore(db);
+  const attestations = createMemoryAttestationStore();
   app.route(
     "/api/intel",
     createIntelApiRoutes({
@@ -63,11 +65,15 @@ export function wireIntel(app: Hono): void {
       clientReports: clientReports.store,
       pullJobs,
       securityEvents,
-      attestations: createMemoryAttestationStore(),
+      attestations,
       attestationValidityDays: cfg.attestationValidityDays,
     }),
   );
   app.route("/", createIntelKeysRoutes({ key }));
+  app.route(
+    "/",
+    createIntelVerifyRoutes({ key, consent, attestations }),
+  );
   app.route(
     "/intel",
     createIntelUiRoutes({
