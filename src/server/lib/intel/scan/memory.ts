@@ -13,6 +13,9 @@ export function createMemoryScanJobStore(): IntelScanJobStore {
     async byId(id) {
       return byId.get(id) ?? null;
     },
+    async byScanId(scanId) {
+      return [...byId.values()].find((j) => j.scanId === scanId) ?? null;
+    },
     async update(j) {
       byId.set(j.id, j);
       return j;

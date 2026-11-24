@@ -80,6 +80,9 @@ export function wireIntel(app: Hono): void {
       consent,
       dnsResolver: createNodeDnsResolver(),
       clientReports: clientReports.store,
+      pullJobs,
+      securityEvents,
+      supportAdminTenantIds: cfg.supportAdminTenantIds,
     }),
   );
   logger.info("Intel routes registered", {

@@ -26,4 +26,10 @@ export interface IntelEnvConfig {
    * "archive forever"). Default 400; <=0 disables expiry (dev only).
    */
   evidenceRetentionDays: number;
+  /**
+   * INTEL_SUPPORT_TENANT_IDS — comma-separated tenant ids whose
+   * operators get cross-tenant /intel/support diagnostics
+   * (SLICE-262-32, Pryme ops). Empty → support route always 403.
+   */
+  supportAdminTenantIds?: string[];
 }

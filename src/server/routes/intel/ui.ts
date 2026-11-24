@@ -15,6 +15,7 @@ import {
 import type { OperatorAuthContext } from "../../lib/intel/registry/types";
 import { listPortfolio, siteDetail } from "../../lib/intel/dashboard/data";
 import { buildDigest } from "../../lib/intel/dashboard/freshness";
+import { buildSupportCard } from "../../lib/intel/support";
 import {
   } from "../../lib/intel/client-report";
 import { hasActiveConsent } from "../../lib/intel/consent";
@@ -115,6 +116,31 @@ export function createIntelUiRoutes(deps: IntelRouteDeps) {
       op.tenant_id,
     );
     return c.json(buildDigest(rows));
+  });
+
+  // SLICE-262-32 — support diagnostics: resolve any intel id to an
+  // assembled card. Pryme-ops surface, intentionally CROSS-tenant —
+  // only operators of supportAdminTenantIds; everyone else → 403.
+  app.get("/support", async (c) => {
+    const op = c.get("intelOperator");
+    if (op.role === "viewer") return c.json({ error: "role_denied" }, 403);
+    if (!(deps.supportAdminTenantIds ?? []).includes(op.tenant_id))
+      return c.json({ error: "support_admin_only" }, 403);
+    if (storesMissing() || !deps.registry) return c.json(INTEL_KEY_MISSING, 503);
+    const q = c.req.query("q") ?? "";
+    const card = await buildSupportCard(
+      {
+        registryStores: deps.registryStores!,
+        consent: deps.consent!,
+        scanJobs: deps.scanJobs!,
+        evidence: deps.evidence!,
+        pullJobs: deps.pullJobs,
+        securityEvents: deps.securityEvents,
+      },
+      q,
+    );
+    if (!card) return c.text("Not found", 404);
+    return c.json(card);
   });
 
   // site detail — 404 for foreign-tenant or unknown sites (no leak)

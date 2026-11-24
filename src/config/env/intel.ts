@@ -17,5 +17,9 @@ export function loadIntel(): IntelEnvConfig {
       const n = raw === undefined ? 400 : Number(raw);
       return Number.isFinite(n) ? n : 400;
     })(),
+    supportAdminTenantIds: (process.env.INTEL_SUPPORT_TENANT_IDS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
   };
 }

@@ -52,6 +52,12 @@ export interface IntelRouteDeps {
   /** SLICE-262-16 — pull-jobs + security events. */
   pullJobs?: IntelPullJobStore;
   securityEvents?: IntelSecurityEventStore;
+  /**
+   * SLICE-262-32 — tenant ids whose operators get cross-tenant
+   * support diagnostics (Pryme ops). Client operators → 403
+   * on /support even for their own ids — support is ops-side.
+   */
+  supportAdminTenantIds?: string[];
 }
 
 export const INTEL_KEY_MISSING = {

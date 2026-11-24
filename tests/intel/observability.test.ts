@@ -82,7 +82,7 @@ describe("/api/intel/health + /ready", () => {
     const deps = full() as Record<string, unknown>;
     delete deps.evidence;
     delete deps.scanJobs;
-    app.route("/api/intel", createIntelApiRoutes(deps));
+    app.route("/api/intel", createIntelApiRoutes(deps as unknown as Parameters<typeof createIntelApiRoutes>[0]));
     const res = await app.request("/api/intel/ready");
     expect(res.status).toBe(503);
     const body = await res.json();
@@ -137,7 +137,7 @@ describe("correlation + metrics", () => {
     // minimal request-logger equivalent — the real middleware lives
     // upstream of this router in prod
     app.use("*", async (c, next) => {
-      c.set("requestId", "req_test_42");
+      c.set("requestId" as never, "req_test_42");
       await next();
     });
     app.route("/api/intel", createIntelApiRoutes({
