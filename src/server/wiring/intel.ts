@@ -19,7 +19,7 @@ import {
   pickIntelPullJobStore,
   pickIntelSecurityEventStore,
 } from "../lib/intel/pull/db-stores";
-import { createMemoryAttestationStore } from "../lib/intel/attestation";
+import { pickIntelAttestationStore } from "../lib/intel/attestation/db-stores";
 import { pickIntelEntitlementEventStore } from "../lib/intel/entitlement";
 import { pickIntelBillingEventStore } from "../lib/intel/billing";
 import { INTEL_WP_PROFILE_V1 } from "../lib/intel/rules";
@@ -49,7 +49,7 @@ export function wireIntel(app: Hono): void {
   const clientReports = pickIntelClientReportStore(db);
   const pullJobs = pickIntelPullJobStore(db);
   const securityEvents = pickIntelSecurityEventStore(db);
-  const attestations = createMemoryAttestationStore();
+  const attestations = pickIntelAttestationStore(db);
   app.route(
     "/api/intel",
     createIntelApiRoutes({

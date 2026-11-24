@@ -1,0 +1,353 @@
+[
+  {
+    "id": "table.intelAttestation",
+    "label": "Create table \"intelAttestation\"",
+    "summary": "Creates table \"intelAttestation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelAttestation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelAttestation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelAttestation\"",
+        "sql": "CREATE TABLE \"public\".\"intelAttestation\" (\n  \"contentHash\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"issued\" timestamptz NOT NULL,\n  \"reportId\" text NOT NULL,\n  \"revokedAt\" timestamptz,\n  \"revokedReason\" text,\n  \"ruleset\" json NOT NULL,\n  \"scanId\" text NOT NULL,\n  \"scores\" json NOT NULL,\n  \"signature\" json NOT NULL,\n  \"siteId\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"validUntil\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelAttestation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelPullJob",
+    "label": "Create table \"intelPullJob\"",
+    "summary": "Creates table \"intelPullJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelPullJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelPullJob\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelPullJob\"",
+        "sql": "CREATE TABLE \"public\".\"intelPullJob\" (\n  \"claimedAt\" timestamptz,\n  \"completedAt\" timestamptz,\n  \"correlationId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"exp\" timestamptz NOT NULL,\n  \"id\" text NOT NULL,\n  \"keyId\" text NOT NULL,\n  \"leaseExpiresAt\" timestamptz,\n  \"leaseGeneration\" int4 DEFAULT 0 NOT NULL,\n  \"leaseToken\" text,\n  \"nonce\" text NOT NULL,\n  \"params\" json NOT NULL,\n  \"probeId\" text NOT NULL,\n  \"reclaimCount\" int4 DEFAULT 0 NOT NULL,\n  \"result\" json,\n  \"resultEnvelopeId\" text,\n  \"scanId\" text,\n  \"sig\" json NOT NULL,\n  \"siteId\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelPullJob\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.intelSecurityEvent",
+    "label": "Create table \"intelSecurityEvent\"",
+    "summary": "Creates table \"intelSecurityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "intelSecurityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"intelSecurityEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSecurityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"intelSecurityEvent\"",
+        "sql": "CREATE TABLE \"public\".\"intelSecurityEvent\" (\n  \"correlationId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"eventType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"jobId\" text,\n  \"leaseGeneration\" int4,\n  \"payloadDigest\" text,\n  \"principal\" text NOT NULL,\n  \"siteId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"intelSecurityEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSecurityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelAttestation.intelAttestation_scanId_idx_7c201901",
+    "label": "Create index \"intelAttestation_scanId_idx_7c201901\" on \"intelAttestation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelAttestation_scanId_idx_7c201901",
+        "table": "intelAttestation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelAttestation_scanId_idx_7c201901\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_scanId_idx_7c201901\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelAttestation_scanId_idx_7c201901\"",
+        "sql": "CREATE INDEX \"intelAttestation_scanId_idx_7c201901\" ON \"public\".\"intelAttestation\" (\"scanId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelAttestation_scanId_idx_7c201901\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_scanId_idx_7c201901\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelAttestation.intelAttestation_siteId_issued_idx_19d5f124",
+    "label": "Create index \"intelAttestation_siteId_issued_idx_19d5f124\" on \"intelAttestation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelAttestation_siteId_issued_idx_19d5f124",
+        "table": "intelAttestation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelAttestation_siteId_issued_idx_19d5f124\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_siteId_issued_idx_19d5f124\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelAttestation_siteId_issued_idx_19d5f124\"",
+        "sql": "CREATE INDEX \"intelAttestation_siteId_issued_idx_19d5f124\" ON \"public\".\"intelAttestation\" (\"siteId\", \"issued\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelAttestation_siteId_issued_idx_19d5f124\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_siteId_issued_idx_19d5f124\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelAttestation.intelAttestation_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelAttestation_tenantId_idx_c93ed4f1\" on \"intelAttestation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelAttestation_tenantId_idx_c93ed4f1",
+        "table": "intelAttestation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelAttestation_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelAttestation_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelAttestation_tenantId_idx_c93ed4f1\" ON \"public\".\"intelAttestation\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelAttestation_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelAttestation_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelPullJob.intelPullJob_siteId_status_idx_51cae635",
+    "label": "Create index \"intelPullJob_siteId_status_idx_51cae635\" on \"intelPullJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelPullJob_siteId_status_idx_51cae635",
+        "table": "intelPullJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelPullJob_siteId_status_idx_51cae635\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob_siteId_status_idx_51cae635\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelPullJob_siteId_status_idx_51cae635\"",
+        "sql": "CREATE INDEX \"intelPullJob_siteId_status_idx_51cae635\" ON \"public\".\"intelPullJob\" (\"siteId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelPullJob_siteId_status_idx_51cae635\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob_siteId_status_idx_51cae635\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelPullJob.intelPullJob_tenantId_idx_c93ed4f1",
+    "label": "Create index \"intelPullJob_tenantId_idx_c93ed4f1\" on \"intelPullJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelPullJob_tenantId_idx_c93ed4f1",
+        "table": "intelPullJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelPullJob_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelPullJob_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"intelPullJob_tenantId_idx_c93ed4f1\" ON \"public\".\"intelPullJob\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelPullJob_tenantId_idx_c93ed4f1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelPullJob_tenantId_idx_c93ed4f1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.intelSecurityEvent.intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2",
+    "label": "Create index \"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\" on \"intelSecurityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2",
+        "table": "intelSecurityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\"",
+        "sql": "CREATE INDEX \"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\" ON \"public\".\"intelSecurityEvent\" (\"siteId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"intelSecurityEvent_siteId_createdAt_idx_2fcd3bd2\""
+        ]
+      }
+    ]
+  }
+]

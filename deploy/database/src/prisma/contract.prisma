@@ -2204,3 +2204,77 @@ model DemandEvent {
   @@index([kind])
   @@index([entityId])
 }
+
+// ─── EPIC-262 (SLICE-262-37) Attestation — signed lifecycle artifact
+// binding a scan report's scores to a validity window. The signed
+// bytes are immutable; only `status` flips (active→revoked).
+model IntelAttestation {
+  id            String            @id // att_<ulid>
+  siteId        String
+  tenantId      String
+  reportId      String
+  scanId        String
+  contentHash   String
+  scores        Json
+  ruleset       Json
+  issued        TimestamptzString
+  validUntil    TimestamptzString
+  status        String // active|revoked (expired is derived)
+  revokedAt     TimestamptzString?
+  revokedReason String?
+  signature     Json // {algorithm,key_id,value}
+  createdAt     TimestamptzString @default(now())
+
+  @@index([siteId, issued])
+  @@index([tenantId])
+  @@index([scanId])
+}
+
+// ─── EPIC-262 (SLICE-262-37) Pull-job — operator-initiated
+// whitelisted read executed by the site plugin. Atomic claim via
+// conditional UPDATE (queued→claimed) so concurrent pollers can't
+// double-execute; leaseGeneration binds results to one claim epoch.
+model IntelPullJob {
+  id              String            @id // pjob_<ulid>
+  siteId          String
+  tenantId        String
+  probeId         String
+  params          Json
+  nonce           String
+  exp             TimestamptzString // execution deadline (TTL)
+  keyId           String
+  sig             Json // {algorithm,value}
+  status          String // queued|claimed|done|expired|failed
+  leaseGeneration Int               @default(0)
+  leaseToken      String?
+  leaseExpiresAt  TimestamptzString?
+  reclaimCount    Int               @default(0)
+  result          Json?
+  resultEnvelopeId String?
+  scanId          String?
+  correlationId   String?
+  claimedAt       TimestamptzString?
+  completedAt     TimestamptzString?
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([siteId, status])
+  @@index([tenantId])
+}
+
+// ─── EPIC-262 (SLICE-262-37) Security event — append-only trail for
+// pull-protocol refusals (conflict/stale-lease/forge). Digest only,
+// never the rejected payload.
+model IntelSecurityEvent {
+  id              String            @id // sev_<ulid>
+  siteId          String
+  jobId           String?
+  leaseGeneration Int?
+  eventType       String // result_conflict|lease_stale|job_forge_rejected
+  principal       String // site:<id> | operator:<id>
+  correlationId   String?
+  payloadDigest   String?
+  createdAt       TimestamptzString @default(now())
+
+  @@index([siteId, createdAt])
+}
