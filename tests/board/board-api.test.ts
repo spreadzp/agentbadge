@@ -11,7 +11,7 @@
  * Idempotency-Key on POST claim/submit/review → board:idem replay.
  * board:snap:* snapshot cache (tag board) invalidated on each mutation.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { InMemoryCache } from "@agentbadge/cache";
 
@@ -456,15 +456,22 @@ describe("audit fixes (199-14)", () => {
   });
 
   it("H-1: 31st mutation in a minute → 429", async () => {
-    for (let i = 0; i < 30; i++) {
-      await post("/api/board/cards", { title: `r${i}`, spec: "s" }, OPS);
+    // The limiter buckets by wall-clock minute — pin Date so the test
+    // can't straddle a minute rollover (was an ordering flake).
+    vi.setSystemTime(new Date("2026-01-01T00:00:30Z"));
+    try {
+      for (let i = 0; i < 30; i++) {
+        await post("/api/board/cards", { title: `r${i}`, spec: "s" }, OPS);
+      }
+      const res = await post(
+        "/api/board/cards",
+        { title: "r31", spec: "s" },
+        OPS,
+      );
+      expect(res.status).toBe(429);
+    } finally {
+      vi.useRealTimers();
     }
-    const res = await post(
-      "/api/board/cards",
-      { title: "r31", spec: "s" },
-      OPS,
-    );
-    expect(res.status).toBe(429);
   });
 
   it("M-7: budgetUsdc NaN/negative → 400", async () => {

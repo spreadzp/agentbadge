@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { NftInfo } from "@agentbadge/hedera-core";
 
@@ -52,10 +52,11 @@ describe("Dashboard — GET /dashboard", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
   });
 
-  it("includes HTMX CDN script tag", async () => {
+  it("includes vendored HTMX script tag (CDN-free, like Tailwind)", async () => {
     const res = await app.request("/dashboard", { method: "GET" });
     const html = await res.text();
-    expect(html).toContain("htmx.org");
+    expect(html).toContain("/js/vendor/htmx.min.js");
+    expect(html).not.toContain("htmx.org");
   });
 
   it("includes prebuilt Tailwind CSS link", async () => {
