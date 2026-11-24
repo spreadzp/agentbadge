@@ -74,8 +74,8 @@ export type IssueCredentialResult =
         | "duplicate_hash"
         /** 264-5: the hash equals sha256(ADMIN_API_KEY) — persisting
          *  it would let the shared key authenticate as a PERSONAL
-         *  identity on the store-hit path, bypassing the dual-auth
-         *  window's break_glass marking/deadline/metric. */
+         *  identity on the store-hit path, bypassing break-glass
+         *  marking/alerting (264-9). */
         | "key_is_shared_secret";
     };
 

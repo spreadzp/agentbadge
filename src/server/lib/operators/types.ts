@@ -45,7 +45,7 @@ export interface AdminOperatorCredential {
 /** The authenticated actor resolved FROM a credential — the thing
  *  admin surfaces put in context and audit rows (D-264-Q20). */
 export interface Principal {
-  id: string; // op_<ulid> or a synthetic id (legacy_admin — D-264-Q18)
+  id: string; // op_<ulid> or a synthetic id (break_glass — D-264-Q18)
   principalType: AdminPrincipalType;
   /** credential identification prefix — diagnostics, not a secret */
   keyPrefix: string | null;

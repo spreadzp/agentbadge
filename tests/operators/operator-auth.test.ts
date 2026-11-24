@@ -286,8 +286,8 @@ describe("operatorAuth — credential → principal (memory backend)", () => {
 
     const denied = await app.request("/admin/page");
     expect(denied.status).toBe(401);
-    // distinct realm from adminBrowserAuth's "admin" — creds must not
-    // transpose across dual-auth surfaces in the browser cache
+    // distinct realm ("operators") — creds must not transpose across
+    // the old "admin" surface in the browser cache
     expect(denied.headers.get("WWW-Authenticate")).toBe(
       'Basic realm="operators"',
     );

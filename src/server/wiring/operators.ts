@@ -14,7 +14,7 @@ import { getDatabase } from "../lib/database";
 import { pickOperatorStores, seedOperatorsFromEnv } from "../lib/operators";
 import { createAdminOperatorsApi } from "../routes/admin-operators-api";
 import { createAdminOperatorsUi } from "../routes/admin-operators-ui";
-import { logLegacyWindowState } from "../middleware/operator-legacy";
+import { logBreakGlassPosture } from "../middleware/operator-breakglass";
 
 export async function wireOperators(app: Hono): Promise<void> {
   const store = pickOperatorStores(getDatabase());
@@ -24,9 +24,8 @@ export async function wireOperators(app: Hono): Promise<void> {
   app.route("/", createAdminOperatorsApi(store));
   app.route("/", createAdminOperatorsUi(store));
 
-  // 264-5: boot posture — the dual-auth window's state (open-until /
-  // closed-why / break-glass armed) is logged once at boot.
-  logLegacyWindowState();
+  // 264-9: boot posture — break-glass armed/disarmed logged once.
+  logBreakGlassPosture();
 
   // Honest posture check: DATABASE_ENABLED=true with a memory backend
   // means the installed @agentbadge/database predates the

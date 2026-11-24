@@ -16,7 +16,7 @@ import { createAgentRequestRoutes } from "../../src/server/routes/agent-requests
 import { createAgentRequestOpsRoutes } from "../../src/server/routes/agent-requests/agent-requests-ops-api";
 import { createAgentSurveyRoutes } from "../../src/server/routes/agent-surveys/agent-surveys-api";
 import { canonicalJson } from "../../src/server/lib/request-inbox/qa";
-import { adminAuth } from "../../src/server/middleware/adminAuth";
+import { operatorAuth } from "../../src/server/middleware/operatorAuth";
 import {
   createMemoryOperatorStore,
   seedOperator,
@@ -237,13 +237,15 @@ describe("N-5: QA corpus refresh", () => {
 // ── M-13: empty X-Admin-Key doesn't shadow Bearer ────────────────
 describe("M-13: empty X-Admin-Key falls through to Bearer", () => {
   it("empty X-Admin-Key + valid Bearer → authorized", async () => {
+    const opStore = createMemoryOperatorStore();
+    const { key: opKey } = await seedOperator(opStore);
     const app = new Hono();
-    app.use(adminAuth);
+    app.use(operatorAuth(opStore));
     app.get("/probe", (c) => c.json({ ok: true }));
     const res = await app.request("/probe", {
       headers: {
         "X-Admin-Key": "",
-        Authorization: `Bearer ${ADMIN}`,
+        Authorization: `Bearer ${opKey}`,
       },
     });
     expect(res.status).toBe(200);

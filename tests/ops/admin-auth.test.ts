@@ -116,19 +116,18 @@ describe("Operator credential authentication — SLICE-7-11/264-8", () => {
     delete process.env.DIRECTORY_TOPIC_ID;
   });
 
-  it("the legacy adminAuth middleware still short-circuits safely on short keys", async () => {
-    const { adminAuth } = await import("../../src/server/middleware/adminAuth");
+  it("the break-glass verdict refuses safely on short keys (264-9)", async () => {
+    const { tryBreakGlassKey } = await import(
+      "../../src/server/middleware/operator-breakglass"
+    );
 
     process.env.ADMIN_API_KEY = "test-secret-key";
-    const c = {
-      req: { header: () => "short" },
-      json: (body: unknown, status: number) => new Response(JSON.stringify(body), { status }),
-    } as unknown as Parameters<typeof adminAuth>[0];
-
-    // Should return 401, not throw
-    const result = await adminAuth(c, async () => { });
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(401);
+    process.env.ADMIN_BREAK_GLASS_ENABLED = "true";
+    // Should refuse, not throw
+    expect(tryBreakGlassKey("short", "/probe")).toEqual({
+      accepted: false,
+    });
+    delete process.env.ADMIN_BREAK_GLASS_ENABLED;
   });
 
   it("assembled app: adminRoutes use() does not leak onto sibling surfaces (264-8 review)", async () => {

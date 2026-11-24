@@ -64,11 +64,11 @@ export interface RecordAdminActionInput {
   operator: string;
   /**
    * SLICE-264-7 — verbatim principal.id for the typed column (op_* or
-   * legacy_admin). Migrated surfaces pass it explicitly; finops
+   * break_glass). Migrated surfaces pass it explicitly; finops
    * internal call sites pass their `operator` argument, which IS the
-   * credential principal id post-migration. Surfaces still on
-   * adminAuth-era labels leave it unset → NULL = old format
-   * (D-264-Q13), never a self-asserted string.
+   * credential principal id post-migration. Surfaces leaving it
+   * unset write NULL → NULL = old format (D-264-Q13), never a
+   * self-asserted string.
    */
   principalId?: string | null;
   evidence?: unknown;

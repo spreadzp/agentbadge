@@ -21,8 +21,8 @@ import { createAgentKnowledgeRoutes } from "../routes/agent-knowledge-api";
 export function wireKnowledge(app: Hono): void {
   const store = pickKnowledgeStores(getDatabase());
   // 264-6: knowledge is the first domain on the new identity model —
-  // credential → principal attribution, the shared key rides only
-  // through the dual-auth window as break_glass.
+  // credential → principal attribution, the shared key lives only on
+  // the break-glass path (264-9).
   const operatorStore = pickOperatorStores(getDatabase());
   // 229-3: operator JSON — /admin/api/knowledge/* (operatorAuth).
   app.route("/", createAdminKnowledgeRoutes({ store, operatorStore }));

@@ -238,9 +238,9 @@ describe("negative matrix — caller × transport × tool (SLICE-259-8)", () => 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = ADMIN_KEY;
-    // 264-8: /mcp/ops is operatorAuth now — the shared key rides the
-    // dual-auth window as break_glass legacy_admin (read+workflow).
-    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
+    // 264-9: /mcp/ops is operatorAuth — the shared key reaches it only
+    // via the break-glass flag as break_glass (read+workflow).
+    process.env.ADMIN_BREAK_GLASS_ENABLED = "true";
   });
 
   afterAll(() => {
@@ -296,7 +296,7 @@ describe("negative matrix — caller × transport × tool (SLICE-259-8)", () => 
         });
       }
 
-      it("ops transports behave per adminAuth gate", async () => {
+      it("ops transports behave per operatorAuth gate", async () => {
         for (const t of OPS_TRANSPORTS) {
           // Admin tool call on the ops surface
           const res = await callTool(caller.app, t, T_ADMIN, caller.headers);

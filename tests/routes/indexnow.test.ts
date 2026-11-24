@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock fetch to prevent real network calls
 const mockFetch = vi.fn();
@@ -6,6 +6,9 @@ vi.stubGlobal("fetch", mockFetch);
 
 // We import the app after env is set
 import { Hono } from "hono";
+import { createMemoryOperatorStore } from "../../src/server/lib/operators";
+import { operatorAuth } from "../../src/server/middleware/operatorAuth";
+import { seedOperator } from "../helpers/operators";
 
 // We'll test the indexnow handler in isolation by re-creating it
 // with the same logic but testable. The real handler is in index.ts.
@@ -16,23 +19,14 @@ const INDEXNOW_BASE = "https://agentbadge.xyz";
 const ALLOWED_HOSTS = ["agentbadge.xyz"];
 const MAX_URLS = 10;
 
-function createTestApp(adminKey: string | undefined): Hono {
+let ADMIN = "";
+async function createTestApp(): Promise<Hono> {
   const app = new Hono();
+  const store = createMemoryOperatorStore();
+  ({ key: ADMIN } = await seedOperator(store));
 
-  // Inline adminAuth (same logic as middleware/adminAuth.ts)
-  app.use("/api/indexnow", async (c, next) => {
-    if (!adminKey) {
-      return c.json({ error: "ADMIN_API_KEY not configured" }, 500);
-    }
-    const xAdminKey = c.req.header("X-Admin-Key");
-    const authHeader = c.req.header("Authorization");
-    const bearerKey = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    const provided = xAdminKey ?? bearerKey;
-    if (!provided || provided !== adminKey) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-    await next();
-  });
+  // 264-9: the real gate — operatorAuth (was an inline adminAuth stub).
+  app.use("/api/indexnow", operatorAuth(store));
 
   app.post("/api/indexnow", async (c) => {
     try {
@@ -81,23 +75,12 @@ function createTestApp(adminKey: string | undefined): Hono {
 }
 
 describe("SLICE-85-2: IndexNow Lockdown", () => {
-  const originalAdminKey = process.env.ADMIN_API_KEY;
-
   beforeEach(() => {
     mockFetch.mockReset();
-    process.env.ADMIN_API_KEY = "test-admin-key";
-  });
-
-  afterEach(() => {
-    if (originalAdminKey !== undefined) {
-      process.env.ADMIN_API_KEY = originalAdminKey;
-    } else {
-      delete process.env.ADMIN_API_KEY;
-    }
   });
 
   it("returns 401 without admin key", async () => {
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -107,7 +90,7 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   });
 
   it("returns 401 with wrong admin key", async () => {
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
@@ -120,12 +103,12 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   });
 
   it("returns 403 for foreign host URL", async () => {
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Admin-Key": "test-admin-key",
+        "X-Admin-Key": ADMIN,
       },
       body: JSON.stringify({ urls: ["https://evil.com/page"] }),
     });
@@ -135,13 +118,13 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   });
 
   it("returns 400 for more than 10 URLs", async () => {
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const urls = Array.from({ length: 11 }, (_, i) => `https://agentbadge.xyz/page-${i}`);
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Admin-Key": "test-admin-key",
+        "X-Admin-Key": ADMIN,
       },
       body: JSON.stringify({ urls }),
     });
@@ -153,12 +136,12 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   it("forwards to IndexNow and returns upstream status on happy path", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Admin-Key": "test-admin-key",
+        "X-Admin-Key": ADMIN,
       },
       body: JSON.stringify({ urls: ["https://agentbadge.xyz/", "https://agentbadge.xyz/blog"] }),
     });
@@ -172,12 +155,12 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   it("accepts Bearer auth header", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer test-admin-key",
+        Authorization: `Bearer ${ADMIN}`,
       },
       body: JSON.stringify({ urls: ["https://agentbadge.xyz/"] }),
     });
@@ -185,12 +168,12 @@ describe("SLICE-85-2: IndexNow Lockdown", () => {
   });
 
   it("rejects invalid URL format", async () => {
-    const app = createTestApp("test-admin-key");
+    const app = await createTestApp();
     const res = await app.request("/api/indexnow", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Admin-Key": "test-admin-key",
+        "X-Admin-Key": ADMIN,
       },
       body: JSON.stringify({ urls: ["not-a-url"] }),
     });

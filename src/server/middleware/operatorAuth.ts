@@ -28,9 +28,9 @@
  * bogus secondary can no longer veto a valid primary credential.
  *
  * ADMIN_API_KEY gets exactly one verdict — only on a credential MISS
- * and only through the time-boxed window policy in operator-legacy
- * (SLICE-264-5): inside the window a marked break_glass principal,
- * after it a break-glass-only fallback (SLICE-264-9 retire).
+ * and only under ADMIN_BREAK_GLASS_ENABLED (SLICE-264-9,
+ * operator-breakglass.ts): a marked break_glass principal, alerted
+ * on every use.
  */
 
 import type { Context, Next } from "hono";
@@ -45,7 +45,7 @@ import type {
 } from "../lib/operators";
 import { authenticateOperatorKey } from "./operator-verify";
 
-/** adminAuth transport contract: X-Admin-Key → Bearer → Basic password. */
+/** Operator credential transport: X-Admin-Key → Bearer → Basic password. */
 function extractOperatorKey(c: Context): string | null {
   const xAdminKey = c.req.header("X-Admin-Key");
   if (xAdminKey) return xAdminKey;
@@ -102,7 +102,7 @@ export function operatorAuth(store: OperatorStore) {
 }
 
 /**
- * Browser variant (adminBrowserAuth precedent): browsers can't send
+ * Browser variant: browsers can't send
  * X-Admin-Key/Bearer spontaneously, but they DO prompt for HTTP Basic.
  * The middleware already accepts Basic — this wrapper only adds the
  * challenge header on 401 so the browser offers the prompt.
@@ -115,7 +115,7 @@ export function operatorBrowserAuth(store: OperatorStore) {
   ): Promise<Response | void> {
     const res = await inner(c, next);
     if (res instanceof Response && res.status === 401) {
-      // DISTINCT realm (adminBrowserAuth owns "admin") — the Basic
+      // DISTINCT realm ("operators", not "admin") — the Basic
       // credential cache keys on (origin, realm); during the window
       // ADMIN_API_KEY and opk_ creds must not transpose into 401s.
       res.headers.set("WWW-Authenticate", 'Basic realm="operators"');

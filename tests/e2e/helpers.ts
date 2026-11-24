@@ -185,8 +185,8 @@ export function setupMockEnv(): void {
   process.env.AUDIT_TOPIC_ID = "0.0.9681981";
   process.env.DIRECTORY_TOPIC_ID = "0.0.9681982";
   process.env.ADMIN_API_KEY = "test-admin-key";
-  // 264-8: shared key → admin tier only inside the dual-auth window.
-  process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
+  // 264-9: shared key → admin tier only under the break-glass flag.
+  process.env.ADMIN_BREAK_GLASS_ENABLED = "true";
   process.env.IPFS_STORAGE = "./storage/metadata";
   process.env.KEEPERHUB_ENABLED = "false";
   process.env.ATTESTCOIN_ENABLED = "false";

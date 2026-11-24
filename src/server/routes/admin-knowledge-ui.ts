@@ -6,8 +6,8 @@
  *   POST /admin/knowledge/{create,:id/*,gaps/:id/*} → PRG mutations
  *
  * Browser auth: `operatorBrowserAuth` Basic — an opk_ credential
- * resolves the Principal (SLICE-264-6); the dual-auth window still
- * accepts the shared key as break_glass during migration. POSTs
+ * resolves the Principal (SLICE-264-6); the shared key works only
+ * under ADMIN_BREAK_GLASS_ENABLED (264-9). POSTs
  * require same-host Origin when present (B-3 lesson); mutations
  * call the domain lib directly and redirect 303 — the
  * /admin/api/knowledge/* JSON API stays the programmatic surface.

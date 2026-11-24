@@ -26,8 +26,8 @@ export interface UpgradeRequestBody {
 }
 
 // SLICE-264-8: the admin branch is an operator credential with the
-// workflow capability (the shared key rides the dual-auth window via
-// the same verdict — break_glass, marked, deadline-bound). An invalid
+// workflow capability (the shared key reaches the same verdict only
+// under ADMIN_BREAK_GLASS_ENABLED — marked, alerted). An invalid
 // key falls through to the DID check instead of 401ing the route.
 export function createUpgradeRoutes(
   deps: { operatorStore?: OperatorStore } = {},

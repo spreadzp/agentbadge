@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { registry } from "../../src/server/metrics/metrics";
 
-// Build a test app that mirrors the real metrics route with adminAuth
+// Build a test app that mirrors the real metrics route bearer gate
 function createMetricsApp(token: string | undefined): Hono {
   const app = new Hono();
 

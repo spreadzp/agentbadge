@@ -29,8 +29,8 @@ import { createNamespaceRoutes } from "../../src/server/routes/mcp/mcp-namespace
 
 beforeAll(() => {
   process.env.ADMIN_API_KEY = "test-admin-key";
-    // 264-8: shared key rides the dual-auth window for admin tier.
-    process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
+    // 264-9: shared key reaches admin tier via break-glass flag.
+    process.env.ADMIN_BREAK_GLASS_ENABLED = "true";
   const passportNs = createNamespace("passport");
   registerPassportTools(passportNs);
   registerSigningTools(passportNs);

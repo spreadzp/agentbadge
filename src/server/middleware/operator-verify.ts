@@ -8,7 +8,7 @@
  * through to the DID check instead of short-circuiting a 401.
  *
  * One verdict, one place: the timing-safe compare, dummy-digest pad,
- * malformed-row 500, status refusals, legacy-window fallback and the
+ * malformed-row 500, status refusals, break-glass fallback and the
  * throttled lastUsed touch all live here so no second consumer can
  * drift a weaker copy (audit lesson: duplicated auth diverges).
  */
@@ -22,7 +22,7 @@ import {
   type OperatorStore,
   type Principal,
 } from "../lib/operators";
-import { tryLegacySharedKey } from "./operator-legacy";
+import { tryBreakGlassKey } from "./operator-breakglass";
 
 /** Minimum gap between lastUsedAt writes (D-264-Q6 — diagnostics, not auth). */
 const LAST_USED_MIN_INTERVAL_MS = 5 * 60 * 1000;
@@ -67,15 +67,15 @@ export async function authenticateOperatorKey(
   const stored = pair?.credential.keyHash;
   if (pair === null || stored === undefined) {
     timingSafeEqual(Buffer.from(keyHash, "hex"), DUMMY_DIGEST);
-    // SLICE-264-5 dual-auth window: no credential row → the shared
-    // ADMIN_API_KEY gets exactly one more verdict — a MARKED
-    // break_glass principal, never a personal identity.
-    const legacy = tryLegacySharedKey(provided, surface);
-    if (!legacy.accepted) return unauthorized();
+    // No credential row → the shared ADMIN_API_KEY gets exactly one
+    // more verdict: break-glass only, a MARKED synthetic principal —
+    // never a personal identity.
+    const breakGlass = tryBreakGlassKey(provided, surface);
+    if (!breakGlass.accepted) return unauthorized();
     return {
       ok: true,
-      principal: legacy.principal,
-      operator: legacy.operator,
+      principal: breakGlass.principal,
+      operator: breakGlass.operator,
     };
   }
   // A non-sha256 stored row is a data-integrity failure — loud 500.

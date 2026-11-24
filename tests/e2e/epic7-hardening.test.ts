@@ -2,7 +2,7 @@
  * E2E tests for EPIC-7 security hardening features.
  *
  * Verifies that middleware added in EPIC-7 works correctly in the full
- * e2e test app context (corsMiddleware, rateLimitMiddleware, adminAuth,
+ * e2e test app context (corsMiddleware, rateLimitMiddleware, operatorAuth,
  * endpoint validation).
  *
  * References:
@@ -23,7 +23,6 @@ describe("EPIC-7: Security Hardening E2E", () => {
   let signature: string;
   let issuedTokenId: string;
   let issuedSerial: number;
-  let issuedDid: string;
 
   beforeAll(async () => {
     setupMockEnv();
@@ -47,7 +46,6 @@ describe("EPIC-7: Security Hardening E2E", () => {
     const body = await res.json();
     issuedTokenId = body.tokenId;
     issuedSerial = body.serialNumber;
-    issuedDid = body.did;
   });
 
   beforeEach(() => {

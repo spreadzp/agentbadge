@@ -1,8 +1,8 @@
 /**
  * SLICE-264-6 test helper — route-level tests authenticate with real
- * opk_ credentials now (the shared ADMIN_API_KEY no longer reaches
- * migrated surfaces outside the dual-auth window). Seeds a memory
- * operator + credential and hands back the plaintext key.
+ * opk_ credentials now (the shared ADMIN_API_KEY is break-glass-only
+ * under ADMIN_BREAK_GLASS_ENABLED — 264-9). Seeds a memory operator
+ * + credential and hands back the plaintext key.
  */
 
 import {

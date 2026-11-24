@@ -18,8 +18,8 @@ import type { ReputationWriteRecord } from "../../src/server/lib/board/types";
 process.env.FLY_APP_NAME = process.env.FLY_APP_NAME || "test-inbox";
 const ADMIN = "test-admin-key";
 process.env.ADMIN_API_KEY = ADMIN;
-// 264-8: ops/admin calls ride the dual-auth window explicitly.
-process.env.ADMIN_LEGACY_KEY_UNTIL = "2999-01-01T00:00:00Z";
+// 264-9: ops/admin calls ride the break-glass flag explicitly.
+process.env.ADMIN_BREAK_GLASS_ENABLED = "true";
 const ops = { "X-Admin-Key": ADMIN };
 
 const ENV = {
