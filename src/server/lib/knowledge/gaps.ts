@@ -30,15 +30,13 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   WONTFIX: [],
 };
 
-/** Arc R1 H3 cap: distinct OPEN gaps are bounded — the public ask
- *  surface creates a row per novel normalized query (unauthenticated
- *  writers could otherwise grow the operator queue without limit). */
+/** Arc R1 H3 cap: OPEN gaps bounded — the public ask surface creates
+ *  a row per novel query (unauth writers can't grow the queue). */
 export const KNOWLEDGE_GAP_OPEN_CAP = 2000;
 
-/** demand-registry normalize pattern — same query ≠ new gap.
- *  Arc R1 H3: NFKC + strip format/mark chars + collapse punctuation
- *  to space — zero-width/confusable/trailing-punct variants now
- *  dedupe onto ONE row instead of minting one each. */
+/** demand-registry normalize — same query ≠ new gap. Arc R1 H3:
+ *  NFKC + strip format/mark chars + collapse punctuation to space —
+ *  zero-width/confusable variants dedupe onto ONE row. */
 export function normalizeQuery(q: string): string {
   return q
     .normalize("NFKC")
@@ -202,9 +200,10 @@ export function listGaps(
   store: KnowledgeStore,
   opts: {
     status?: string;
-    /** 264-12: overdue/pool opts pass straight to the store. */
+    /** 264-12/14: sort + pool/live-overdue gates pass to the store. */
     sort?: "count" | "lastSeen" | "overdue";
     unassigned?: boolean;
+    overdueOnly?: boolean;
     limit?: number;
     offset?: number;
   } = {},
@@ -213,6 +212,7 @@ export function listGaps(
     status: opts.status,
     orderBy: opts.sort ?? "count",
     unassigned: opts.unassigned,
+    overdueOnly: opts.overdueOnly,
     limit: opts.limit ?? 100,
     offset: opts.offset,
   });

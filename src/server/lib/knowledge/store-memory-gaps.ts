@@ -150,6 +150,7 @@ export class MemoryKnowledgeGaps {
     status?: string;
     orderBy?: "count" | "lastSeen" | "overdue";
     unassigned?: boolean;
+    overdueOnly?: boolean;
     limit?: number;
     offset?: number;
   }) {
@@ -159,6 +160,10 @@ export class MemoryKnowledgeGaps {
     }
     if (opts?.unassigned === true) {
       rows = rows.filter((g) => g.assignedTo === null);
+    }
+    if (opts?.overdueOnly === true) {
+      const now = nowIso();
+      rows = rows.filter((g) => isGapOverdue(g, now));
     }
     const overdueFirst = (a: KnowledgeGapRecord, b: KnowledgeGapRecord) => {
       const now = nowIso();

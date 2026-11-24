@@ -53,33 +53,41 @@ export function registerKnowledgeUiGapPages(
     // 264-12: the console manages work — overdue-first is the
     // default order (SQL-derived so paging can't hide past-due
     // rows); ?assigned=none is the unassigned pick-up pool.
+    // 264-14 review: ?overdue=1 gates to the live-overdue set —
+    // the metrics band's drill-down (carry status=all so TRIAGED
+    // overdue isn't dropped by the default status filter). The 4
+    // reads are independent — Promise.all (was serialized RTs).
     const assigned = c.req.query("assigned");
-    const gaps = await listGaps(store, {
-      status: status === "all" ? undefined : status,
-      sort: "overdue",
-      unassigned: assigned === "none",
-      limit: 200,
-      offset,
-    });
-    const items = await store.listItems({ limit: 200 });
-    // Assignee display + the select list: ACTIVE humans only —
-    // service/break_glass principals can't own backlog work
-    // (D-264-Q8) so offering them would mint guaranteed refusals.
-    const humans = await operatorStore.listOperators({
-      principalType: "human",
-      status: "active",
-    });
+    const overdueOnly = c.req.query("overdue") === "1";
+    const [gaps, items, humans, metrics] = await Promise.all([
+      listGaps(store, {
+        status: status === "all" ? undefined : status,
+        sort: "overdue",
+        unassigned: assigned === "none",
+        overdueOnly,
+        limit: 200,
+        offset,
+      }),
+      store.listItems({ limit: 200 }),
+      // Assignee display + the select list: ACTIVE humans only —
+      // service/break_glass principals can't own backlog work
+      // (D-264-Q8) so offering them would mint guaranteed
+      // refusals.
+      operatorStore.listOperators({
+        principalType: "human",
+        status: "active",
+      }),
+      // 264-14: the header band — same 30d default as the JSON
+      // digest; page render is a read (no auth extra).
+      store.gapMetrics({
+        now: new Date().toISOString(),
+        resolvedSince: new Date(
+          Date.now() - METRICS_WINDOW_DAYS * 86_400_000,
+        ).toISOString(),
+      }),
+    ]);
     const displayById: Record<string, string> = {};
     for (const o of humans) displayById[o.id] = o.displayName;
-    // 264-14: the header band — same 30d default as the JSON
-    // digest; page render is a read (no auth extra).
-    const nowMs = Date.now();
-    const metrics = await store.gapMetrics({
-      now: new Date(nowMs).toISOString(),
-      resolvedSince: new Date(
-        nowMs - METRICS_WINDOW_DAYS * 86_400_000,
-      ).toISOString(),
-    });
     return page(
       c,
       knowledgeGapsPage({
@@ -96,8 +104,9 @@ export function registerKnowledgeUiGapPages(
         displayById,
         // PRG target for the row forms — the filtered view they
         // were rendered on (mutation lands back here).
-        next: `/admin/knowledge/gaps?status=${status}${assigned === "none" ? "&assigned=none" : ""}${offset > 0 ? `&offset=${offset}` : ""}`,
+        next: `/admin/knowledge/gaps?status=${status}${assigned === "none" ? "&assigned=none" : ""}${overdueOnly ? "&overdue=1" : ""}${offset > 0 ? `&offset=${offset}` : ""}`,
         assigned: assigned === "none" ? "none" : "",
+        overdue: overdueOnly ? "1" : "",
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
       "Gaps",

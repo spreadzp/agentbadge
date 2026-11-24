@@ -176,8 +176,60 @@ describe("264-14: gap accountability metrics", () => {
     expect((await get("days=-5")).windowDays).toBe(30);
     expect((await get("days=9999")).windowDays).toBe(365);
     expect((await get("days=abc")).windowDays).toBe(30);
-    // A past-dated window excludes the fresh resolve.
+    // The fresh resolve sits inside even the smallest window.
     expect((await get("days=1")).resolvedInWindow).toBe(1);
+  });
+
+  it("edge pins — TRIAGED overdue counts; breach on RESOLVED counts", async () => {
+    const { app, store, admin } = await mkApp();
+    // TRIAGED stays live for the liveness rule.
+    const t = await mkOverdue(store);
+    await store.transitionGap(t.id, {
+      from: "OPEN",
+      to: "TRIAGED",
+      resolvedAt: null,
+    });
+    // A durable breach row outlives resolution — RESOLVED drops
+    // out of overdueCount but the historical counter still ticks.
+    const r = await mkOverdue(store);
+    await store.recordOverdue({
+      id: `kgo_${r.id}_x`,
+      gapId: r.id,
+      dueAt: PAST,
+    });
+    await store.transitionGap(r.id, {
+      from: "OPEN",
+      to: "TRIAGED",
+      resolvedAt: null,
+    });
+    await store.transitionGap(r.id, {
+      from: "TRIAGED",
+      to: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+    });
+
+    const res = await app.request("/admin/api/knowledge/gaps/metrics", {
+      headers: { "x-admin-key": admin.key },
+    });
+    const body = await res.json();
+    expect(body.overdueCount).toBe(1); // TRIAGED only
+    expect(body.breachesTotal).toBe(1); // durable, not derived
+    expect(body.resolvedInWindow).toBe(1);
+  });
+
+  it("?overdue=1 gates the list to the live-overdue set (band link)", async () => {
+    const { app, store, admin } = await mkApp();
+    const od = await mkOverdue(store);
+    await mkGap(store); // OPEN, no deadline — must be gated out
+    const res = await app.request(
+      "/admin/api/knowledge/gaps?status=all&overdue=1",
+      { headers: { "x-admin-key": admin.key } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.gaps).toHaveLength(1);
+    expect(body.gaps[0].id).toBe(od.id);
+    expect(body.gaps[0].dueAt).toBe(PAST);
   });
 
   it("admin-only — no key, no digest", async () => {
@@ -243,7 +295,9 @@ describe.skipIf(!PG_URL)("gap metrics — PG backend", () => {
     await mkOverdue(store);
     const od = await mkOverdue(store);
     await mkGap(store);
-    await mkResolved(store, 100);
+    // +1s clear time — small offset on purpose: a future resolvedAt
+    // lands inside the NEXT run's since=now window on a shared DB.
+    await mkResolved(store, 1);
     await store.recordOverdue({
       id: `kgo_${gapOverdueId()}`,
       gapId: od.id,
@@ -258,7 +312,7 @@ describe.skipIf(!PG_URL)("gap metrics — PG backend", () => {
     expect(after.unassignedCount - before.unassignedCount).toBe(1);
     expect(after.breachesTotal - before.breachesTotal).toBe(1);
     expect(after.resolvedInWindow).toBe(1);
-    expect(after.timeToClearAvgSec).toBeCloseTo(100, 3);
-    expect(after.timeToClearMedianSec).toBeCloseTo(100, 3);
+    expect(after.timeToClearAvgSec).toBeCloseTo(1, 3);
+    expect(after.timeToClearMedianSec).toBeCloseTo(1, 3);
   });
 });

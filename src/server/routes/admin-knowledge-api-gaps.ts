@@ -1,6 +1,7 @@
 /**
  * EPIC-229 (SLICE-229-8): admin knowledge-gap endpoints —
- *   GET  /admin/api/knowledge/gaps?status=&sort=&assigned=
+ *   GET  /admin/api/knowledge/gaps?status=&sort=&assigned=&overdue=
+ *   GET  /admin/api/knowledge/gaps/metrics?days= (264-14 digest)
  *   GET  /admin/api/knowledge/gaps/:id/events   (264-11 audit trail)
  *   POST /admin/api/knowledge/gaps/:id/triage
  *   POST /admin/api/knowledge/gaps/:id/resolve  {linkedItemId}
@@ -94,7 +95,10 @@ export function registerKnowledgeGapRoutes(
         sort:
           sort === "lastSeen" || sort === "overdue" ? sort : "count",
         // 264-12: ?assigned=none — the unassigned pick-up pool.
+        // 264-14 review: ?overdue=1 — the live-overdue gate (the
+        // band's drill-down; pair with status=all to span TRIAGED).
         unassigned: c.req.query("assigned") === "none",
+        overdueOnly: c.req.query("overdue") === "1",
         limit,
         offset,
       });

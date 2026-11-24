@@ -191,9 +191,12 @@ export interface KnowledgeStore {
   countGaps(status: string): Promise<number>;
   listGaps(opts?: {
     status?: string;
-    /** 264-12: overdue = past-due first; unassigned = the pool. */
+    /** 264-12: overdue = past-due first; unassigned = the pool.
+     *  264-14 review: overdueOnly gates to the live-overdue set
+     *  (the metrics band's drill-down link). */
     orderBy?: "count" | "lastSeen" | "overdue";
     unassigned?: boolean;
+    overdueOnly?: boolean;
     /** Arc R2 M-1: bounded pagination. */
     limit?: number;
     offset?: number;

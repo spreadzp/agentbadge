@@ -201,6 +201,7 @@ export class DbKnowledgeStore implements KnowledgeStore {
     status?: string;
     orderBy?: "count" | "lastSeen" | "overdue";
     unassigned?: boolean;
+    overdueOnly?: boolean;
     limit?: number;
     offset?: number;
   }) {

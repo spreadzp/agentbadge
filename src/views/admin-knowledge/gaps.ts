@@ -28,8 +28,7 @@ export interface GapsInput {
   gaps: KnowledgeGapRecord[];
   status: string;
   items: KnowledgeItemRecord[];
-  /** 264-14: aggregated accountability digest + its clear window. */
-  metrics: KnowledgeGapMetrics;
+  metrics: KnowledgeGapMetrics; // 264-14 digest + clear window
   metricsWindowDays: number;
   /** Active humans for the assignee select (D-264-Q8). */
   operators: { id: string; displayName: string }[];
@@ -37,9 +36,10 @@ export interface GapsInput {
   displayById: Record<string, string>;
   /** PRG target — the filtered URL a mutation lands back on. */
   next: string;
-  /** "none" → the unassigned pick-up pool is filtered in. */
+  /** "none" → pick-up pool; "1" → live-overdue drill-down. */
   assigned: string;
-  /** Arc R3 M-9: current page offset for the backlog pager. */
+  overdue?: string;
+  /** Arc R3 M-9: pager offset. */
   offset?: number;
   flash?: { ok?: string; err?: string };
 }
@@ -217,7 +217,7 @@ const dueCell = (g: KnowledgeGapRecord, now: string) => {
 const gapFilterBar = (input: GapsInput) => {
   const items = ["OPEN", "TRIAGED", "RESOLVED", "WONTFIX", "all"];
   const qs = (s: string) =>
-    `/admin/knowledge/gaps?status=${s}${input.assigned === "none" ? "&assigned=none" : ""}`;
+    `/admin/knowledge/gaps?status=${s}${input.assigned === "none" ? "&assigned=none" : ""}${input.overdue === "1" ? "&overdue=1" : ""}`;
   return html`<div class="mb-3 flex flex-wrap items-center gap-1.5">
     ${items.map(
       (s) =>
@@ -230,7 +230,7 @@ const gapFilterBar = (input: GapsInput) => {
         >`,
     )}
     <a
-      href="/admin/knowledge/gaps?status=${input.status}${input.assigned === "none" ? "" : "&assigned=none"}"
+      href="/admin/knowledge/gaps?status=${input.status}${input.assigned === "none" ? "" : "&assigned=none"}${input.overdue === "1" ? "&overdue=1" : ""}"
       class="rounded px-2.5 py-1 text-xs ${input.assigned === "none"
         ? "bg-violet-900/60 text-violet-300"
         : "bg-slate-800 text-slate-400 hover:text-slate-200"}"
@@ -274,14 +274,14 @@ export function knowledgeGapsPage(input: GapsInput): string {
       ? html`<p class="mt-2 text-[11px]">
           ${(input.offset ?? 0) > 0
             ? html`<a
-                href="/admin/knowledge/gaps?status=${input.status}&offset=${Math.max(0, (input.offset ?? 0) - 200)}${input.assigned === "none" ? "&assigned=none" : ""}"
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${Math.max(0, (input.offset ?? 0) - 200)}${input.assigned === "none" ? "&assigned=none" : ""}${input.overdue === "1" ? "&overdue=1" : ""}"
                 class="text-sky-400 hover:underline"
                 >← prev page</a
               >`
             : ""}
           ${input.gaps.length === 200
             ? html`<a
-                href="/admin/knowledge/gaps?status=${input.status}&offset=${(input.offset ?? 0) + 200}${input.assigned === "none" ? "&assigned=none" : ""}"
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${(input.offset ?? 0) + 200}${input.assigned === "none" ? "&assigned=none" : ""}${input.overdue === "1" ? "&overdue=1" : ""}"
                 class="ml-3 text-sky-400 hover:underline"
                 >next page →</a
               >`
