@@ -194,6 +194,49 @@ describe("dual-auth window — legacy shared key (SLICE-264-5)", () => {
     expect(res.status).toBe(401);
   });
 
+  it("offset-less deadline fails CLOSED — server-local parsing would silently widen the window", async () => {
+    // "2026-12-15T00:00:00" parses as SERVER-LOCAL time — fail-open
+    // on any host west of Greenwich. Zone designator is mandatory.
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", "2999-01-01T00:00:00");
+    setEnv("ADMIN_BREAK_GLASS_ENABLED", undefined);
+    expect(legacyWindowState()).toEqual({
+      state: "closed",
+      why: "malformed",
+    });
+    // explicit offsets DO open — the strictness is about ambiguity,
+    // not about requiring Z specifically
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", "2999-01-01T00:00:00+05:00");
+    expect(legacyWindowState().state).toBe("open");
+  });
+
+  it("ADMIN_API_KEY unset → shared-key path refuses (no legacy at all)", async () => {
+    setEnv("ADMIN_API_KEY", undefined);
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", new Date(Date.now() + 3600_000).toISOString());
+    const store = createMemoryOperatorStore();
+    const app = makeApp(store);
+    const res = await app.request("/admin/whoami", {
+      headers: { "X-Admin-Key": LEGACY_KEY },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("a credential row keyed to the shared key can never exist (store-HIT shadow path closed)", async () => {
+    setEnv("ADMIN_LEGACY_KEY_UNTIL", undefined);
+    setEnv("ADMIN_BREAK_GLASS_ENABLED", undefined);
+    const store = createMemoryOperatorStore();
+    const { operator } = await seedOperator(store);
+    // seeding/issuing a credential whose hash IS sha256(ADMIN_API_KEY)
+    // would let the shared key ride the store-hit path as a personal
+    // identity — no break_glass marking, no deadline. Store refuses.
+    const res = await store.issueCredential({
+      id: id("opc"),
+      operatorId: operator.id,
+      keyHash: hashAdminKey(LEGACY_KEY),
+      keyPrefix: "opk_shared00",
+    });
+    expect(res).toEqual({ ok: false, reason: "key_is_shared_secret" });
+  });
+
   it("window state classifier — unset/past/future/malformed", () => {
     const now = new Date("2026-12-01T00:00:00.000Z");
     setEnv("ADMIN_LEGACY_KEY_UNTIL", undefined);

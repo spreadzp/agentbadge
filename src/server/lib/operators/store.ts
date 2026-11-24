@@ -71,7 +71,12 @@ export type IssueCredentialResult =
         | "missing_operator"
         | "disabled_operator"
         | "duplicate_id"
-        | "duplicate_hash";
+        | "duplicate_hash"
+        /** 264-5: the hash equals sha256(ADMIN_API_KEY) — persisting
+         *  it would let the shared key authenticate as a PERSONAL
+         *  identity on the store-hit path, bypassing the dual-auth
+         *  window's break_glass marking/deadline/metric. */
+        | "key_is_shared_secret";
     };
 
 export type RevokeCredentialResult =

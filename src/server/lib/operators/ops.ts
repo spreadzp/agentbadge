@@ -8,7 +8,7 @@ import {
   ADMIN_PRINCIPAL_TYPES,
   type AdminOperator,
 } from "./types";
-import { isAdminKeyPlaintext } from "./operator-key";
+import { hashAdminKey, isAdminKeyPlaintext } from "./operator-key";
 import type { AdminOperatorRepos, OperatorStore } from "./store";
 
 // house id shape: <prefix>_<26-char Crockford ULID> (generateReportId)
@@ -146,6 +146,17 @@ export function createOperatorStore(
       }
       if (!KEY_PREFIX_RE.test(input.keyPrefix)) {
         return { ok: false, reason: "invalid_key_prefix" };
+      }
+      // 264-5 collision guard: a row whose keyHash IS
+      // sha256(ADMIN_API_KEY) authenticates the shared key on the
+      // store-HIT path — a personal identity with full caps, no
+      // break_glass marking, no window deadline (review r2 High).
+      // The shared key must stay on the miss path; its hash can
+      // never become a credential row. Every writer (seed, API,
+      // CLI, rotate) funnels through here.
+      const sharedKey = process.env.ADMIN_API_KEY;
+      if (sharedKey && input.keyHash === hashAdminKey(sharedKey)) {
+        return { ok: false, reason: "key_is_shared_secret" };
       }
       const operator = await repos.operators.byId(input.operatorId);
       if (!operator) return { ok: false, reason: "missing_operator" };
