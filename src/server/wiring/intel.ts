@@ -108,5 +108,8 @@ export function wireIntel(app: Hono): void {
     keyResolved: key !== null,
     registryBackend: "wired",
     evidenceBackend: evidence.backend,
+    pullJobsBackend: pullJobs.backend,
+    securityEventsBackend: securityEvents.backend,
+    attestationsBackend: attestations.backend,
   });
 }
