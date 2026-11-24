@@ -117,7 +117,8 @@ describe("operator store contract (memory backend)", () => {
       ok: false,
       reason: "duplicate_hash",
     });
-    await mkOp(s, "human"); // second human — C5 guard must not engage
+    const other = await mkOp(s, "human"); // second human + cred frees C5
+    if (other.ok) await issue(s, other.operator.id);
     await s.disableOperator(op.operator.id);
     expect(await issue(s, op.operator.id)).toEqual({
       ok: false,
@@ -247,7 +248,8 @@ describe("operator store contract (memory backend)", () => {
   it("revoke + disable are idempotent and honest", async () => {
     const s = createMemoryOperatorStore();
     const op = await mkOp(s);
-    await mkOp(s, "human"); // second human — C5 guard must not engage
+    const other = await mkOp(s, "human"); // bearer → C5 doesn't engage
+    if (other.ok) await issue(s, other.operator.id);
     if (!op.ok) throw new Error("seed failed");
     const cred = await issue(s, op.operator.id);
     if (!cred.ok) throw new Error("seed failed");
@@ -277,24 +279,23 @@ describe("operator store contract (memory backend)", () => {
     await mkOp(s, "service");
     await mkOp(s, "break_glass");
     expect(await s.activeHumanCount()).toBe(1);
-    // C5: the last active human cannot be disabled — the count
-    // cannot drop to zero through disableOperator
+    // C5 (access-bearer semantics): h has no credentials — disabling
+    // it loses no access, so the guard does NOT fire even though h is
+    // the only human row. (Credentialed-human case is covered by the
+    // lifecycle suite.)
     if (h.ok) {
-      expect(await s.disableOperator(h.operator.id)).toEqual({
-        ok: false,
-        reason: "last_operator",
-      });
-      await mkOp(s, "human"); // second human frees the guard
       await s.disableOperator(h.operator.id);
     }
-    expect(await s.activeHumanCount()).toBe(1);
+    expect(await s.activeHumanCount()).toBe(0);
   });
 
   it("listOperators filters by status + principalType", async () => {
     const s = createMemoryOperatorStore();
     const h = await mkOp(s, "human");
-    await mkOp(s, "human"); // second human — C5 allows disabling h
+    const other = await mkOp(s, "human"); // bearer → C5 allows disable
+    if (other.ok) await issue(s, other.operator.id);
     await mkOp(s, "service");
+    if (h.ok) await issue(s, h.operator.id); // h bears access → guard is real
     if (h.ok) await s.disableOperator(h.operator.id);
     expect((await s.listOperators({ principalType: "service" })).length).toBe(1);
     expect((await s.listOperators({ status: "disabled" })).length).toBe(1);

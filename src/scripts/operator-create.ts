@@ -33,7 +33,9 @@ const PRINCIPAL_TYPES: AdminPrincipalType[] = [
 
 function arg(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
-  return i >= 0 ? process.argv[i + 1] : undefined;
+  const v = i >= 0 ? process.argv[i + 1] : undefined;
+  // `--name --type human` must not treat the next FLAG as the value
+  return v !== undefined && !v.startsWith("--") ? v : undefined;
 }
 
 async function main(): Promise<void> {
@@ -100,4 +102,10 @@ async function main(): Promise<void> {
   );
 }
 
-await main();
+try {
+  await main();
+} finally {
+  // the shared pool would keep the process alive past stdout —
+  // close before exiting so the key actually reaches the shell.
+  await getDatabase().close();
+}

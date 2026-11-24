@@ -147,8 +147,10 @@ describe("credential lifecycle — C1/C11", () => {
   it("revoked credential is dead but the operator row stays (audit)", async () => {
     const s = createMemoryOperatorStore();
     const op = await mkHuman(s);
-    const other = await mkHuman(s, "bob"); // keep C5 satisfied
+    const other = await mkHuman(s, "bob"); // bearer → C5 stays free
     if (!op.ok || !other.ok) throw new Error("seed failed");
+    const otherCred = await issueOperatorCredential(s, other.operator.id);
+    if (!otherCred.ok) throw new Error("seed failed");
     const cred = await issueOperatorCredential(s, op.operator.id);
     if (!cred.ok) throw new Error("seed failed");
     const r = await s.revokeCredential(cred.credential.id);
@@ -160,16 +162,31 @@ describe("credential lifecycle — C1/C11", () => {
 });
 
 describe("C5 last-operator guard — at the store layer, unbypassable", () => {
-  it("refuses disabling the last active human", async () => {
+  it("refuses disabling the last access-bearing human", async () => {
     const s = createMemoryOperatorStore();
     const only = await mkHuman(s);
     if (!only.ok) throw new Error("seed failed");
+    // cred-less human can be disabled even when alone — nothing is lost
+    expect((await s.disableOperator(only.operator.id)).ok).toBe(true);
+    await s.enableOperator(only.operator.id);
+    // credentialed → now it bears access → sole bearer is guarded
+    const cred = await issueOperatorCredential(s, only.operator.id);
+    if (!cred.ok) throw new Error("seed failed");
     expect(await s.disableOperator(only.operator.id)).toEqual({
       ok: false,
       reason: "last_operator",
     });
-    // a second human frees the guard
-    await mkHuman(s, "bob");
+    // a cred-LESS second human does not free the guard (review r2):
+    // rows don't authenticate
+    const empty = await mkHuman(s, "empty-shell");
+    expect(empty.ok).toBe(true);
+    expect(await s.disableOperator(only.operator.id)).toEqual({
+      ok: false,
+      reason: "last_operator",
+    });
+    // a credentialed second human frees it
+    const bob = await mkHuman(s, "bob");
+    if (bob.ok) await issueOperatorCredential(s, bob.operator.id);
     expect((await s.disableOperator(only.operator.id)).ok).toBe(true);
   });
 
@@ -265,12 +282,17 @@ describe("OPERATOR_SEED_JSON — one-shot bootstrap (C9)", () => {
     await applyOperatorSeed(s, { displayName: "root", key });
     const op = (await s.listOperators())[0];
     const creds = await s.listCredentialsForOperator(op.id);
-    await s.disableOperator(op.id); // last human — but wait, C5!
-    expect((await s.getOperator(op.id))?.status).toBe("active"); // guard held
-    // disable via second human then apply seed again
-    await mkHuman(s, "second");
-    await s.disableOperator(op.id);
-    await s.revokeCredential(creds[0].id);
+    // seeded root is the SOLE access-bearer — C5 refuses its disable
+    expect(await s.disableOperator(op.id)).toEqual({
+      ok: false,
+      reason: "last_operator",
+    });
+    // a credentialed second human frees the guard
+    const second = await mkHuman(s, "second");
+    if (second.ok) await issueOperatorCredential(s, second.operator.id);
+    expect((await s.disableOperator(op.id)).ok).toBe(true);
+    // disabled operator's creds are revocable (access already dead)
+    expect((await s.revokeCredential(creds[0].id)).ok).toBe(true);
     const again = await applyOperatorSeed(s, {
       displayName: "root",
       key: seedKey(),
@@ -280,6 +302,28 @@ describe("OPERATOR_SEED_JSON — one-shot bootstrap (C9)", () => {
     expect(
       (await s.listCredentialsForOperator(op.id))[0].status,
     ).toBe("revoked");
+  });
+
+  it("resumes a half-seeded operator (cred-less match), never touches foreign", async () => {
+    const s = createMemoryOperatorStore();
+    // crash between createOperator and issueCredential → cred-less op
+    const half = await mkHuman(s, "root");
+    if (!half.ok) throw new Error("seed failed");
+    const key = seedKey();
+    const r = await applyOperatorSeed(s, { displayName: "root", key });
+    expect(r).toMatchObject({ ok: true, seeded: true, operatorId: half.operator.id });
+    // the seed key authenticates on the pre-existing operator
+    const pair = await s.getOperatorByKeyHash(hashAdminKey(key));
+    expect(pair?.operator.id).toBe(half.operator.id);
+    // a foreign cred-less op does NOT absorb the seed
+    const s2 = createMemoryOperatorStore();
+    await mkHuman(s2, "mallory");
+    expect(
+      await applyOperatorSeed(s2, { displayName: "root", key: seedKey() }),
+    ).toEqual({ ok: true, seeded: false, reason: "not_empty" });
+    expect((await s2.listCredentialsForOperator(
+      (await s2.listOperators())[0].id,
+    )).length).toBe(0);
   });
 
   it("refuses malformed input honestly", async () => {

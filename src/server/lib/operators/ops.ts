@@ -41,6 +41,33 @@ export function createOperatorStore(
 ): OperatorStore {
   const now = () => new Date().toISOString();
 
+  // C5 — an "access bearer" is an ACTIVE human holding ≥1 ACTIVE
+  // credential; a cred-less human row authenticates nobody (review
+  // r2 High: counting rows lets a cred-less second operator mask a
+  // real lockout). The guard refuses an action that would drop the
+  // bearer count to zero. Note: check-then-act is non-atomic — the
+  // repos offer no txn; two concurrent revokes of the last two creds
+  // could still slip both through. Accepted under single-writer admin
+  // traffic (documented limitation, same class as D-264-Q7's risk).
+  const accessBearerCount = async (skip?: {
+    operatorId?: string;
+    credentialId?: string;
+  }): Promise<number> => {
+    const humans = await repos.operators.list({
+      status: "active",
+      principalType: "human",
+    });
+    let n = 0;
+    for (const h of humans) {
+      if (h.id === skip?.operatorId) continue;
+      const has = (await repos.credentials.forOperator(h.id)).some(
+        (c) => c.status === "active" && c.id !== skip?.credentialId,
+      );
+      if (has) n += 1;
+    }
+    return n;
+  };
+
   return {
     backend,
 
@@ -156,26 +183,20 @@ export function createOperatorStore(
       if (credential.status === "revoked") {
         return { ok: true, credential }; // idempotent
       }
-      // C5: never revoke the LAST active credential of the LAST active
-      // human — that locks every human out (break-glass only). A
-      // second surviving credential keeps the revoke legal; a disabled
-      // or non-last human's creds are always revocable. The guard lives
-      // HERE (not the route) so no caller can bypass it.
+      // C5: refuse when removing THIS credential leaves ZERO humans
+      // able to authenticate — the last active cred of the last
+      // access-bearing human. A surviving second cred (this operator
+      // stays a bearer) or another credentialed human frees the
+      // revoke; a disabled operator's creds are always revocable
+      // (their access is already dead). Guard lives HERE (not the
+      // route) so no caller can bypass it.
       const operator = await repos.operators.byId(credential.operatorId);
       if (
         operator?.principalType === "human" &&
         operator.status === "active" &&
-        (await repos.operators.countActiveHumans()) <= 1
+        (await accessBearerCount({ credentialId: credential.id })) === 0
       ) {
-        const activeCreds = (
-          await repos.credentials.forOperator(operator.id)
-        ).filter((c) => c.status === "active");
-        if (
-          activeCreds.length === 1 &&
-          activeCreds[0]?.id === credential.id
-        ) {
-          return { ok: false, reason: "last_operator" };
-        }
+        return { ok: false, reason: "last_operator" };
       }
       return {
         ok: true,
@@ -193,12 +214,19 @@ export function createOperatorStore(
       if (operator.status === "disabled") {
         return { ok: true, operator }; // idempotent
       }
-      // C5: the LAST active human cannot be disabled — same lockout.
-      if (
-        operator.principalType === "human" &&
-        (await repos.operators.countActiveHumans()) <= 1
-      ) {
-        return { ok: false, reason: "last_operator" };
+      // C5: refuse disabling the sole access-bearer — a cred-less
+      // human isn't one (nothing is lost), and another bearer frees
+      // the disable.
+      if (operator.principalType === "human" && operator.status === "active") {
+        const selfIsBearer = (
+          await repos.credentials.forOperator(operator.id)
+        ).some((c) => c.status === "active");
+        if (
+          selfIsBearer &&
+          (await accessBearerCount({ operatorId: operator.id })) === 0
+        ) {
+          return { ok: false, reason: "last_operator" };
+        }
       }
       return {
         ok: true,

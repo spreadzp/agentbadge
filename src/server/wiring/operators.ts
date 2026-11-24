@@ -26,7 +26,17 @@ export async function wireOperators(app: Hono): Promise<void> {
     );
   }
 
-  const result = await seedOperatorsFromEnv(store);
+  // seed failure is loud-but-not-fatal (database.health() probe
+  // precedent): a thrown store error must not crash boot.
+  let result;
+  try {
+    result = await seedOperatorsFromEnv(store);
+  } catch (e) {
+    logger.error("operators: OPERATOR_SEED_JSON apply threw", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return;
+  }
   if (!result.ok) {
     // malformed seed config — loud at boot, server still starts
     logger.error("operators: OPERATOR_SEED_JSON refused", {

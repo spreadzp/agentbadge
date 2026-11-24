@@ -5,8 +5,7 @@
 //
 // D-264-Q16: isOperatorRef's rules moved to operator CREATION — the
 // request-side guard (requireOperatorRef/x-operator-id) dies in
-// 264-6. The name rules are ported verbatim: NFKC + trim + lowercase,
-// [a-z0-9._@-]{1,80} allowlist, agent-shape denylist.
+// 264-6. The name rules are ported verbatim.
 //
 // Key shape note: the plaintext is "opk_"+32 base64url (192-bit) —
 // same as intel's abop_ precedent; the "<id>" segment in D-264-Q2's
@@ -193,13 +192,41 @@ export async function applyOperatorSeed(
   store: OperatorStore,
   seed: OperatorSeed,
 ): Promise<OperatorSeedResult> {
-  if ((await store.listOperators()).length > 0) {
-    return { ok: true, seeded: false, reason: "not_empty" };
-  }
   if (!isAdminKeyPlaintext(seed.key)) {
     return {
       ok: false,
       reason: "seed key must be opk_<32 base64url> (generate via operator:create --key-only or node crypto)",
+    };
+  }
+  const existing = await store.listOperators();
+  if (existing.length > 0) {
+    // C9 resume: an operator matching the seed (id or canonical name)
+    // that owns ZERO credentials may be COMPLETED — a crash between
+    // createOperator and issueCredential must not brick the one-shot
+    // seed into not_empty forever. Anything else is untouched:
+    // never resurrect, never overwrite, never touch foreign rows.
+    const match = existing.find(
+      (o) =>
+        (seed.id !== undefined && o.id === seed.id) ||
+        normalizeOperatorName(o.displayName) ===
+          normalizeOperatorName(seed.displayName),
+    );
+    if (!match) return { ok: true, seeded: false, reason: "not_empty" };
+    if ((await store.listCredentialsForOperator(match.id)).length > 0) {
+      return { ok: true, seeded: false, reason: "not_empty" };
+    }
+    const cred = await store.issueCredential({
+      id: `opc_${generateReportId()}`,
+      operatorId: match.id,
+      keyHash: hashAdminKey(seed.key),
+      keyPrefix: adminKeyPrefix(seed.key),
+    });
+    if (!cred.ok) return { ok: false, reason: `credential: ${cred.reason}` };
+    return {
+      ok: true,
+      seeded: true,
+      operatorId: match.id,
+      credentialId: cred.credential.id,
     };
   }
   const op = await createOperator(store, {
@@ -228,14 +255,20 @@ export async function applyOperatorSeed(
  *  at boot; absent env is a quiet no-op, malformed JSON is a loud one. */
 export async function seedOperatorsFromEnv(
   store: OperatorStore,
-  raw: string | undefined = process.env.OPERATOR_SEED_JSON,
+  raw?: string,
 ): Promise<OperatorSeedResult> {
-  if (raw === undefined || raw.trim() === "") {
+  const fromEnv = raw === undefined;
+  const text = fromEnv ? process.env.OPERATOR_SEED_JSON : raw;
+  // the bootstrap plaintext must not live in process.env for the
+  // process lifetime (proc-environ readable, inherited by children) —
+  // it is one-shot (C9): cleared on read, before any apply.
+  if (fromEnv) delete process.env.OPERATOR_SEED_JSON;
+  if (text === undefined || text.trim() === "") {
     return { ok: true, seeded: false, reason: "not_configured" };
   }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(text);
   } catch {
     return { ok: false, reason: "OPERATOR_SEED_JSON is not valid JSON" };
   }
