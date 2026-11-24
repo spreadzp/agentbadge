@@ -102,6 +102,10 @@ export const ErrorCodes = {
   // carried INTERNAL_ERROR — a mislabeled 500-class code)
   UNAUTHORIZED: "UNAUTHORIZED",
 
+  // 403 — EPIC-264 operatorAuth: credential resolved but its record
+  // lacks the capability the surface requires (C7)
+  INSUFFICIENT_CAPABILITY: "INSUFFICIENT_CAPABILITY",
+
   // 4xx — witness layer (EPIC-185; snake_case wire values,
   // charge:never in the catalog — endpoints are free)
   WITNESS_DISABLED: "witness_disabled",
