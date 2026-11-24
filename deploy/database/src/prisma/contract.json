@@ -823,6 +823,13 @@
                   "kind": "scalar"
                 }
               },
+              "principalId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "subjectId": {
                 "nullable": false,
                 "type": {
@@ -858,6 +865,9 @@
                 },
                 "operator": {
                   "column": "operator"
+                },
+                "principalId": {
+                  "column": "principalId"
                 },
                 "subjectId": {
                   "column": "subjectId"
@@ -12015,6 +12025,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "principalId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "subjectId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -20733,7 +20748,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "bd5320ac2cc47ee11b63a2933307aa4f940b5e3a06e91f678ef66de79d8d7b8e"
+    "storageHash": "0ec7ac3ae9ecdc6a01ec7f4b635ed70f577462a115e138fbb366991c811d095d"
   },
   "execution": {
     "executionHash": "43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475",

@@ -4,7 +4,7 @@
 
 import { html } from "hono/html";
 
-import type { AdminActionRow } from "@agentbadge/database";
+import type { AdminActionRow } from "../../server/lib/finops/types";
 
 import {
   emptyMsg,
@@ -66,7 +66,7 @@ export const auditPage = (
               (a) => html`<tr class="hover:bg-slate-800/60">
                 ${td(a.action)}
                 ${td(`${a.subjectType}:${a.subjectId}`)}
-                ${td(a.operator)}
+                ${td(a.principalId ?? a.operator)}
                 ${td(
                   a.evidence
                     ? html`<code class="text-[11px]"

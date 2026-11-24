@@ -53,6 +53,7 @@ export async function auditStripeOutcome(
       subjectType: "payment",
       subjectId: input.paymentId,
       operator: input.operator,
+      principalId: input.operator,
       evidence,
     },
     minimal,
@@ -129,6 +130,7 @@ export async function auditRejectedCompletion(
     subjectType: "payment",
     subjectId: intentPaymentId,
     operator: normalizeOperator(input.operator),
+    principalId: input.operator,
     evidence: {
       kind: "INTENT_COMPLETE_REJECTED",
       intentId: input.intentId,
@@ -165,6 +167,7 @@ export async function finalizeRefundCompletion(
     subjectType: "payment",
     subjectId: intent.paymentId,
     operator,
+    principalId: operator,
     evidence: {
       kind: "INTENT_COMPLETING",
       intentId: intent.id,
@@ -194,6 +197,7 @@ export async function finalizeRefundCompletion(
         subjectType: "payment",
         subjectId: intent.paymentId,
         operator,
+        principalId: operator,
         evidence: {
           kind: "INTENT_COMPLETE_UNCERTAIN",
           intentId: intent.id,
@@ -219,6 +223,7 @@ export async function finalizeRefundCompletion(
         subjectType: "payment",
         subjectId: intent.paymentId,
         operator,
+        principalId: operator,
         evidence: {
           kind: "INTENT_COMPLETE_ABORTED",
           intentId: intent.id,
@@ -266,6 +271,7 @@ export async function finalizeRefundCompletion(
       subjectType: "payment",
       subjectId: intent.paymentId,
       operator,
+      principalId: operator,
       evidence: {
         intentId: intent.id,
         txHash,

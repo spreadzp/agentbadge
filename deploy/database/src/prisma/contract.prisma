@@ -1159,7 +1159,8 @@ model AdminAction {
   action      String // REVIEW|RETRY_VERIFY|MARK_EXTERNAL_REVIEWED|REFUND|RESOLVE_EXCEPTION|DETECT_EXCEPTIONS
   subjectType String // payment|attempt|receipt|exception|refund_intent|agreement
   subjectId   String
-  operator    String // required label (ADMIN_OPERATORS env or body)
+  operator    String // normalized label — post-264-7 it holds principal.id verbatim
+  principalId String? // credential-resolved principal.id (op_*); NULL = pre-migration rows (D-264-Q13)
   evidence    Json? // free-form refs: txHash, url, note, report link
   createdAtMs BigInt // domain timestamp
   createdAt   TimestamptzString @default(now())

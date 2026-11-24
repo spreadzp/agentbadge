@@ -246,6 +246,7 @@ async function createRefundIntentInner(
     subjectType: "payment",
     subjectId: input.paymentId,
     operator,
+    principalId: operator,
     evidence: {
       intentId: intent.id,
       amount: input.amount,

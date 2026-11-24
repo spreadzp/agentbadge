@@ -52,7 +52,8 @@ const summaryCard = (d: PaymentDetail) => html`
   </div>
 `;
 
-/** Manual action forms — operator required on every post. */
+/** Manual action forms — actor is the credential (SLICE-264-7), no
+ *  self-declared operator input anymore. */
 const actionsCard = (paymentId: string) => html`
   <div class="mb-4 grid gap-3 lg:grid-cols-3">
     <form
@@ -64,7 +65,6 @@ const actionsCard = (paymentId: string) => html`
       <div class="mb-2 text-xs font-semibold text-slate-300">
         Mark reviewed
       </div>
-      ${field("operator", "Operator", { required: true })}
       ${field("evidence", "Evidence (JSON, ≤4KB)", {
   placeholder: '{"note":"ok"}',
 })}
@@ -79,7 +79,6 @@ const actionsCard = (paymentId: string) => html`
       <div class="mb-2 text-xs font-semibold text-slate-300">
         Retry verification
       </div>
-      ${field("operator", "Operator", { required: true })}
       <div class="mt-2">${submitBtn("Retry")}</div>
     </form>
     <form
@@ -101,7 +100,6 @@ const actionsCard = (paymentId: string) => html`
           <option value="intent">Manual intent</option>
         </select>
       </label>
-      ${field("operator", "Operator", { required: true })}
       ${field("reason", "Reason", { required: true })}
       ${field("payee", "Payee wallet (intent only)", {
   placeholder: "0x…",
@@ -171,7 +169,7 @@ const auditTable = (d: PaymentDetail) => {
     ["Action", "Operator", "At"],
     d.adminActions.map(
       (a) => html`<tr>
-        ${td(a.action)}${td(a.operator)}${td(a.createdAt)}
+        ${td(a.action)}${td(a.principalId ?? a.operator)}${td(a.createdAt)}
       </tr>`,
     ),
   );

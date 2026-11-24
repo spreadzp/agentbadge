@@ -1,13 +1,14 @@
 /**
- * SLICE-226-3 — admin FinOps mutations behind adminAuth.
+ * SLICE-226-3 — admin FinOps mutations (operatorAuth via the parent
+ * mount — SLICE-264-7).
  *
- *   POST /admin/finance/payments/:id/review            {operator, evidence?}
- *   POST /admin/finance/payments/:id/retry-verification {operator, evidence?}
+ *   POST /admin/finance/payments/:id/review            {evidence?}
+ *   POST /admin/finance/payments/:id/retry-verification {evidence?}
  *   POST /admin/finance/payments/:id/refund
- *        {operator, reason, mode: stripe|intent, payee?, amount?, evidence?}
+ *        {reason, mode: stripe|intent, payee?, amount?, evidence?}
  * Refund completion + exception ops live in finops-ops.ts.
- * All effects flow through lib/finops domain services — operator is
- * mandatory and every action is audited.
+ * All effects flow through lib/finops domain services — the actor is
+ * the credential principal (`principalId`) and every action is audited.
  */
 
 import { Hono } from "hono";
@@ -25,9 +26,14 @@ import {
   stripeRefund,
 } from "../../lib/finops/index";
 import type { StripeRefundClient } from "../../lib/finops/types";
-import { adminAuth } from "../../middleware/adminAuth";
+import { principalId } from "../../middleware/operatorAuth";
 import type { FinopsRouteDeps } from "./helpers";
-import { parseEvidence, readBody, respond } from "./helpers";
+import {
+  parseEvidence,
+  readBody,
+  rejectOperatorField,
+  respond,
+} from "./helpers";
 
 const TAG = { tags: ["Admin FinOps"] };
 
@@ -50,18 +56,21 @@ export function createFinopsActionRoutes(
       summary: "Mark payment reviewed",
       responses: {
         200: { description: "AdminAction recorded" },
-        400: { description: "Missing operator / oversized evidence" },
+        400: { description: "Oversized evidence / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Payment not found" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const res = await reviewPayment(
         getDb(),
         c.req.param("id"),
-        typeof b.operator === "string" ? b.operator : "",
+        actor,
         parseEvidence(b.evidence),
       );
       return respond(c, res);
@@ -75,18 +84,21 @@ export function createFinopsActionRoutes(
       summary: "Record a verification retry for the payment's open attempts",
       responses: {
         200: { description: "AdminAction + retryable attempts" },
-        400: { description: "Missing operator" },
+        400: { description: "Operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Payment not found" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const res = await retryVerification(
         getDb(),
         c.req.param("id"),
-        typeof b.operator === "string" ? b.operator : "",
+        actor,
         parseEvidence(b.evidence),
       );
       return respond(c, res);
@@ -100,13 +112,16 @@ export function createFinopsActionRoutes(
       summary: "Mark an external/off-chain subject reviewed (evidence required)",
       responses: {
         200: { description: "AdminAction recorded" },
-        400: { description: "Missing operator/evidence/subject" },
+        400: { description: "Missing evidence/subject" },
         401: { description: "Unauthorized" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       // L-11: the path id IS the subject — an audit row attributed to
       // a body-supplied subject while the form posted to another id
       // would mislabel the trail.
@@ -114,7 +129,7 @@ export function createFinopsActionRoutes(
         getDb(),
         "payment",
         c.req.param("id"),
-        typeof b.operator === "string" ? b.operator : "",
+        actor,
         parseEvidence(b.evidence) ?? b.evidence,
       );
       return respond(c, res);
@@ -129,18 +144,19 @@ export function createFinopsActionRoutes(
         "Refund a payment — Stripe auto (provider call) or manual intent",
       responses: {
         200: { description: "Stripe refund id or RefundIntent" },
-        400: { description: "Missing operator/reason/amount" },
+        400: { description: "Missing reason/amount" },
         401: { description: "Unauthorized" },
         404: { description: "Payment not found" },
         409: { description: "Payment not CONFIRMED" },
         503: { description: "Stripe/refund path not configured" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
-      const operator =
-        typeof b.operator === "string" ? b.operator : "";
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const modeRaw = typeof b.mode === "string" ? b.mode : "intent";
       if (modeRaw !== "stripe" && modeRaw !== "intent") {
         return respond(
@@ -178,7 +194,7 @@ export function createFinopsActionRoutes(
           getDb(),
           {
             paymentId: c.req.param("id"),
-            operator,
+            operator: actor,
             ...(typeof b.reason === "string" && b.reason.trim() !== ""
               ? { reason: b.reason }
               : {}),
@@ -190,7 +206,7 @@ export function createFinopsActionRoutes(
       }
       const res = await createRefundIntent(getDb(), {
         paymentId: c.req.param("id"),
-        operator,
+        operator: actor,
         payee: typeof b.payee === "string" ? b.payee : "",
         amount: typeof b.amount === "string" ? b.amount : "",
         reason: typeof b.reason === "string" ? b.reason : "",
@@ -211,14 +227,17 @@ export function createFinopsActionRoutes(
         "Resolve an UNCERTAIN Stripe refund — operator confirms out-of-band whether it landed",
       responses: {
         200: { description: "Terminal audit row written" },
-        400: { description: "Missing operator/evidence" },
+        400: { description: "Missing evidence / operator field sent" },
         401: { description: "Unauthorized" },
         409: { description: "No open refund initiation" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       // `landed` must be explicit — silently defaulting to "not
       // landed" would release the in-flight lock on a guess.
       const landed =
@@ -235,7 +254,7 @@ export function createFinopsActionRoutes(
       }
       const res = await resolveStripeRefund(getDb(), {
         paymentId: c.req.param("id"),
-        operator: typeof b.operator === "string" ? b.operator : "",
+        operator: actor,
         landed,
         evidence: parseEvidence(b.evidence) ?? b.evidence,
       });

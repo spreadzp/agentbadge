@@ -119,6 +119,7 @@ async function resolveStripeRefundInner(
       subjectType: "payment",
       subjectId: input.paymentId,
       operator,
+      principalId: operator,
       evidence: {
         kind,
         initiationId,

@@ -23,6 +23,8 @@ import type {
   StripeRefundClient,
   VerifyRefundTx,
 } from "../../lib/finops/types";
+import { fail } from "../../lib/finops/types";
+import type { OperatorStore } from "../../lib/operators";
 import { isHtmxRequest } from "../ui/helpers";
 
 /** Injected seams — tests pass stubs; prod defaults lazily. */
@@ -31,6 +33,8 @@ export interface FinopsRouteDeps {
   verifyRefundTx?: VerifyRefundTx;
   /** Stripe SDK-shaped client; absent → Stripe path 503s. */
   stripeClient?: StripeRefundClient | null;
+  /** SLICE-264-7: credential store for operatorAuth — tests inject. */
+  operatorStore?: OperatorStore;
 }
 
 /**
@@ -160,6 +164,23 @@ export async function readBody(
 
 export const str = (v: unknown): string | undefined =>
   typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+
+/**
+ * SLICE-264-7: self-asserted operator labels die at the boundary —
+ * identity comes from the credential, never the request body. A body
+ * still carrying `operator`/`operatorLabel` is a typed 400, mirroring
+ * the x-operator-id rejection at the operatorAuth layer.
+ */
+export function rejectOperatorField(
+  b: Record<string, unknown>,
+): FinOpsResult<never> | null {
+  return "operator" in b || "operatorLabel" in b
+    ? fail(
+        "BAD_INPUT",
+        "operator is not accepted — identity comes from the credential",
+      )
+    : null;
+}
 
 /** Evidence field: structured objects pass through (H1); strings are
  *  JSON-parsed when possible, else kept raw. */

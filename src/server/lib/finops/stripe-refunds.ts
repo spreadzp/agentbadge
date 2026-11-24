@@ -175,6 +175,7 @@ async function stripeRefundInner(
     subjectType: "payment",
     subjectId: payment.id,
     operator,
+    principalId: operator,
     evidence: {
       kind: "STRIPE_REFUND_INITIATED",
       initiationId,
@@ -276,6 +277,7 @@ async function stripeRefundInner(
       subjectType: "payment",
       subjectId: payment.id,
       operator,
+      principalId: operator,
       evidence: completionEvidence,
     },
     {

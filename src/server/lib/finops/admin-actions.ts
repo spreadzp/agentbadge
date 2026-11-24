@@ -11,7 +11,6 @@
 
 import {
   ADMIN_ACTIONS,
-  type AdminActionRow,
   type Database,
   type PaymentAttemptRow,
 } from "@agentbadge/database";
@@ -24,7 +23,13 @@ import {
   isMeaningfulEvidence,
   normalizeOperator,
 } from "./guards";
-import { type FinOpsResult, fail, ok } from "./types";
+import {
+  type AdminActionInsert,
+  type AdminActionRow,
+  type FinOpsResult,
+  fail,
+  ok,
+} from "./types";
 
 // Server-side vocabulary — the published store const plus actions
 // added ahead of the package (226-6 DETECT_EXCEPTIONS; 227 settlement
@@ -57,6 +62,15 @@ export interface RecordAdminActionInput {
   subjectType: string;
   subjectId: string;
   operator: string;
+  /**
+   * SLICE-264-7 — verbatim principal.id for the typed column (op_* or
+   * legacy_admin). Migrated surfaces pass it explicitly; finops
+   * internal call sites pass their `operator` argument, which IS the
+   * credential principal id post-migration. Surfaces still on
+   * adminAuth-era labels leave it unset → NULL = old format
+   * (D-264-Q13), never a self-asserted string.
+   */
+  principalId?: string | null;
   evidence?: unknown;
 }
 
@@ -76,15 +90,17 @@ export async function recordAdminAction(
   if (cap) return cap;
   const guard = guardAction(input.operator, input.evidence);
   if (guard) return guard;
-  const row = await db.finops.adminActions.append({
+  const insert: AdminActionInsert = {
     id: nextActionId(),
     action: input.action,
     subjectType: input.subjectType,
     subjectId: input.subjectId,
     operator: normalizeOperator(input.operator),
+    principalId: input.principalId ?? null,
     evidence: (input.evidence ?? null) as AdminActionRow["evidence"],
     createdAtMs: Date.now(),
-  });
+  };
+  const row = await db.finops.adminActions.append(insert);
   if (!row) {
     return fail("PROVIDER_ERROR", "admin action insert deduped on id");
   }
@@ -149,6 +165,7 @@ export async function reviewPayment(
     subjectType: "payment",
     subjectId: paymentId,
     operator,
+    principalId: operator,
     evidence,
   });
 }
@@ -178,6 +195,7 @@ export async function retryVerification(
     subjectType: "payment",
     subjectId: paymentId,
     operator,
+    principalId: operator,
     evidence,
   });
   if (!action.ok) return action;
@@ -237,6 +255,7 @@ export async function markExternalReviewed(
     subjectType: subjType,
     subjectId: subjId,
     operator,
+    principalId: operator,
     evidence,
   });
 }

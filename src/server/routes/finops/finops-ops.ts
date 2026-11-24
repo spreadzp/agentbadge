@@ -1,10 +1,11 @@
 /**
- * SLICE-226-3 — admin FinOps ops endpoints behind adminAuth.
+ * SLICE-226-3 — admin FinOps ops endpoints (operatorAuth via the
+ * parent mount — SLICE-264-7).
  *
  *   GET  /admin/finance/refunds            — refund intents list (JSON)
- *   POST /admin/finance/refunds/:id/complete  {operator, txHash}
- *   POST /admin/finance/exceptions/detect     {operator}
- *   POST /admin/finance/exceptions/:id/resolve {operator, resolution, note?}
+ *   POST /admin/finance/refunds/:id/complete  {txHash}
+ *   POST /admin/finance/exceptions/detect     {}
+ *   POST /admin/finance/exceptions/:id/resolve {resolution, note?}
  *
  * Refund completion runs ONLY behind the injected VerifyRefundTx —
  * when no verifier is wired the endpoint 503s instead of trusting a
@@ -20,12 +21,16 @@ import {
   detectFromPaymentExceptions,
   listRefundIntents,
   recordPostEffectAudit,
-  requireOperator,
   resolveException,
 } from "../../lib/finops/index";
-import { adminAuth } from "../../middleware/adminAuth";
+import { principalId } from "../../middleware/operatorAuth";
 import type { FinopsRouteDeps } from "./helpers";
-import { listLimit, readBody, respond } from "./helpers";
+import {
+  listLimit,
+  readBody,
+  rejectOperatorField,
+  respond,
+} from "./helpers";
 
 const TAG = { tags: ["Admin FinOps"] };
 
@@ -54,7 +59,6 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
       summary: "Refund intents list (admin)",
       responses: { 200: { description: "Refund intents, newest first" } },
     }),
-    adminAuth,
     async (c) => {
       const q = new URL(c.req.url).searchParams;
       const status = q.get("status");
@@ -81,8 +85,9 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         503: { description: "Tx verification not configured" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       if (!deps.verifyRefundTx) {
         return c.json(
           {
@@ -96,12 +101,14 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         );
       }
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const res = await completeRefundIntent(
         getDb(),
         {
           intentId: c.req.param("id"),
           txHash: typeof b.txHash === "string" ? b.txHash : "",
-          operator: typeof b.operator === "string" ? b.operator : "",
+          operator: actor,
         },
         deps.verifyRefundTx,
       );
@@ -116,19 +123,16 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
       summary: "Scan for reconciliation exceptions (audited)",
       responses: {
         200: { description: "Created + skipped exception ids" },
-        400: { description: "Missing operator" },
+        400: { description: "Operator field sent" },
         401: { description: "Unauthorized" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
-      // C4: operator validated BEFORE the scan — a missing operator
-      // must not create exception rows with no audit behind them.
-      const operator =
-        typeof b.operator === "string" ? b.operator : "";
-      const op = requireOperator(operator);
-      if (op) return respond(c, op);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const res = await detectFromPaymentExceptions(getDb(), {
         limit: listLimit(b.limit, 100, 100),
       });
@@ -145,7 +149,8 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
           action: "DETECT_EXCEPTIONS",
           subjectType: "exception",
           subjectId: "scan",
-          operator,
+          operator: actor,
+          principalId: actor,
           evidence: {
             createdCount: createdIds.length,
             skippedCount: res.value.skipped.length,
@@ -179,18 +184,21 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         "Resolve an exception — MATCHED|IGNORED|MANUAL_ADJUSTED|REFUNDED",
       responses: {
         200: { description: "Exception RESOLVED + audit" },
-        400: { description: "Missing operator/resolution" },
+        400: { description: "Missing resolution / operator field sent" },
         401: { description: "Unauthorized" },
         404: { description: "Exception not found" },
         409: { description: "Already resolved" },
       },
     }),
-    adminAuth,
     async (c) => {
+      const actor = principalId(c);
+      if (actor instanceof Response) return actor;
       const b = await readBody(c);
+      const opField = rejectOperatorField(b);
+      if (opField) return respond(c, opField);
       const res = await resolveException(getDb(), {
         id: c.req.param("id"),
-        operator: typeof b.operator === "string" ? b.operator : "",
+        operator: actor,
         resolution: typeof b.resolution === "string" ? b.resolution : "",
         ...(typeof b.note === "string" && b.note.trim() !== ""
           ? { note: b.note }

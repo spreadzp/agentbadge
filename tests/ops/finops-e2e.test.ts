@@ -9,7 +9,7 @@
  * never trusted (D-226-4, no fabricated confirmations).
  */
 
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import {
   createDatabase,
@@ -19,14 +19,21 @@ import {
 } from "@agentbadge/database";
 
 import { createFinopsRoutes } from "../../src/server/routes/finops/finops";
+import type { AdminActionRow } from "../../src/server/lib/finops/types";
+import type { OperatorStore } from "../../src/server/lib/operators";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
-const KEY = "test-admin-key";
-const auth = { "X-Admin-Key": KEY };
 const PAYEE = "0x" + "a".repeat(40);
 const TX1 = "0x" + "d".repeat(64);
 
 let db: Database;
+let operatorStore: OperatorStore;
+let operatorId: string;
 let app: Hono;
+let auth: Record<string, string>;
 let verifyCalls: { txHash: string; payee: string }[];
 let stripeCalls: string[];
 
@@ -135,19 +142,20 @@ async function seedCommerceMirror(paymentId: string) {
   return { task: task!, agreement: agreement! };
 }
 
-beforeAll(() => {
-  process.env.ADMIN_API_KEY = KEY;
-});
-
-beforeEach(() => {
+beforeEach(async () => {
   verifyCalls = [];
   stripeCalls = [];
   db = createDatabase({ enabled: false });
+  operatorStore = createMemoryOperatorStore();
+  const seeded = await seedOperator(operatorStore, "E2E Ops");
+  operatorId = seeded.operatorId;
+  auth = { "X-Admin-Key": seeded.key };
   app = new Hono();
   app.route(
     "/",
     createFinopsRoutes({
       getDb: () => db,
+      operatorStore,
       verifyRefundTx: async (txHash, expected) => {
         verifyCalls.push({ txHash, payee: expected.payee });
         return { verified: true, network: "eip155:5042002" };
@@ -223,24 +231,23 @@ describe("e2e — payments feed, trace, manual actions", () => {
 
     // Manual actions over HTTP → AdminAction rows with operator.
     const review = await post(`/admin/finance/payments/${stripe.id}/review`, {
-      operator: "ops.e2e",
       evidence: { note: "looks fine" },
     });
     expect(review.status).toBe(200);
     const retry = await post(
       `/admin/finance/payments/${stripe.id}/retry-verification`,
-      { operator: "ops.e2e" },
+      {},
     );
     expect(retry.status).toBe(200);
-    const actions = await db.finops.adminActions.listBySubject(
-      "payment",
-      stripe.id,
-    );
+    const actions: AdminActionRow[] =
+      await db.finops.adminActions.listBySubject("payment", stripe.id);
     expect(actions.map((a) => a.action).sort()).toEqual([
       "RETRY_VERIFY",
       "REVIEW",
     ]);
-    expect(actions.every((a) => a.operator === "ops.e2e")).toBe(true);
+    // SLICE-264-7: actor is the credential principal (both columns).
+    expect(actions.every((a) => a.operator === operatorId)).toBe(true);
+    expect(actions.every((a) => a.principalId === operatorId)).toBe(true);
   });
 });
 
@@ -257,7 +264,6 @@ describe("e2e — refund lifecycle", () => {
 
     // Stripe mode — provider call + payment REFUNDED.
     const s = await post(`/admin/finance/payments/${stripe.id}/refund`, {
-      operator: "ops.e2e",
       mode: "stripe",
       reason: "duplicate",
     });
@@ -269,7 +275,6 @@ describe("e2e — refund lifecycle", () => {
 
     // Intent mode — OPEN intent surfaces via the ops list endpoint.
     const i = await post(`/admin/finance/payments/${usdc.id}/refund`, {
-      operator: "ops.e2e",
       mode: "intent",
       payee: PAYEE,
       amount: "8.00",
@@ -284,7 +289,6 @@ describe("e2e — refund lifecycle", () => {
 
     // Complete only behind the verified txHash → COMPLETED + REFUNDED.
     const done = await post(`/admin/finance/refunds/${intentId}/complete`, {
-      operator: "ops.e2e",
       txHash: TX1,
     });
     expect(done.status).toBe(200);
@@ -301,14 +305,18 @@ describe("e2e — refund lifecycle", () => {
     // (226-6 round 3, L-6).
     const refunds = await db.finops.adminActions.list({ action: "REFUND" });
     expect(refunds).toHaveLength(5);
-    expect(refunds.every((a) => a.operator === "ops.e2e")).toBe(true);
+    expect(refunds.every((a) => a.operator === operatorId)).toBe(true);
   });
 
   it("unconfigured seams 503 — no fabricated confirmations", async () => {
     const bare = new Hono();
     bare.route(
       "/",
-      createFinopsRoutes({ getDb: () => db, stripeClient: null }),
+      createFinopsRoutes({
+        getDb: () => db,
+        operatorStore,
+        stripeClient: null,
+      }),
     );
     const barePost = (path: string, body: Record<string, unknown>) =>
       bare.request(path, {
@@ -319,13 +327,11 @@ describe("e2e — refund lifecycle", () => {
     const p = await seedPayment();
 
     const stripe = await barePost(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "ops.e2e",
       mode: "stripe",
     });
     expect(stripe.status).toBe(503);
 
     const complete = await barePost("/admin/finance/refunds/ri_x/complete", {
-      operator: "ops.e2e",
       txHash: "0xabc",
     });
     expect(complete.status).toBe(503);
@@ -347,9 +353,7 @@ describe("e2e — exceptions queue", () => {
       createdAtMs: Date.now(),
     });
 
-    const det = await post("/admin/finance/exceptions/detect", {
-      operator: "ops.e2e",
-    });
+    const det = await post("/admin/finance/exceptions/detect", {});
     expect(det.status).toBe(200);
 
     // Work queue shows the bridged exception.
@@ -361,12 +365,12 @@ describe("e2e — exceptions queue", () => {
 
     const res = await post(
       `/admin/finance/exceptions/${rows[0]!.id}/resolve`,
-      { operator: "ops.e2e", resolution: "MATCHED", note: "dup transfer" },
+      { resolution: "MATCHED", note: "dup transfer" },
     );
     expect(res.status).toBe(200);
     const after = await db.finops.exceptions.getById(rows[0]!.id);
     expect(after!.status).toBe("RESOLVED");
-    expect(after!.resolvedBy).toBe("ops.e2e");
+    expect(after!.resolvedBy).toBe(operatorId);
     expect(
       await db.finops.adminActions.list({ action: "RESOLVE_EXCEPTION" }),
     ).toHaveLength(1);
@@ -431,14 +435,9 @@ describe("e2e — reports", () => {
 describe("e2e — audit trail", () => {
   it("every manual action surfaces in the audit page with operator", async () => {
     const p = await seedPayment();
-    await post(`/admin/finance/payments/${p.id}/review`, {
-      operator: "ops.e2e",
-    });
-    await post(`/admin/finance/payments/${p.id}/retry-verification`, {
-      operator: "ops.e2e",
-    });
+    await post(`/admin/finance/payments/${p.id}/review`, {});
+    await post(`/admin/finance/payments/${p.id}/retry-verification`, {});
     await post(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "ops.e2e",
       mode: "intent",
       payee: PAYEE,
       amount: "5.00",
@@ -453,12 +452,11 @@ describe("e2e — audit trail", () => {
       createdAtMs: Date.now(),
     });
     await post(`/admin/finance/exceptions/${exc!.id}/resolve`, {
-      operator: "ops.e2e",
       resolution: "IGNORED",
     });
 
     const html = await (
-      await get("/admin/finance/audit?operator=ops.e2e")
+      await get(`/admin/finance/audit?operator=${operatorId}`)
     ).text();
     for (const action of [
       "REVIEW",
@@ -468,7 +466,7 @@ describe("e2e — audit trail", () => {
     ]) {
       expect(html).toContain(action);
     }
-    expect(html).toContain("ops.e2e");
+    expect(html).toContain(operatorId);
 
     // Append-only invariant — every row carries an operator.
     const rows = await db.finops.adminActions.list({});

@@ -1,5 +1,7 @@
 /**
- * SLICE-226-3 — admin FinOps routes behind adminAuth.
+ * SLICE-226-3 — admin FinOps routes. SLICE-264-7: adminAuth →
+ * operatorAuth — actor is the credential principal, the self-asserted
+ * `operator` body field is a typed 400 (rejectOperatorField).
  *   GET /admin/finance/payments        — list + filters + pagination
  *   GET /admin/finance/payments/:id    — detail + attempts + trace
  *   GET /admin/finance/exceptions      — exception queue
@@ -34,7 +36,12 @@ import {
   fail,
 } from "../../lib/finops/index";
 import { isHtmxRequest, wrapFragment } from "../ui/helpers";
-import { adminAuth } from "../../middleware/adminAuth";
+import {
+  capabilityForSurface,
+  operatorAuth,
+  requireCapability,
+} from "../../middleware/operatorAuth";
+import { pickOperatorStores } from "../../lib/operators";
 import { createFinopsActionRoutes } from "./finops-actions";
 import { createFinopsOpsRoutes } from "./finops-ops";
 import {
@@ -73,10 +80,24 @@ const ADMIN_TAG = { tags: ["Admin FinOps"] };
 
 export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
   const routes = new Hono();
-  // Whole surface is admin-only — spec "за adminAuth". The middleware
-  // also covers the mounted action sub-router paths.
-  routes.use("/admin/finance/*", adminAuth);
   const getDb = deps.getDb ?? getDatabase;
+  // SLICE-264-7: operatorAuth + capability gate for the whole
+  // /admin/finance family (covers the action sub-routers too —
+  // `path/*` matches the bare path in Hono 4). GETs → "read",
+  // manual-effect POSTs → "workflow".
+  const opStore = deps.operatorStore ?? pickOperatorStores(getDb());
+  routes.use(
+    "/admin/finance/*",
+    operatorAuth(opStore),
+    async (c, next) => {
+      const deny = requireCapability(
+        c,
+        capabilityForSurface(c.req.path, c.req.method),
+      );
+      if (deny) return deny;
+      await next();
+    },
+  );
   const page = (c: Context, frag: string, title: string): Response =>
     c.html(
       wrapFragment(c, frag, title, {

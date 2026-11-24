@@ -264,6 +264,7 @@ export async function resolveException(
       subjectType: "exception",
       subjectId: input.id,
       operator,
+      principalId: operator,
       evidence: {
         resolution: input.resolution,
         note: input.note ?? null,

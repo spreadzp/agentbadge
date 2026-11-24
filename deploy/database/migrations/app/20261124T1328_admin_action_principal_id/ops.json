@@ -1,0 +1,44 @@
+[
+  {
+    "id": "column.public.adminAction.principalId",
+    "label": "Add column \"principalId\" to \"adminAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "principalId",
+        "table": "adminAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"principalId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "adminAction",
+          "principalId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"principalId\"",
+        "sql": "ALTER TABLE \"public\".\"adminAction\" ADD COLUMN \"principalId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"principalId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "adminAction",
+          "principalId"
+        ]
+      }
+    ]
+  }
+]

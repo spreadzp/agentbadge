@@ -15,7 +15,8 @@
  */
 
 import type {
-  AdminActionRow,
+  AdminActionInsert as PkgAdminActionInsert,
+  AdminActionRow as PkgAdminActionRow,
   Database,
   PaymentAttemptRow,
   PaymentEventRow,
@@ -25,6 +26,17 @@ import type {
   ReconciliationExceptionRow,
   UsageRecordRow,
 } from "@agentbadge/database";
+
+// SLICE-264-7 — row/insert shapes ahead of the published package.
+// Installed @agentbadge/database 0.6.31 predates `principalId`; the
+// vendored deploy/database copy carries it and in-memory `append`
+// spreads the insert through to the row. NULL = old-format (D-264-Q13).
+export interface AdminActionInsert extends PkgAdminActionInsert {
+  principalId?: string | null;
+}
+export interface AdminActionRow extends PkgAdminActionRow {
+  principalId?: string | null;
+}
 
 /** FinOps error codes — stable vocabulary for the route layer. */
 export const FINOPS_ERRORS = [

@@ -2,22 +2,29 @@
  * SLICE-226-3 — route-level tests for /admin/finance/*.
  * Fresh Hono app + injected in-memory Database + stubbed
  * VerifyRefundTx / StripeRefundClient — no chain, no Stripe calls.
+ * SLICE-264-7: auth is a seeded opk_ credential; the `operator` body
+ * field is a typed 400 — actor attribution is `principal.id`.
  */
 
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { createDatabase, type Database } from "@agentbadge/database";
 
 import { createFinopsRoutes } from "../../src/server/routes/finops/finops";
-
-const KEY = "test-admin-key";
+import type { AdminActionRow } from "../../src/server/lib/finops/types";
+import type { OperatorStore } from "../../src/server/lib/operators";
+import {
+  createMemoryOperatorStore,
+  seedOperator,
+} from "../helpers/operators";
 
 let db: Database;
+let operatorStore: OperatorStore;
+let operatorId: string;
 let app: Hono;
+let auth: Record<string, string>;
 let verifyCalls = 0;
 let stripeCalls = 0;
-
-const auth = { "X-Admin-Key": KEY };
 const PAYEE = "0x" + "a".repeat(40);
 const TX1 = "0x" + "d".repeat(64);
 
@@ -67,19 +74,20 @@ async function seedPayment(
   return p!;
 }
 
-beforeAll(() => {
-  process.env.ADMIN_API_KEY = KEY;
-});
-
-beforeEach(() => {
+beforeEach(async () => {
   verifyCalls = 0;
   stripeCalls = 0;
   db = createDatabase({ enabled: false });
+  operatorStore = createMemoryOperatorStore();
+  const seeded = await seedOperator(operatorStore, "Finops Ops");
+  operatorId = seeded.operatorId;
+  auth = { "X-Admin-Key": seeded.key };
   app = new Hono();
   app.route(
     "/",
     createFinopsRoutes({
       getDb: () => db,
+      operatorStore,
       verifyRefundTx: async () => {
         verifyCalls += 1;
         return { verified: true };
@@ -156,29 +164,33 @@ describe("GET /admin/finance/* — auth + render", () => {
 });
 
 describe("POST mutations — operator guards", () => {
-  it("review without operator → 400", async () => {
-    const p = await seedPayment();
-    const res = await post(`/admin/finance/payments/${p.id}/review`, {});
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("OPERATOR_REQUIRED");
-  });
-
-  it("review with operator → AdminAction row", async () => {
+  it("body `operator` field → 400 (identity is credential-bound)", async () => {
     const p = await seedPayment();
     const res = await post(`/admin/finance/payments/${p.id}/review`, {
       operator: "jane.ops",
     });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("BAD_INPUT");
+    expect(await db.finops.adminActions.list({})).toHaveLength(0);
+  });
+
+  it("review → AdminAction row attributed to the credential principal", async () => {
+    const p = await seedPayment();
+    const res = await post(`/admin/finance/payments/${p.id}/review`, {});
     expect(res.status).toBe(200);
-    const actions = await db.finops.adminActions.list({ operator: "jane.ops" });
+    const actions: AdminActionRow[] = await db.finops.adminActions.list({
+      operator: operatorId,
+    });
     expect(actions).toHaveLength(1);
     expect(actions[0]!.action).toBe("REVIEW");
+    // SLICE-264-7: both columns carry the credential principal id.
+    expect(actions[0]!.principalId).toBe(operatorId);
   });
 
   it("refund intent mode creates OPEN intent", async () => {
     const p = await seedPayment();
     const res = await post(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "jane.ops",
       mode: "intent",
       payee: PAYEE,
       amount: "5.00",
@@ -201,7 +213,6 @@ describe("POST mutations — operator guards", () => {
       },
     );
     const res = await post(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "jane.ops",
       mode: "stripe",
       reason: "duplicate",
     });
@@ -214,7 +225,6 @@ describe("POST mutations — operator guards", () => {
   it("refund intent complete verifies tx then completes", async () => {
     const p = await seedPayment();
     await post(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "ops",
       mode: "intent",
       payee: PAYEE,
       amount: "10.00",
@@ -222,7 +232,6 @@ describe("POST mutations — operator guards", () => {
     });
     const intent = (await db.finops.refundIntents.list({}))[0]!;
     const res = await post(`/admin/finance/refunds/${intent.id}/complete`, {
-      operator: "ops",
       txHash: TX1,
     });
     expect(res.status).toBe(200);
@@ -233,9 +242,7 @@ describe("POST mutations — operator guards", () => {
   });
 
   it("exceptions detect + resolve lifecycle", async () => {
-    const scan = await post("/admin/finance/exceptions/detect", {
-      operator: "ops",
-    });
+    const scan = await post("/admin/finance/exceptions/detect", {});
     expect(scan.status).toBe(200);
     // seed an exception directly, then resolve via route
     const exc = await db.finops.exceptions.append({
@@ -246,7 +253,6 @@ describe("POST mutations — operator guards", () => {
       createdAtMs: Date.now(),
     });
     const res = await post(`/admin/finance/exceptions/${exc!.id}/resolve`, {
-      operator: "ops",
       resolution: "IGNORED",
       note: "dup tx",
     });
@@ -264,11 +270,9 @@ describe("POST mutations — operator guards", () => {
       createdAtMs: Date.now(),
     });
     await post(`/admin/finance/exceptions/${exc!.id}/resolve`, {
-      operator: "ops",
       resolution: "MATCHED",
     });
     const res = await post(`/admin/finance/exceptions/${exc!.id}/resolve`, {
-      operator: "ops",
       resolution: "MATCHED",
     });
     // 226-6: domain INVALID_STATE maps to 409, not a blanket 400.
@@ -286,7 +290,7 @@ describe("POST mutations — operator guards", () => {
 });
 
 describe("SLICE-226-6 hardening", () => {
-  it("detect without operator creates nothing — no exceptions, no audit (C4)", async () => {
+  it("detect with `operator` field creates nothing — no exceptions, no audit (C4)", async () => {
     await db.payments.exceptions.append({
       id: "pe_c4",
       paymentId: "pay_c4",
@@ -296,7 +300,9 @@ describe("SLICE-226-6 hardening", () => {
       status: "OPEN",
       createdAtMs: Date.now(),
     });
-    const res = await post("/admin/finance/exceptions/detect", {});
+    const res = await post("/admin/finance/exceptions/detect", {
+      operator: "ops",
+    });
     expect(res.status).toBe(400);
     expect(await db.finops.exceptions.list({})).toHaveLength(0);
     expect(await db.finops.adminActions.list({})).toHaveLength(0);
@@ -312,9 +318,7 @@ describe("SLICE-226-6 hardening", () => {
       status: "OPEN",
       createdAtMs: Date.now(),
     });
-    const res = await post("/admin/finance/exceptions/detect", {
-      operator: "ops",
-    });
+    const res = await post("/admin/finance/exceptions/detect", {});
     expect(res.status).toBe(200);
     const actions = await db.finops.adminActions.list({
       action: "DETECT_EXCEPTIONS",
@@ -339,7 +343,6 @@ describe("SLICE-226-6 hardening", () => {
       },
     );
     const res = await post(`/admin/finance/payments/${p.id}/refund`, {
-      operator: "ops",
       mode: "stripe",
       amount: "1.00",
     });
@@ -363,6 +366,7 @@ describe("SLICE-226-6 hardening", () => {
       "/",
       createFinopsRoutes({
         getDb: () => db,
+        operatorStore,
         verifyRefundTx: async () => ({ verified: true }),
         stripeClient: {
           refunds: {
@@ -377,7 +381,7 @@ describe("SLICE-226-6 hardening", () => {
     const res = await app2.request(`/admin/finance/payments/${p.id}/refund`, {
       method: "POST",
       headers: { "content-type": "application/json", ...auth },
-      body: JSON.stringify({ operator: "ops", mode: "stripe" }),
+      body: JSON.stringify({ mode: "stripe" }),
     });
     expect(res.status).toBe(200);
     expect(idem).toBe(`refund:${p.id}`);
@@ -398,6 +402,7 @@ describe("SLICE-226-6 hardening", () => {
       "/",
       createFinopsRoutes({
         getDb: () => db,
+        operatorStore,
         verifyRefundTx: async () => ({ verified: true }),
         stripeClient: {
           refunds: {
@@ -409,7 +414,7 @@ describe("SLICE-226-6 hardening", () => {
     const res = await app2.request(`/admin/finance/payments/${p.id}/refund`, {
       method: "POST",
       headers: { "content-type": "application/json", ...auth },
-      body: JSON.stringify({ operator: "ops", mode: "stripe" }),
+      body: JSON.stringify({ mode: "stripe" }),
     });
     expect(res.status).toBe(503);
     expect((await db.payments.payments.getById(p.id))!.status).toBe(
@@ -437,7 +442,6 @@ describe("SLICE-226-6 hardening", () => {
     const p2 = await seedPayment();
     for (const p of [p1, p2]) {
       await post(`/admin/finance/payments/${p.id}/refund`, {
-        operator: "ops",
         mode: "intent",
         payee: PAYEE,
         amount: "10.00",
@@ -447,13 +451,11 @@ describe("SLICE-226-6 hardening", () => {
     const intents = await db.finops.refundIntents.list({});
     expect(intents).toHaveLength(2);
     const first = await post(`/admin/finance/refunds/${intents[0]!.id}/complete`, {
-      operator: "ops",
       txHash: TX1,
     });
     expect(first.status).toBe(200);
     // Uppercase hex — normalizes to TX1, must replay-reject.
     const dup = await post(`/admin/finance/refunds/${intents[1]!.id}/complete`, {
-      operator: "ops",
       txHash: `0x${"D".repeat(64)}`,
     });
     expect(dup.status).toBe(409);
@@ -472,7 +474,6 @@ describe("SLICE-226-6 hardening", () => {
           ...auth,
         },
         body: JSON.stringify({
-          operator: "ops",
           mode: "intent",
           payee: PAYEE,
           amount: "1.00",

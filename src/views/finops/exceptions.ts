@@ -30,12 +30,6 @@ const resolveForm = (row: ReconciliationExceptionRow) => html`
     hx-swap="innerHTML"
     class="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-800 pt-2"
   >
-    <input
-      name="operator"
-      required
-      placeholder="operator *"
-      class="w-36 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
-    />
     <select
       name="resolution"
       class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
@@ -90,12 +84,6 @@ export const exceptionsPage = (rows: ReconciliationExceptionRow[]) =>
         hx-swap="innerHTML"
         class="mb-3 flex items-end gap-2"
       >
-        <input
-          name="operator"
-          required
-          placeholder="operator *"
-          class="w-44 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
-        />
         <button
           type="submit"
           class="rounded bg-slate-700 px-3 py-1 text-xs text-slate-100 hover:bg-slate-600"

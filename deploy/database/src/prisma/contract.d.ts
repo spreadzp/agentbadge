@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'bd5320ac2cc47ee11b63a2933307aa4f940b5e3a06e91f678ef66de79d8d7b8e'>;
+  StorageHashBase<'0ec7ac3ae9ecdc6a01ec7f4b635ed70f577462a115e138fbb366991c811d095d'>;
 export type ExecutionHash =
   ExecutionHashBase<'43eb0b26f692a88ca4be63f49d9e2f76c89211e2e8021d3a4d3f632461bc9475'>;
 export type ProfileHash =
@@ -289,6 +289,7 @@ export type FieldOutputTypes = {
       readonly subjectType: CodecTypes['pg/text@1']['output'];
       readonly subjectId: CodecTypes['pg/text@1']['output'];
       readonly operator: CodecTypes['pg/text@1']['output'];
+      readonly principalId: CodecTypes['pg/text@1']['output'] | null;
       readonly evidence: CodecTypes['pg/json@1']['output'] | null;
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -1507,6 +1508,7 @@ export type FieldInputTypes = {
       readonly subjectType: CodecTypes['pg/text@1']['input'];
       readonly subjectId: CodecTypes['pg/text@1']['input'];
       readonly operator: CodecTypes['pg/text@1']['input'];
+      readonly principalId: CodecTypes['pg/text@1']['input'] | null;
       readonly evidence: CodecTypes['pg/json@1']['input'] | null;
       readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -2726,6 +2728,7 @@ export type StorageColumnTypes = {
       readonly evidence: CodecTypes['pg/json@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly operator: CodecTypes['pg/text@1']['output'];
+      readonly principalId: CodecTypes['pg/text@1']['output'] | null;
       readonly subjectId: CodecTypes['pg/text@1']['output'];
       readonly subjectType: CodecTypes['pg/text@1']['output'];
     };
@@ -3944,6 +3947,7 @@ export type StorageColumnInputTypes = {
       readonly evidence: CodecTypes['pg/json@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly operator: CodecTypes['pg/text@1']['input'];
+      readonly principalId: CodecTypes['pg/text@1']['input'] | null;
       readonly subjectId: CodecTypes['pg/text@1']['input'];
       readonly subjectType: CodecTypes['pg/text@1']['input'];
     };
@@ -5914,6 +5918,7 @@ export namespace Models {
     subjectType: CodecTypes['pg/text@1']['output'];
     subjectId: CodecTypes['pg/text@1']['output'];
     operator: CodecTypes['pg/text@1']['output'];
+    principalId: CodecTypes['pg/text@1']['output'] | null;
     evidence: CodecTypes['pg/json@1']['output'] | null;
     createdAtMs: CodecTypes['pg/int8@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -6842,6 +6847,11 @@ type ContractBase = Omit<
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
+                };
+                readonly principalId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
                 };
                 readonly evidence: {
                   readonly nativeType: 'json';
@@ -14688,6 +14698,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly principalId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly evidence: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
@@ -14714,6 +14728,7 @@ type ContractBase = Omit<
                 readonly subjectType: { readonly column: 'subjectType' };
                 readonly subjectId: { readonly column: 'subjectId' };
                 readonly operator: { readonly column: 'operator' };
+                readonly principalId: { readonly column: 'principalId' };
                 readonly evidence: { readonly column: 'evidence' };
                 readonly createdAtMs: { readonly column: 'createdAtMs' };
                 readonly createdAt: { readonly column: 'createdAt' };
