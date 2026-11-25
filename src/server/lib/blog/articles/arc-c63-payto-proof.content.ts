@@ -34,11 +34,15 @@ export const arcC63PaytoProofContent = `
 
 <p>Two public DNS-over-HTTPS resolvers format TXT answers differently: dns.google returns the <code>data</code> field bare, cloudflare-dns returns it wrapped in RFC-1035 quotes. A strict parser reads them as two different records - and a "both resolvers must agree" safety check fails on a perfectly honest proof. We found this <strong>on our own domain, before the rule existed</strong> - the kind of bug that would have failed every legitimate deployment and passed every crafted one.</p>
 
+<p><img src="/images/blog/arc-c63-payto-proof-d1.webp" alt="x402-payto verification pipeline - resolve lane with dns.google and cloudflare-dns feeding normalize TXT and parse entries into agreement gate and min-TTL cache, collect lane with double-probe 402 and well-known fetch into inputs split, evaluate lane with canonical match and freshness into verdict-map producing AB-188 and AB-189" /></p>
+<p><em>The machine, end to end - the bug lived in "normalize TXT", and per-tier confirmsAbsence means a fetch timeout can never mark a proof DROPPED.</em></p>
+
 <p>We reported it. The spec now requires verifiers to normalize quoted and bare DoH TXT data - credited. A second finding landed the same way: the live <code>accepts[]</code> in a 402 challenge are authoritative; the <code>/.well-known/x402.json</code> manifest is only a hint. Both are in the draft now.</p>
 
 <h2>What the rule actually checks (three flavors of "no")</h2>
 
-<p><img src="/images/blog/arc-c63-payto-proof-d1.webp" alt="Proof-flow swimlane - seller endpoint quotes accepts, domain owner publishes a signed proof set via DNS TXT and well-known, scanner resolves dual-DoH plus live probes and evaluates to verdict chips VERIFIED, CONFLICT, GAP, UNCHECKED" /></p>
+<p><img src="/images/blog/arc-c63-payto-proof-d2.webp" alt="Trust lanes - domain owner publishes DNS TXT plus well-known JSON into the proof set the check believes, seller endpoint self-reports the 402 challenge payTo which the live double-probe only measures, scanner referees by matching quoted against published" /></p>
+<p><em>Who controls what the agent sees - to fake the set an attacker must own the domain's DNS, not the endpoint.</em></p>
 
 <p>The shipped checkers (AB-188 for x402 quotes, AB-189 for MPP/L402 payment challenges) do not answer "verified or not." They answer one of several very different things:</p>
 
@@ -76,7 +80,8 @@ export const arcC63PaytoProofContent = `
 
 <p><img src="/images/blog/arc-c63-payto-proof-i4.webp" alt="A ledger page where one address line fades out with an eraser ghost marked DROPPED while a new line is inked in beside it with a ROTATED arrow, and a storm cloud labeled SERVFAIL crossed out with a not-a-revocation circle" /></p>
 
-<p><img src="/images/blog/arc-c63-payto-proof-d2.webp" alt="Transition map - previous scan set cross current scan set producing kind badges still_verified, newly_proven, DROPPED, ROTATED, SCOPE_CHANGED, REAPPEARED, recheck_unchecked, CONFLICT, with the callout DROPPED only on confirmed absence" /></p>
+<p><img src="/images/blog/arc-c63-payto-proof-d3.webp" alt="diffPaytoReports transition table - previous report plus current report through the comparability gate into eight kinds: still_verified, still_absent, newly_proven, REAPPEARED, DROPPED on confirmed absence only, ROTATED, SCOPE_CHANGED, CONFLICT, recheck_unchecked never a revocation" /></p>
+<p><em>The full ontology - state, not action; the scanner holds nothing between runs.</em></p>
 
 <p>A <code>DROPPED</code> transition renders as a medium alert: <code>0x23dd… was proven 2026-11-20, absent 2026-11-24 — possible rotation or compromise</code>. The scanner itself stays stateless: history is an <em>input</em> (two snapshots), not hidden state.</p>
 
