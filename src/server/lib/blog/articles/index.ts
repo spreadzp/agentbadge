@@ -65,6 +65,7 @@ import { article as arcC59KnowledgeEngine } from "./arc-c59-knowledge-engine";
 import { article as arcC60InteractionCore } from "./arc-c60-interaction-core";
 import { article as arcC56MmfConformanceAudit } from "./arc-c56-mmf-conformance-audit";
 import { article as arcC61FeedbackReview } from "./arc-c61-feedback-review";
+import { article as arcC63PaytoProof } from "./arc-c63-payto-proof";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -131,6 +132,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC59KnowledgeEngine,
   arcC60InteractionCore,
   arcC61FeedbackReview,
+  arcC63PaytoProof,
   arcC56MmfConformanceAudit,
   devinCloudAudit,
 ];
