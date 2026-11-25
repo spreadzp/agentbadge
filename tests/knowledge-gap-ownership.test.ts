@@ -448,4 +448,43 @@ describe("gap ownership — Arc-264-16 hardening", () => {
     expect(g.assignedAt).toBeNull();
     expect(g.dueAt).toBeNull(); // the 2020 deadline can't re-breach
   });
+
+  it("confirm-2: setGapDueAt on a TERMINAL gap still holding an owner → gap_terminal (not a looping conflict)", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    const itemId = await mkPublishedItem(store, "term-answer");
+    await triageGap(store, gap.id);
+    await resolveGap(store, gap.id, itemId);
+    // The write re-installs the owner → the store status gate would
+    // refuse as a bare conflict; the domain pre-check reports the
+    // permanent state honestly instead.
+    const r = await setGapDueAt(store, {
+      gapId: gap.id,
+      dueAt: "2027-01-01T00:00:00.000Z",
+      reason: "late deadline",
+      actor: "op_admin",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("gap_terminal");
+    // An UNOWNED terminal row still takes the write — the deadline
+    // record on a dead gap is legal (no owner-install, no gate).
+    const cleared = await unassignGap(store, {
+      gapId: gap.id,
+      actor: "op_admin",
+    });
+    expect(cleared.ok).toBe(true);
+    const ok = await setGapDueAt(store, {
+      gapId: gap.id,
+      dueAt: "2027-01-01T00:00:00.000Z",
+      reason: "record the deadline",
+      actor: "op_admin",
+    });
+    expect(ok.ok).toBe(true);
+  });
 });

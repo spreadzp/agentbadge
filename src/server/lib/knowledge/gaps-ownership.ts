@@ -216,7 +216,9 @@ export async function unassignGap(
     assignedBy: null,
     assignedAt: null,
     dueAt: gap.dueAt,
-    // CAS: don't drop an owner that landed after our read.
+    // CAS: don't drop an owner that landed after our read. The dueAt
+    // pin stays on owner-CLEAR — the UPDATE writes dueAt back; unpinned
+    // it stomps a mid-flight setGapDueAt (confirm-3: conflict = fix).
     expectedAssignedTo: gap.assignedTo,
     expectedDueAt: gap.dueAt,
     // No owner → nothing was dropped: an "unassigned" row for a
@@ -264,15 +266,19 @@ export async function setGapDueAt(
   }
   const gap = await store.getGap(input.gapId);
   if (!gap) return { ok: false, error: "not_found" };
+  // Arc-264-16 confirm-2: a terminal OWNED gap re-installs that owner →
+  // the store gate refuses every retry — report the permanent state,
+  // not a looping conflict. UNOWNED terminal rows write legally.
+  if (TERMINAL.has(gap.status) && gap.assignedTo !== null) {
+    return { ok: false, error: "gap_terminal", field: "status" };
+  }
   const res = await store.assignGap(input.gapId, {
     assignedTo: gap.assignedTo,
     assignedBy: gap.assignedBy,
-    // Pass through — stamping `now()` here would fabricate an
-    // assignment instant on an unassigned gap.
+    // Pass through — `now()` here would fabricate an assign instant.
     assignedAt: gap.assignedAt,
     dueAt: input.dueAt,
-    // CAS: without it a mid-flight claim would be stomped back to
-    // null AND the event's assignedTo snapshot would lie.
+    // CAS: a mid-flight claim must not be stomped back to null.
     expectedAssignedTo: gap.assignedTo,
     expectedDueAt: gap.dueAt,
     event: {

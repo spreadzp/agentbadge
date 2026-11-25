@@ -57,14 +57,16 @@ export class MemoryKnowledgeOverdue {
   async listDueBreaches(now: string) {
     const nowMs = Date.parse(now);
     const recorded = new Set(
-      [...this.data.gapOverdues.values()].map((o) => `${o.gapId}${o.dueAt}`),
+      [...this.data.gapOverdues.values()].map(
+        (o) => `${o.gapId}|${Date.parse(o.dueAt)}`,
+      ),
     );
     const rows: KnowledgeGapRecord[] = [...this.data.gaps.values()].filter(
       (g) =>
         (g.status === "OPEN" || g.status === "TRIAGED") &&
         g.dueAt !== null &&
         Date.parse(g.dueAt) < nowMs &&
-        !recorded.has(`${g.id}${g.dueAt}`),
+        !recorded.has(`${g.id}|${Date.parse(g.dueAt)}`),
     );
     rows.sort((a, b) => {
       const d = Date.parse(a.dueAt as string) - Date.parse(b.dueAt as string);
