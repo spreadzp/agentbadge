@@ -1,5 +1,6 @@
 .env
 .env.deployer
+.env.prod
 node_modules/
 dist/
 storage/
