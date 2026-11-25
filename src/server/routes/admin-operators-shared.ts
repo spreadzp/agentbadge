@@ -106,7 +106,10 @@ export const operatorAdminGate = async (c: Context, next: Next) => {
 
 /** Store-reason → HTTP status shared by both surfaces. State-conflict
  *  refusals are 409 (matches the advertised OpenAPI docs); shape and
- *  name errors are 400. */
+ *  name errors are 400; internal store faults are 500 — a 400 would
+ *  invite the client to retry-with-fix on a server-side failure
+ *  (Arc-264-16 M13: rotate retries after revoke_failed already mint
+ *  a second credential — at least signal the true class). */
 export const reasonStatus = (reason: string): number =>
   reason === "missing" ||
   reason === "missing_operator" ||
@@ -116,4 +119,6 @@ export const reasonStatus = (reason: string): number =>
         reason === "disabled_operator" ||
         reason === "already_revoked"
       ? 409
-      : 400;
+      : reason === "issue_failed" || reason === "revoke_failed"
+        ? 500
+        : 400;

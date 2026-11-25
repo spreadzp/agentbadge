@@ -31,8 +31,8 @@ const scenario: Scenario = {
       process.env.PROBE_KEY_C),
   variants: (ep, ctx) => {
     const c = ep.contract!;
-    const tok = caseToken(ep, "knowledge-lifecycle", "264-15");
-    const body = contractBody(ep, "knowledge-lifecycle", ctx, "264-15")!;
+    const tok = caseToken(ep, "knowledge-lifecycle", "264-16");
+    const body = contractBody(ep, "knowledge-lifecycle", ctx, "264-16")!;
     const credH = (key: string, idem: string) => ({
       "content-type": "application/json",
       "x-admin-key": key,

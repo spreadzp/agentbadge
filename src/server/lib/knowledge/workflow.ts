@@ -181,10 +181,18 @@ export async function transitionKnowledgeItem(
     to === "DRAFT" && from === "VERIFIED"
       ? "knowledge.reopened"
       : (EVENT_FOR[to] ?? `knowledge.${to.toLowerCase()}`);
-  emitKnowledgeEvent(
-    eventKind,
-    { slug: res.item.slug, from, to, actor, reason: reason ?? null },
-    itemId,
-  );
+  // Arc-264-16 nit: the transition already COMMITTED — an emit
+  // fault must not 500 a successful write. The in-DB event trail
+  // (res.event) is the durable record; the bus fan-out is best-
+  // effort after the fact.
+  try {
+    emitKnowledgeEvent(
+      eventKind,
+      { slug: res.item.slug, from, to, actor, reason: reason ?? null },
+      itemId,
+    );
+  } catch {
+    // swallowed — post-commit, nothing to roll back
+  }
   return { ok: true, item: res.item, event: res.event };
 }

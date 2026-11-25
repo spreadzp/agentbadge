@@ -65,7 +65,17 @@ export async function sweepOverdueGaps(
   };
 
   // Phase 1 — ensure breach rows exist for the current due set.
-  const breaches = await deps.store.listDueBreaches(now);
+  // Arc-264-16 M8: a phase-1 fault must not skip phase 2 — rows
+  // already recorded (kill-stranded or fresh) still owe their emit.
+  let breaches: Awaited<ReturnType<OverdueSweepDeps["store"]["listDueBreaches"]>>;
+  try {
+    breaches = await deps.store.listDueBreaches(now);
+  } catch (err) {
+    result.errors.push(
+      `listDueBreaches: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    breaches = [];
+  }
   result.scanned = breaches.length;
   for (const gap of breaches) {
     try {
@@ -85,7 +95,17 @@ export async function sweepOverdueGaps(
 
   // Phase 2 — drain the durable-intent set: emittedAt IS NULL rows
   // emit + stamp, independent of whether the gap still breaches.
-  const pending = await deps.store.listPendingOverdueEmits();
+  let pending: Awaited<
+    ReturnType<OverdueSweepDeps["store"]["listPendingOverdueEmits"]>
+  >;
+  try {
+    pending = await deps.store.listPendingOverdueEmits();
+  } catch (err) {
+    result.errors.push(
+      `listPendingOverdueEmits: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return result;
+  }
   for (const p of pending) {
     try {
       emit("knowledge.gap_overdue", {

@@ -125,7 +125,12 @@ export async function assignGap(
     dueAt,
     // CAS + audit row in the same write — lands only while the
     // owner still is what this event claims to replace.
+    // Arc-264-16 M3: expectedDueAt is the deadline half of the
+    // CAS (all four writers) — the event's dueAt snapshot must
+    // still equal our read or the write-back would stomp a
+    // concurrent setGapDueAt.
     expectedAssignedTo: gap.assignedTo,
+    expectedDueAt: gap.dueAt,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
@@ -137,11 +142,8 @@ export async function assignGap(
     },
   });
   if (res.reason === "conflict") {
-    return conflictReport(
-      store,
-      input.gapId,
-      (g) => g.assignedTo === input.assignedTo && sameInstant(g.dueAt, dueAt),
-    );
+    return conflictReport(store, input.gapId, (g) =>
+      g.assignedTo === input.assignedTo && sameInstant(g.dueAt, dueAt));
   }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
@@ -178,6 +180,7 @@ export async function reassignGap(
     assignedAt: now,
     dueAt: gap.dueAt,
     expectedAssignedTo: gap.assignedTo,
+    expectedDueAt: gap.dueAt,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
@@ -189,11 +192,8 @@ export async function reassignGap(
     },
   });
   if (res.reason === "conflict") {
-    return conflictReport(
-      store,
-      input.gapId,
-      (g) => g.assignedTo === input.assignedTo,
-    );
+    return conflictReport(store, input.gapId, (g) =>
+      g.assignedTo === input.assignedTo);
   }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
@@ -218,6 +218,7 @@ export async function unassignGap(
     dueAt: gap.dueAt,
     // CAS: don't drop an owner that landed after our read.
     expectedAssignedTo: gap.assignedTo,
+    expectedDueAt: gap.dueAt,
     // No owner → nothing was dropped: an "unassigned" row for a
     // no-op mutation is audit noise, not a fact.
     ...(gap.assignedTo === null
@@ -235,11 +236,7 @@ export async function unassignGap(
         }),
   });
   if (res.reason === "conflict") {
-    return conflictReport(
-      store,
-      input.gapId,
-      (g) => g.assignedTo === null,
-    );
+    return conflictReport(store, input.gapId, (g) => g.assignedTo === null);
   }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };
@@ -277,6 +274,7 @@ export async function setGapDueAt(
     // CAS: without it a mid-flight claim would be stomped back to
     // null AND the event's assignedTo snapshot would lie.
     expectedAssignedTo: gap.assignedTo,
+    expectedDueAt: gap.dueAt,
     event: {
       id: gapEventId(),
       gapId: input.gapId,
@@ -288,12 +286,8 @@ export async function setGapDueAt(
     },
   });
   if (res.reason === "conflict") {
-    return conflictReport(
-      store,
-      input.gapId,
-      (g) =>
-        g.assignedTo === gap.assignedTo && sameInstant(g.dueAt, input.dueAt),
-    );
+    return conflictReport(store, input.gapId, (g) =>
+      g.assignedTo === gap.assignedTo && sameInstant(g.dueAt, input.dueAt));
   }
   if (!res.updated || !res.gap) return { ok: false, error: "not_found" };
   return { ok: true, gap: res.gap };

@@ -50,14 +50,21 @@ export class MemoryKnowledgeOverdue {
   }
 
   /** Breached at `now` — OPEN|TRIAGED only, NULL dueAt can't breach
-   *  (mirrors the PG `dueAt < now` predicate), dueAt ASC + id tie. */
+   *  (mirrors the PG `dueAt < now` predicate), dueAt ASC + id tie.
+   *  Arc-264-16 H1: already-recorded (gapId,dueAt) pairs leave the
+   *  scan set — the PG NOT EXISTS mirror; without it the same rows
+   *  re-present every tick (in PG they starved rank-501+). */
   async listDueBreaches(now: string) {
     const nowMs = Date.parse(now);
+    const recorded = new Set(
+      [...this.data.gapOverdues.values()].map((o) => `${o.gapId}${o.dueAt}`),
+    );
     const rows: KnowledgeGapRecord[] = [...this.data.gaps.values()].filter(
       (g) =>
         (g.status === "OPEN" || g.status === "TRIAGED") &&
         g.dueAt !== null &&
-        Date.parse(g.dueAt) < nowMs,
+        Date.parse(g.dueAt) < nowMs &&
+        !recorded.has(`${g.id}${g.dueAt}`),
     );
     rows.sort((a, b) => {
       const d = Date.parse(a.dueAt as string) - Date.parse(b.dueAt as string);

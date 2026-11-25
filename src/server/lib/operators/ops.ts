@@ -96,6 +96,12 @@ export function createOperatorStore(
       ) {
         return { ok: false, reason: "invalid_principal_type" };
       }
+      // Arc-264-16 M4: break_glass principals are break-glass-flow
+      // artifacts only — a service-shaped principalType minted via
+      // the admin API would bypass the armed-breakglass ceremony.
+      if (input.principalType === "break_glass") {
+        return { ok: false, reason: "reserved_principal_type" };
+      }
       if (
         input.capabilities.some(
           (c) =>

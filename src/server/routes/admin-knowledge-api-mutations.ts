@@ -3,7 +3,8 @@
  *   POST /admin/api/knowledge/items/:id/transition  {to, reason?}
  *
  * Split out of admin-knowledge-api.ts (300-line guard).
- * operatorRef comes from the X-Operator-Id header — never the body.
+ * operatorRef comes from the credential principal (operatorAuth) —
+ * never the body; the X-Operator-Id header is dead (EPIC-264).
  * Illegal transitions are honest 409 INVALID_TRANSITION — the store
  * wrote nothing, the status/event trail stays clean. Verify/publish
  * additionally refuse agent-shaped actors (§16.5) — the lib checks

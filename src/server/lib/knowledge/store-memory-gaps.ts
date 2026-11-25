@@ -89,6 +89,16 @@ export class MemoryKnowledgeGaps {
         // SLICE-264-10: the resolution is un-done — the stamp must
         // not survive the reopen (PG bump path clears it too).
         gap.resolvedAt = null;
+        // Arc-264-16 M9: the ROW clears the ownership tuple — a
+        // stale owner+past dueAt would instantly re-breach on the
+        // same (gapId,dueAt) key and emit nothing. The event still
+        // snapshots the PRE-clear values — a self-contained audit
+        // of "lapsed while owned by X against deadline Y" (PG same).
+        const lapsed = { assignedTo: gap.assignedTo, dueAt: gap.dueAt };
+        gap.assignedTo = null;
+        gap.assignedBy = null;
+        gap.assignedAt = null;
+        gap.dueAt = null;
         // 264-11: the audit row lands in the same write — actor
         // "system" (a sighting reopened it, no principal acted).
         this.pushEvent({
@@ -96,8 +106,8 @@ export class MemoryKnowledgeGaps {
           gapId: gap.id,
           kind: "reopened",
           actor: "system",
-          assignedTo: gap.assignedTo,
-          dueAt: gap.dueAt,
+          assignedTo: lapsed.assignedTo,
+          dueAt: lapsed.dueAt,
         });
       }
       if (
@@ -227,6 +237,23 @@ export class MemoryKnowledgeGaps {
     if (
       input.expectedAssignedTo !== undefined &&
       gap.assignedTo !== input.expectedAssignedTo
+    ) {
+      return { gap: null, updated: false, reason: "conflict" as const };
+    }
+    // Arc-264-16 M3: deadline + status halves — a stale dueAt
+    // write-back can't launder a concurrent setGapDueAt, and an
+    // owner-install on a closed gap refuses (owner-clears pass).
+    if (
+      input.expectedDueAt !== undefined &&
+      gap.dueAt !== input.expectedDueAt
+    ) {
+      return { gap: null, updated: false, reason: "conflict" as const };
+    }
+    if (
+      input.expectedAssignedTo !== undefined &&
+      input.assignedTo !== null &&
+      gap.status !== "OPEN" &&
+      gap.status !== "TRIAGED"
     ) {
       return { gap: null, updated: false, reason: "conflict" as const };
     }

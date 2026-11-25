@@ -10,6 +10,7 @@ import {
   unassignGap,
   wontfixGap,
 } from "../src/server/lib/knowledge";
+import type { AdminOperator } from "../src/server/lib/operators/types";
 import { seedOperator } from "./helpers/operators";
 import {
   mkGap,
@@ -52,7 +53,19 @@ describe("gap ownership (SLICE-264-10)", () => {
   });
 
   it("assign refusals: missing gap / missing op / non-human / inactive / terminal", async () => {
-    const { store, operators } = await mkStore();
+    // break_glass rows can't come through createOperator anymore
+    // (Arc-264-16 M4 — reserved class); a phantom row is fixture-
+    // prefilled so the non-human refusal stays covered.
+    const bg: AdminOperator = {
+      id: "op_bgx",
+      displayName: "bg",
+      principalType: "break_glass",
+      capabilities: ["read"],
+      status: "active",
+      createdAt: new Date().toISOString(),
+      disabledAt: null,
+    };
+    const { store, operators } = await mkStore({ operators: [bg] });
     const gap = await mkGap(store);
     const { operatorId } = await seedOperator(operators, "A");
     await seedOperator(operators, "B"); // keeps C5 satisfied while A…nope — B is the spare
@@ -76,11 +89,11 @@ describe("gap ownership (SLICE-264-10)", () => {
       expect(missingOp.field).toBe("assignedTo");
     }
 
-    for (const type of ["service", "break_glass"] as const) {
-      const svcId = await mkServiceOp(operators, type);
+    const svcId = await mkServiceOp(operators, "service");
+    for (const nonHuman of [svcId, bg.id]) {
       const r = await assignGap(
         store,
-        { gapId: gap.id, assignedTo: svcId, assignedBy: "op_admin" },
+        { gapId: gap.id, assignedTo: nonHuman, assignedBy: "op_admin" },
         { operators },
       );
       expect(r.ok).toBe(false);
@@ -339,5 +352,100 @@ describe("gap ownership (SLICE-264-10)", () => {
     // The racer's claim stands — conflict means "re-read + retry",
     // never a silent dispossession.
     expect((await store.getGap(gap.id))!.assignedTo).toBe("op_racer");
+  });
+});
+
+/** Arc-264-16 audit fixes — the store-level CAS halves the domain
+ *  pre-flight can't see (TOCTOU), plus the reopen ownership-clear. */
+describe("gap ownership — Arc-264-16 hardening", () => {
+  it("M3: expectedDueAt CAS — a deadline moved mid-write refuses", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators, "A");
+    const { operatorId: op2 } = await seedOperator(operators, "B");
+    const due = "2026-01-01T00:00:00.000Z";
+    const a = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: due },
+      { operators },
+    );
+    expect(a.ok).toBe(true);
+    // Race: reassign pre-reads dueAt=D1; a concurrent setGapDueAt
+    // lands D2 between read and write. Without the dueAt half of
+    // the CAS, reassign writes D1 back over D2 — laundering.
+    const inner = store.assignGap.bind(store);
+    store.assignGap = async (id, input) => {
+      const row = await store.getGap(id);
+      if (row && row.dueAt === due) {
+        row.dueAt = "2027-01-01T00:00:00.000Z"; // racer's deadline
+      }
+      return inner(id, input);
+    };
+    const r = await reassignGap(
+      store,
+      { gapId: gap.id, assignedTo: op2, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("conflict");
+    // The racer's deadline stands — the stale write-back never landed.
+    expect((await store.getGap(gap.id))!.dueAt).toBe("2027-01-01T00:00:00.000Z");
+    expect((await store.getGap(gap.id))!.assignedTo).toBe(operatorId);
+  });
+
+  it("M3: owner-install on a gap resolved mid-flight → conflict; unassign still cleans up", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    // Gap is OPEN at pre-flight; resolve lands before the write.
+    const inner = store.assignGap.bind(store);
+    store.assignGap = async (id, input) => {
+      const row = await store.getGap(id);
+      if (row && row.status === "OPEN") row.status = "RESOLVED";
+      return inner(id, input);
+    };
+    const r = await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin" },
+      { operators },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("conflict");
+    const after = (await store.getGap(gap.id))!;
+    expect(after.status).toBe("RESOLVED");
+    expect(after.assignedTo).toBeNull();
+    // Owner-CLEARING writes stay allowed on a closed gap — give it
+    // an owner directly (seed path, no CAS) then unassign.
+    after.assignedTo = operatorId;
+    const u = await unassignGap(store, { gapId: gap.id, actor: "op_admin" });
+    expect(u.ok).toBe(true);
+    expect((await store.getGap(gap.id))!.assignedTo).toBeNull();
+  });
+
+  it("M9: reopen clears the ownership tuple — no instant re-breach on the same generation", async () => {
+    const { store, operators } = await mkStore();
+    const gap = await mkGap(store);
+    const { operatorId } = await seedOperator(operators);
+    await assignGap(
+      store,
+      { gapId: gap.id, assignedTo: operatorId, assignedBy: "op_admin", dueAt: "2020-06-01T00:00:00.000Z" },
+      { operators },
+    );
+    await triageGap(store, gap.id);
+    const itemId = await mkPublishedItem(store, "reopen-answer");
+    await resolveGap(store, gap.id, itemId);
+    const again = await recordGap(store, {
+      query: "how DOES escrow settlement WORK",
+      source: "INTERACTION_SIGNAL",
+    });
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.reopened).toBe(true);
+    const g = again.gap!;
+    expect(g.status).toBe("OPEN");
+    expect(g.assignedTo).toBeNull();
+    expect(g.assignedBy).toBeNull();
+    expect(g.assignedAt).toBeNull();
+    expect(g.dueAt).toBeNull(); // the 2020 deadline can't re-breach
   });
 });

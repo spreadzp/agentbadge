@@ -16,6 +16,7 @@ import {
 } from "../../src/server/lib/knowledge";
 import type { KnowledgeStore } from "../../src/server/lib/knowledge";
 import type { OperatorStore } from "../../src/server/lib/operators";
+import type { AdminOperator } from "../../src/server/lib/operators/types";
 import { generateReportId } from "../../src/agent-readiness/integrity/ulid";
 import { createMemoryOperatorStore } from "./operators";
 
@@ -39,9 +40,11 @@ export async function approveTransition(
 // ─── 264-10/11: gap seeding helpers shared by the ownership and
 //     audit suites (fresh memory stores per test) ──
 
-export async function mkGapStore() {
+export async function mkGapStore(opsFixture?: {
+  operators?: AdminOperator[];
+}) {
   const store = createMemoryKnowledgeStores();
-  const operators = createMemoryOperatorStore();
+  const operators = createMemoryOperatorStore(opsFixture);
   return { store, operators };
 }
 

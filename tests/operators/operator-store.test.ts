@@ -73,6 +73,16 @@ describe("operator store contract (memory backend)", () => {
       capabilities: ["read", "god-mode"],
     });
     expect(bad3).toEqual({ ok: false, reason: "invalid_capability" });
+    // Arc-264-16 M4: break_glass is a valid enum member but a
+    // reserved class — the armed-ceremony flow mints it, never the
+    // admin create surface.
+    const bad4 = await s.createOperator({
+      id: id("op"),
+      displayName: "x",
+      principalType: "break_glass",
+      capabilities: ["read"],
+    });
+    expect(bad4).toEqual({ ok: false, reason: "reserved_principal_type" });
     expect(ADMIN_CAPABILITIES).toContain("workflow");
 
     const op = await mkOp(s);

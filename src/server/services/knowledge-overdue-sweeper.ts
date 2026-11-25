@@ -22,6 +22,10 @@ export type {
 } from "../lib/knowledge/overdue-sweep";
 
 let sweeperTimer: ReturnType<typeof setTimeout> | null = null;
+// Arc-264-16 M16: a stop()→start() while a tick is in flight used
+// to let the old tick's finally reschedule onto the NEW timer —
+// two chains. The generation invalidates stale ticks.
+let sweeperGen = 0;
 
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
 const FIRST_TICK_MS = 30_000;
@@ -48,6 +52,8 @@ export function startKnowledgeOverdueSweeper(opts?: {
   logger.info("Knowledge overdue sweeper started", {
     intervalMs: baseInterval,
   });
+  sweeperGen += 1;
+  const gen = sweeperGen;
   const tick = async () => {
     try {
       const store = pickKnowledgeStores(getDatabase());
@@ -65,9 +71,10 @@ export function startKnowledgeOverdueSweeper(opts?: {
         error: err instanceof Error ? err.message : String(err),
       });
     } finally {
-      // stopKnowledgeOverdueSweeper() nulls the timer — a tick in
-      // flight must not resurrect it.
-      if (sweeperTimer !== null) {
+      // Generation check, not timer-null: stop()→start() during
+      // this tick re-armed a fresh chain — rescheduling here would
+      // fork a second one (Arc-264-16 M16).
+      if (sweeperGen === gen) {
         const jitter = Math.random() * (JITTER_MS * 2) - JITTER_MS;
         sweeperTimer = setTimeout(tick, Math.max(1000, baseInterval + jitter));
       }
@@ -77,6 +84,7 @@ export function startKnowledgeOverdueSweeper(opts?: {
 }
 
 export function stopKnowledgeOverdueSweeper(): void {
+  sweeperGen += 1;
   if (sweeperTimer) {
     clearTimeout(sweeperTimer);
     sweeperTimer = null;

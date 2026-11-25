@@ -114,6 +114,10 @@ export interface KnowledgeGapAssignment {
  *  a caller-discipline contract, not a gap in the schema. */
 export interface KnowledgeGapAssignInput extends KnowledgeGapAssignment {
   expectedAssignedTo?: string | null;
+  /** Arc-264-16 M3: deadline half of the CAS — a reassign writing
+   *  back its stale dueAt read would stomp a concurrent setGapDueAt
+   *  (anti-laundering bypass). Only checked when provided. */
+  expectedDueAt?: string | null;
   event?: KnowledgeGapEventInsert;
 }
 

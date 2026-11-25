@@ -83,8 +83,10 @@ describe("SLICE-264-13: overdue sweeper (memory)", () => {
       store,
       emit: (k, p) => emitted.push(p),
     });
-    // Same (gapId,dueAt) generation: conflict row, emittedAt set.
-    expect(second).toMatchObject({ scanned: 1, recorded: 0, emitted: 0 });
+    // Same (gapId,dueAt) generation: the recorded row leaves the
+    // due-scan entirely (Arc-264-16 H1 anti-join) — scanned 0, no
+    // conflict, no re-emit.
+    expect(second).toMatchObject({ scanned: 0, recorded: 0, emitted: 0 });
     expect(emitted).toHaveLength(0);
   });
 
@@ -125,8 +127,9 @@ describe("SLICE-264-13: overdue sweeper (memory)", () => {
       store,
       emit: (k, p) => emitted.push(p),
     });
-    // Not "new" (row existed) but the signal still goes out.
-    expect(r).toMatchObject({ scanned: 1, recorded: 0, emitted: 1 });
+    // Not "new" (row existed) — the dead row leaves the due-scan
+    // (H1 anti-join) but the pending drain still fires the signal.
+    expect(r).toMatchObject({ scanned: 0, recorded: 0, emitted: 1 });
     expect(emitted).toHaveLength(1);
     // A second kill-style row on a DIFFERENT gap also catches up.
     const gap2 = await seedBreached(store, PAST);
@@ -221,6 +224,39 @@ describe("SLICE-264-13: overdue sweeper (memory)", () => {
     const hit = seen.find((e) => e.kind === "knowledge.gap_overdue");
     expect(hit?.payload.gapId).toBe(gap.id);
     expect(hit?.payload.dueAt).toBe(PAST);
+  });
+
+  it("Arc-264-16 H1: a recorded breach leaves the scan — later gaps still surface", async () => {
+    const { store } = await mkGapStore();
+    const old = await seedBreached(store, PAST); // oldest — recorded
+    const young = await seedBreached(store, PAST2); // rank-2 — unrecorded
+    // Old already has its (gapId,dueAt) row from a prior tick.
+    await store.recordOverdue({ id: gapOverdueId(), gapId: old.id, dueAt: PAST });
+    const due = await store.listDueBreaches(new Date().toISOString());
+    // Old stays due in real time but is gone from the scan; young
+    // is NOT starved behind it (the >500 starvation in miniature).
+    expect(due.some((g) => g.id === old.id)).toBe(false);
+    expect(due.some((g) => g.id === young.id)).toBe(true);
+    // ...and the tick records the unrecorded one.
+    const r = await sweepOverdueGaps({ store, emit: () => {} });
+    expect(r.recorded).toBe(1);
+  });
+
+  it("Arc-264-16 M8: a due-scan fault does not skip the pending drain", async () => {
+    const { store } = await mkGapStore();
+    const gap = await seedBreached(store, PAST);
+    // Stranded row owes its signal regardless of scan health.
+    await store.recordOverdue({ id: gapOverdueId(), gapId: gap.id, dueAt: PAST });
+    const patched = {
+      ...store,
+      listDueBreaches: async () => {
+        throw new Error("due-scan down");
+      },
+    };
+    const emitted: unknown[] = [];
+    const r = await sweepOverdueGaps({ store: patched, emit: (k, p) => emitted.push(p) });
+    expect(r.errors.some((e) => e.includes("due-scan down"))).toBe(true);
+    expect(r.emitted).toBe(1); // drain ran despite the scan fault
   });
 });
 

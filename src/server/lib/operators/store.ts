@@ -57,7 +57,10 @@ export type CreateOperatorResult =
         | "invalid_principal_type"
         | "invalid_capability"
         | "invalid_display_name"
-        | "duplicate_id";
+        | "duplicate_id"
+        /** Arc-264-16 M4: "break_glass" is a valid enum member but
+         *  reserved — ceremony artifacts only, never admin-created. */
+        | "reserved_principal_type";
     };
 
 export type IssueCredentialResult =
