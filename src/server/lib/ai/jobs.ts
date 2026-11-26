@@ -1,0 +1,64 @@
+/**
+ * EPIC-232 (SLICE-232-1, D-232-8): AiJob enqueue seam — the single
+ * write path intake code calls (232-3 wiring puts it same-tx with the
+ * intake write). Contract-guards (D-206-5): idempotencyKey dedupe via
+ * the store + field caps that REFUSE oversized input — a truncated
+ * subjectId/hash would silently break dedupe and shadow joins.
+ */
+
+import type { AiJobInsert, AiJobRecord, AiStore } from "./types";
+
+/** Field caps — write-path guards (D-206-5). */
+export const AI_FIELD_LIMITS = {
+  scenario: 64,
+  subjectType: 64,
+  subjectId: 200,
+  inputRef: 500,
+  inputHash: 128,
+  idempotencyKey: 300,
+  lastError: 400,
+} as const;
+
+export class AiJobContractError extends Error {
+  constructor(field: string, max: number) {
+    super(`ai_job_contract: ${field} exceeds ${max} chars`);
+    this.name = "AiJobContractError";
+  }
+}
+
+function cap(field: keyof typeof AI_FIELD_LIMITS, v: string | null | undefined): string | null {
+  if (v == null) return null;
+  if (v.length > AI_FIELD_LIMITS[field]) {
+    throw new AiJobContractError(field, AI_FIELD_LIMITS[field]);
+  }
+  return v;
+}
+
+/**
+ * Enqueue an LLM job. `idempotencyKey` absent → derived as
+ * `ai:{subjectType}:{subjectId}:{scenario}` — a resubmitted intake
+ * write replays onto the same job instead of doubling provider calls.
+ */
+export async function enqueueAiJob(
+  store: AiStore,
+  input: AiJobInsert,
+): Promise<{ job: AiJobRecord; duplicate: boolean }> {
+  const idempotencyKey =
+    input.idempotencyKey ??
+    `ai:${input.subjectType}:${input.subjectId}:${input.scenario}`;
+  return store.enqueueJob({
+    ...(input.id !== undefined ? { id: input.id } : {}),
+    scenario: cap("scenario", input.scenario)!,
+    subjectType: cap("subjectType", input.subjectType)!,
+    subjectId: cap("subjectId", input.subjectId)!,
+    inputRef: cap("inputRef", input.inputRef),
+    inputHash: cap("inputHash", input.inputHash),
+    idempotencyKey: cap("idempotencyKey", idempotencyKey),
+  });
+}
+
+/** Truncate an error string to the audited cap (never throws). */
+export function capError(err: string | null | undefined): string | null {
+  if (err == null) return null;
+  return err.slice(0, AI_FIELD_LIMITS.lastError);
+}

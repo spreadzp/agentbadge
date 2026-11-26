@@ -18,6 +18,7 @@ import { startIdentitySweeper } from "../services/identity-sweeper";
 import { startKnowledgeOverdueSweeper } from "../services/knowledge-overdue-sweeper";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
+import { startAiWorker } from "../lib/ai/worker";
 import { startArchiveWorkers } from "./archive-workers";
 import { getDatabase } from "../lib/database";
 import { getConfig } from "../../config/env";
@@ -79,6 +80,12 @@ export function startBackgroundJobs(): void {
   // reject/claimRefund/giveFeedback) as the ops signer. Self-gates on
   // ERC8183_REF_ADDRESS + BOARD_DISPATCHER_ENABLED (default on).
   startBoardOutboxDispatcher();
+
+  // 232-1 D-232-8: AiJob outbox worker — drains queued LLM jobs into
+  // append-only AiRun rows (fail-open). Self-gates on
+  // AI_AUTOMATION_ENABLED + AI_WORKER_ENABLED (default on when the
+  // ai env section is present).
+  startAiWorker();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.

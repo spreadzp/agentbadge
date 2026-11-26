@@ -177,6 +177,9 @@ export type { RequestInboxEnvConfig } from "./request-inbox-types";
 import type { RequestInboxEnvConfig } from "./request-inbox-types";
 export type { IntelEnvConfig } from "./intel-types";
 import type { IntelEnvConfig } from "./intel-types";
+/** AI automation (EPIC-232); type in ./ai-types.ts (300-line cap). */
+export type { AiEnvConfig } from "./ai-types";
+import type { AiEnvConfig } from "./ai-types";
 /** Database persistence config (EPIC-143). DATABASE_ENABLED=true else in-memory. */
 export interface DatabaseEnvConfig {
   enabled: boolean;
@@ -287,4 +290,6 @@ export interface AppConfig {
   payments: PaymentsConfig;
   requestInbox: RequestInboxEnvConfig;
   intel: IntelEnvConfig;
+  /** EPIC-232 AI automation — present only when AI_AUTOMATION_ENABLED=true. */
+  ai?: AiEnvConfig;
 }

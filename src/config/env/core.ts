@@ -6,6 +6,7 @@
  * Reference: deployment-strategy.md §Phase 2
  */
 
+import { loadAi } from "./ai";
 import { loadAttestcoin } from "./attestcoin";
 import { loadBstock } from "./bstock";
 import { loadCache } from "./cache";
@@ -208,6 +209,7 @@ export function loadConfig(): AppConfig {
   const eaas = loadEaas(errors);
   const agentRegistration = loadAgentRegistration(errors);
   const agentWallet = loadAgentWallet(errors);
+  const ai = loadAi(errors);
   const trust = loadTrust(errors);
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
@@ -262,5 +264,6 @@ export function loadConfig(): AppConfig {
     payments,
     requestInbox: loadRequestInbox(),
     intel: loadIntel(),
+    ai,
   };
 }
