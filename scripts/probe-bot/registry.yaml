@@ -142,3 +142,26 @@ endpoints:
         - operatorNote
         - latestDecisionSeq
         - note
+
+  # EPIC-231: demand intake — POST {capability_query ≤200, context? ≤1000
+  # (строка, НЕ объект)} → 202 {demand_id:"ds_*",capability_query,count,
+  # priority,status}. Идемпотентности-ключа НЕТ: dedupe семантический —
+  # (normalized query + actorRef) фолдится в canonical demand за 24h,
+  # повтор → тот же demand_id, count++. replayInvariant ловит fold.
+  # Public read-проекции нет (write-only intake) → projection-leak не
+  # применяется; приватные поля покрывает denylist на самом ответе.
+  - path: /api/demand/request
+    method: POST
+    contract:
+      bodyTemplate:
+        capability_query: "BOT-PROBE {case_key}: x402 payout rails for EU agents"
+        context: "probe-bot-{case_key}"
+      replayInvariant: [demand_id]
+      idField: demand_id
+      projectionDenylist:
+        - actorRef
+        - sessionId
+        - dedupeKey
+        - fingerprint
+        - normalized
+      lifecycleAdmin: /api/admin/demand
