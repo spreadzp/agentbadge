@@ -15,6 +15,8 @@ import {
 import { createMemoryRequestStore } from "./store-memory";
 import { createMemoryInteractionStore } from "./interaction-store-memory";
 import { createMemorySurveyStore } from "./survey-store";
+import { createMemoryWebhookOutboxStore } from "../webhooks/outbox-memory";
+import type { WebhookOutboxRepoLike } from "../webhooks/types";
 
 /**
  * EPIC-252 (SLICE-252-1) + EPIC-228 (SLICE-228-1): db-first store
@@ -30,15 +32,29 @@ type Db = Pick<
    *  a missing repo alongside missing requests → memory fallback. */
   Partial<Pick<ReturnType<typeof getDatabase>, "agentInteractions">>;
 
+/** EPIC-233 (D-233-5): the WebhookOutbox repo arrives with the next
+ *  @agentbadge/database republish — structural pick, not a typed field
+ *  yet. Until then the outbox is the shared memory facet (functional,
+ *  not durable — durable enqueue = republish follow-up). */
+type DbWithWebhooks = Db & { webhookOutbox?: WebhookOutboxRepoLike | null };
+
+/** Shared memory outbox for postgres mode — the enqueue sink and the
+ *  worker's read side MUST be the same instance even before the repo
+ *  lands (a fresh map per call would swallow deliveries). */
+const sharedDbModeOutbox = createMemoryWebhookOutboxStore(new Map());
+
 export function createDbRequestInboxStores(
   requests: AgentRequestRepository,
   surveys: AgentSurveyRepository,
   interactions: InteractionRepository,
+  webhookOutbox?: WebhookOutboxRepoLike | null,
 ): RequestInboxStores {
+  const webhooks = webhookOutbox ?? sharedDbModeOutbox;
   return {
-    requests: createDbRequestStore(requests),
+    requests: createDbRequestStore(requests, webhooks),
     surveys: createDbSurveyStore(surveys),
     interactions: createDbInteractionStore(interactions),
+    webhooks,
     backend: "postgres",
   };
 }
@@ -46,12 +62,15 @@ export function createDbRequestInboxStores(
 export function createMemoryRequestInboxStores(): RequestInboxStores {
   // D-228-10: ONE data object for both facets — the interaction store
   // reads/writes the same `rows` map as the request store, exactly
-  // like the shared agentRequest table in Postgres mode.
+  // like the shared Postgres table in Postgres mode. D-233-5 extends
+  // the same rule to the webhook outbox map.
   const data = createMemoryRequestInboxData();
+  const webhooks = createMemoryWebhookOutboxStore(data.webhookOutbox);
   return {
-    requests: createMemoryRequestStore(data),
+    requests: createMemoryRequestStore(data, webhooks),
     surveys: createMemorySurveyStore(),
     interactions: createMemoryInteractionStore(data),
+    webhooks,
     backend: "memory",
   };
 }
@@ -63,12 +82,13 @@ export function createMemoryRequestInboxStores(): RequestInboxStores {
 // shared tables, so per-call construction is safe there.
 let sharedMemoryStores: RequestInboxStores | undefined;
 
-export function pickRequestInboxStores(db: Db): RequestInboxStores {
+export function pickRequestInboxStores(db: DbWithWebhooks): RequestInboxStores {
   if (db.agentRequests && db.agentSurveys && db.agentInteractions) {
     return createDbRequestInboxStores(
       db.agentRequests,
       db.agentSurveys,
       db.agentInteractions,
+      db.webhookOutbox,
     );
   }
   return (sharedMemoryStores ??= createMemoryRequestInboxStores());

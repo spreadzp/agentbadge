@@ -1,6 +1,7 @@
 import type { RequestInboxData, RequestStore } from "./store";
 import { createMemoryRequestInboxData } from "./store";
 import type { InboxQaPair, InboxRequestRecord } from "./types";
+import { maybeEnqueueWebhook, type WebhookSink } from "../webhooks/types";
 
 const TERMINAL = new Set(["completed", "failed"]);
 
@@ -19,6 +20,7 @@ function cloneRecord(r: InboxRequestRecord): InboxRequestRecord {
  *  `RequestInboxData` (singleton via createMemoryRequestInboxStores). */
 export function createMemoryRequestStore(
   data?: RequestInboxData,
+  webhookSink?: WebhookSink,
 ): RequestStore {
   const d = data ?? createMemoryRequestInboxData();
   const { rows, qaPairs, qaByHash } = d;
@@ -111,7 +113,11 @@ export function createMemoryRequestStore(
       if (patch?.respondedAtMs !== undefined)
         r.respondedAtMs = patch.respondedAtMs;
       if (patch?.spamFlag !== undefined) r.spamFlag = patch.spamFlag;
-      return cloneRecord(r);
+      const out = cloneRecord(r);
+      // D-233-5: enqueue callback delivery at the same commit point —
+      // the map write above and the outbox row land atomically here.
+      await maybeEnqueueWebhook(webhookSink, out);
+      return out;
     },
 
     async setSpamFlag(id, spamFlag) {

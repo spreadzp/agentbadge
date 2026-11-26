@@ -10,6 +10,7 @@ import type {
   InboxQaPair,
   InboxRequestRecord,
 } from "./types";
+import { maybeEnqueueWebhook, type WebhookSink } from "../webhooks/types";
 
 /** EPIC-252 (SLICE-252-1): Postgres adapter — codec rows → domain
  *  records. The survey facet lives in survey-store-db.ts (file-size
@@ -34,6 +35,12 @@ export const CALLBACK_URL_FP_KEY = "callback_url";
 const cbOf = (fp: unknown): string | null =>
   ((fp as Record<string, unknown> | null)?.[CALLBACK_URL_FP_KEY] ??
     null) as string | null;
+/** Forward-compat: the dedicated `agentRequest.callbackUrl` column
+ *  lands with the 233-4 republish (migration 20261126T1355) — read it
+ *  preferentially when the row carries it, else the fp tunnel. */
+const cbRow = (r: ReqRow): string | null =>
+  ((r as { callbackUrl?: string | null }).callbackUrl ?? null) ||
+  cbOf(r.fingerprint);
 
 const toRequest = (r: ReqRow): InboxRequestRecord => ({
   id: r.id,
@@ -48,7 +55,7 @@ const toRequest = (r: ReqRow): InboxRequestRecord => ({
   spamFlag: r.spamFlag,
   publishToQa: r.publishToQa,
   idempotencyKey: r.idempotencyKey,
-  callbackUrl: cbOf(r.fingerprint),
+  callbackUrl: cbRow(r),
   expiresAtMs: num(r.expiresAtMs),
   createdAtMs: num(r.createdAtMs),
   respondedAtMs: numOrNull(r.respondedAtMs),
@@ -82,6 +89,7 @@ const toQa = (r: QaRow): InboxQaPair => ({
 
 export function createDbRequestStore(
   repo: AgentRequestRepository,
+  webhookSink?: WebhookSink,
 ): RequestStore {
   return {
     async submit(input) {
@@ -144,7 +152,15 @@ export function createDbRequestStore(
         respondedAtMs: patch?.respondedAtMs,
         spamFlag: patch?.spamFlag,
       });
-      return row ? toRequest(row) : null;
+      if (!row) return null;
+      const record = toRequest(row);
+      // D-233-5: enqueue right at the transition commit point. True
+      // same-tx (outbox insert inside the transition's transaction)
+      // needs WebhookOutboxRepository support — lands with the
+      // @agentbadge/database republish; the sink is currently the
+      // shared memory outbox.
+      await maybeEnqueueWebhook(webhookSink, record);
+      return record;
     },
 
     async setSpamFlag(id, spamFlag) {

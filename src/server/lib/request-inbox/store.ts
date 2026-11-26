@@ -9,6 +9,10 @@ import type {
   InboxQaPair,
   InboxRequestRecord,
 } from "./types";
+import type {
+  WebhookOutboxRecord,
+  WebhookOutboxStore,
+} from "../webhooks/types";
 
 /**
  * EPIC-252 (SLICE-252-1): dual-mode request inbox store.
@@ -102,6 +106,10 @@ export interface RequestInboxStores {
   /** EPIC-228 (D-228-10): interaction facet on the SAME request data —
    *  sessions/responses/events + interaction-aware mutations. */
   interactions: InteractionStore;
+  /** EPIC-233 (D-233-5): webhook outbox facet — transition→terminal
+   *  enqueues here (same commit point); the worker drains it. Memory
+   *  until the WebhookOutbox repo republish lands. */
+  webhooks: WebhookOutboxStore;
   /** "postgres" | "memory" — janitor logs the active backend. */
   backend: string;
 }
@@ -123,6 +131,9 @@ export interface RequestInboxData {
   events: Map<string, InteractionEventRecord[]>;
   /** Per-requestId operator responses — ordered by createdAtMs. */
   responses: Map<string, InteractionResponseRecord[]>;
+  /** EPIC-233 (D-233-5): webhook outbox rows — same shared data object
+   *  so enqueue-on-terminal stays in one commit point (memory mode). */
+  webhookOutbox: Map<string, WebhookOutboxRecord>;
 }
 
 export function createMemoryRequestInboxData(): RequestInboxData {
@@ -133,5 +144,6 @@ export function createMemoryRequestInboxData(): RequestInboxData {
     sessions: new Map(),
     events: new Map(),
     responses: new Map(),
+    webhookOutbox: new Map(),
   };
 }

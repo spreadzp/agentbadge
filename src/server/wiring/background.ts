@@ -19,6 +19,7 @@ import { startKnowledgeOverdueSweeper } from "../services/knowledge-overdue-swee
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startAiWorker } from "../lib/ai/worker";
+import { startWebhookWorker } from "../lib/webhooks/worker";
 import { wireAiIntake } from "../lib/ai/intake";
 import { wireAiFeedback } from "../lib/ai/feedback-intake";
 import { startArchiveWorkers } from "./archive-workers";
@@ -96,6 +97,11 @@ export function startBackgroundJobs(): void {
   // feedback_extract AiJobs; extracted items surface in the review
   // center as advisory suggestions (never auto-created records).
   wireAiFeedback();
+
+  // 233-4 D-233-5: webhook outbox worker — signed POSTs to
+  // callback_url on terminal request transitions. Self-gates on
+  // WEBHOOK_WORKER_ENABLED (default on); WEBHOOK_SIGNING_SECRET signs.
+  startWebhookWorker();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.
