@@ -114,6 +114,7 @@ import { bountyApiRoutes } from "./bounty/bounty-api";
 import { boardApiRoutes } from "./board/board-api";
 import { createBoardReadRoutes } from "./board/board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests/agent-requests-api";
+import { wireAdminAi } from "../wiring/ai";
 import { wireAgentInteraction } from "../wiring/agent-interaction";
 import { wireFeedbackReview } from "../wiring/feedback-review";
 import { wireDemand } from "../wiring/demand";
@@ -323,6 +324,8 @@ export function registerApiRoutes(app: Hono): void {
   // EPIC-230: feedback + review public API (230-4); admin Review
   // Center and TG-notify join in later slices — wiring/feedback-review.
   wireFeedbackReview(app);
+  // EPIC-232 (232-8): AI automation policies console — /admin/ai.
+  wireAdminAi(app);
   // 252-4: surveys → rating lane — public open/answer + ops create.
   app.route(
     "/",

@@ -68,6 +68,29 @@ export async function setPolicyMode(
   );
 }
 
+/** O4: per-scenario model override — null → env global `AI_MODEL`. */
+export async function setPolicyModel(
+  store: AiStore,
+  scenario: string,
+  model: string | null,
+  actor: string,
+  reason?: string,
+) {
+  const before = await store.getPolicy(scenario);
+  return store.upsertPolicy(
+    scenario,
+    { model, updatedBy: actor },
+    {
+      scenario,
+      field: "model",
+      oldValue: before?.model ?? null,
+      newValue: model,
+      actor,
+      reason: reason ?? null,
+    },
+  );
+}
+
 export async function setPolicyThreshold(
   store: AiStore,
   scenario: string,
