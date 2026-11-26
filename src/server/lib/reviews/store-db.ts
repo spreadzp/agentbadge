@@ -77,6 +77,7 @@ const toDecision = (r: DecisionRow): ReviewDecisionRecord => ({
   criteriaResults: r.criteriaResults as unknown,
   summary: r.summary,
   decidedBy: r.decidedBy,
+  aiRunRef: r.aiRunRef ?? null,
   decidedAt: r.decidedAt,
 });
 
@@ -215,6 +216,7 @@ export function createDbReviewStore(repo: ReviewRepository): ReviewStore {
           criteriaResults: input.criteriaResults as never,
           summary: input.summary,
           decidedBy: input.decidedBy,
+          aiRunRef: input.aiRunRef ?? null,
           now: input.now,
         },
         repoEvent(event),

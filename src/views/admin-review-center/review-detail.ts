@@ -210,7 +210,16 @@ export function reviewDetailPage(input: {
     ${metaSection(r)} ${workSection(r)} ${evidenceSection(input.evidence)}
     ${aiSuggestionSection(input.aiSuggestions ?? [])}
     ${decisionsSection(input.decisions)}
-    ${claimForm(r, input.formToken)} ${decideForm(r, input.formToken)}
+    ${claimForm(r, input.formToken)}
+    ${decideForm(
+      r,
+      input.formToken,
+      // 232-7 E6: the latest visible advisory run is the ref the
+      // human decision may cite — null when nothing was suggested.
+      input.aiSuggestions?.find(
+        (s) => s.scenario === "review_assist" && s.status === "success",
+      )?.runId ?? null,
+    )}
     ${declineForm(r, input.formToken)} ${reopenForm(r, input.formToken)}
     ${returnForm(r, input.formToken)} ${evidenceForm(r, input.formToken)}
     ${convertForm(r, input.formToken)}

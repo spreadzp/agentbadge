@@ -75,6 +75,9 @@ export interface ReviewDecideInput {
   summary: string;
   /** Validated operator ref (allowlist at the edge). */
   decidedBy: string;
+  /** 232-7 E6: advisory AiRun the operator referenced — human-path
+   *  only; never written by AI code. */
+  aiRunRef?: string | null;
   now?: string;
 }
 

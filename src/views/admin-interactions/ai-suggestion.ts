@@ -45,6 +45,21 @@ function itemsBlock(out: Record<string, unknown>) {
   </ul>`;
 }
 
+function criteriaBlock(out: Record<string, unknown>) {
+  if (!Array.isArray(out.criteria)) return "";
+  return html`<ul class="mt-1 list-disc space-y-0.5 pl-4 text-xs text-slate-300">
+    ${(out.criteria as { name?: string; passed?: boolean; evidence?: string }[]).map(
+      (c) => html`<li>
+        <span class="${c.passed ? "text-emerald-400" : "text-red-400"}"
+          >${c.passed ? "✓" : "✗"}</span
+        >
+        ${c.name ?? "?"}
+        ${c.evidence ? html`<span class="text-slate-600">(${c.evidence})</span>` : ""}
+      </li>`,
+    )}
+  </ul>`;
+}
+
 function runBody(s: AiSuggestionView) {
   if (s.status === "none") {
     return html`<div class="text-xs text-slate-500">no run yet</div>`;
@@ -68,7 +83,9 @@ function runBody(s: AiSuggestionView) {
     ${field("capabilities", out.capabilities)}
     ${field("summary", out.summary)} ${field("key facts", out.keyFacts)}
     ${field("query", out.query)} ${field("matched", matched)}
-    ${itemsBlock(out)} ${field("confidence", s.confidence)}
+    ${itemsBlock(out)} ${criteriaBlock(out)}
+    ${field("recommendation", out.recommendation)}
+    ${field("confidence", s.confidence)}
   </div>`;
 }
 

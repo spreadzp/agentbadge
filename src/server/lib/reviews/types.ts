@@ -146,6 +146,10 @@ export interface ReviewDecisionRecord {
   criteriaResults: unknown;
   summary: string;
   decidedBy: string;
+  /** EPIC-232 E6 (D-232-4): nullable link to the advisory
+   *  review_assist AiRun the human referenced — only ever set
+   *  through the human decide path; AI never writes decisions. */
+  aiRunRef: string | null;
   decidedAt: string;
 }
 

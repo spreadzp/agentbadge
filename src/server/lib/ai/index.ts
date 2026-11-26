@@ -76,6 +76,11 @@ export {
   registerFeedbackExtractRunner,
 } from "./feedback-runner";
 export {
+  REVIEW_ASSIST_SCENARIO,
+  REVIEW_ASSIST_SUBJECT,
+  registerReviewAssistRunner,
+} from "./review-runner";
+export {
   registerAiFeedbackHook,
   registerAiReviewHook,
   resetAiFeedbackHooks,

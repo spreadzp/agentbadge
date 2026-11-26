@@ -189,7 +189,10 @@ export function createReviewCenter(deps: {
       stores.reviews.listDecisions(id.data),
       stores.reviews.listEvents(id.data),
       deps.aiStore
-        ? loadAiSuggestions(deps.aiStore, id.data, ["feedback_extract"])
+        ? loadAiSuggestions(deps.aiStore, id.data, [
+            "feedback_extract",
+            "review_assist",
+          ])
         : Promise.resolve([]),
     ]);
     return page(

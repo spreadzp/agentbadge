@@ -84,7 +84,14 @@ export function declineForm(r: ReviewCaseRecord, token: string) {
   </section>`;
 }
 
-export function decideForm(r: ReviewCaseRecord, token: string) {
+export function decideForm(
+  r: ReviewCaseRecord,
+  token: string,
+  /** 232-7 E6: latest visible review_assist run id — rendered as a
+   *  hidden field; submitting the human decide-form records which
+   *  advisory run was on screen (aiRunRef). Never prefilled fields. */
+  aiRunRef?: string | null,
+) {
   if (r.status !== "IN_REVIEW") return "";
   const criteria = criteriaForReview(r.reviewType);
   return html`<section
@@ -100,6 +107,9 @@ export function decideForm(r: ReviewCaseRecord, token: string) {
       class="space-y-2"
     >
       ${tokenField(token)}
+      ${aiRunRef
+        ? html`<input type="hidden" name="aiRunRef" value="${aiRunRef}" />`
+        : ""}
       <div class="space-y-1.5">
         ${criteria.map(
           (c) => html`<div

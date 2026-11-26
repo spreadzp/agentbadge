@@ -81,6 +81,7 @@ export function createMemoryDecisionOps(
         criteriaResults: input.criteriaResults,
         summary: input.summary,
         decidedBy: input.decidedBy,
+        aiRunRef: input.aiRunRef ?? null,
         decidedAt: t,
       };
       list.push(decision);

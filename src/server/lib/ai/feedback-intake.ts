@@ -26,6 +26,7 @@ import { pickReviewStore } from "../reviews/db-stores";
 
 import { pickAiStores } from "./db-stores";
 import { registerFeedbackExtractRunner } from "./feedback-runner";
+import { registerReviewAssistRunner } from "./review-runner";
 import { enqueueAiJob } from "./jobs";
 import type { AiStore } from "./types";
 
@@ -44,21 +45,31 @@ function hashPayload(payload: unknown): string {
     .digest("hex");
 }
 
+/** Scenarios enqueued per domain event on that subject (E5 + E6). */
+const SUBJECT_SCENARIOS: Record<string, readonly string[]> = {
+  feedback: ["feedback_extract"],
+  // 232-7 E6: review cases get extraction AND the review assistant —
+  // subjectType `review_case` is the canonical join key (spec E6).
+  review_case: ["feedback_extract", "review_assist"],
+};
+
 async function enqueue(
   aiStore: AiStore,
   subjectType: string,
   subjectId: string,
   inputHash: string,
 ): Promise<void> {
-  const policy = await aiStore.getPolicy("feedback_extract");
-  if ((policy?.mode ?? "off") === "off") return;
-  await enqueueAiJob(aiStore, {
-    scenario: "feedback_extract",
-    subjectType,
-    subjectId,
-    inputRef: `${subjectType}:${subjectId}`,
-    inputHash,
-  });
+  for (const scenario of SUBJECT_SCENARIOS[subjectType] ?? []) {
+    const policy = await aiStore.getPolicy(scenario);
+    if ((policy?.mode ?? "off") === "off") continue;
+    await enqueueAiJob(aiStore, {
+      scenario,
+      subjectType,
+      subjectId,
+      inputRef: `${subjectType}:${subjectId}`,
+      inputHash,
+    });
+  }
 }
 
 /**
@@ -102,7 +113,7 @@ export function registerAiReviewHook(
     }
     if (!readCfg()?.enabled) return;
     const store = opts.aiStore ?? pickAiStores(getDatabase());
-    void enqueue(store, "review", reviewId, hashPayload(event.payload))
+    void enqueue(store, "review_case", reviewId, hashPayload(event.payload))
       .catch(() => {
         /* fire-and-forget */
       });
@@ -133,14 +144,17 @@ export function wireAiFeedback(
   } = {},
 ): void {
   const db = getDatabase();
+  const reviews =
+    deps.reviews === undefined ? pickReviewStore(db) : deps.reviews;
   registerFeedbackExtractRunner({
     feedback:
       deps.feedback === undefined
         ? pickFeedbackStore(db)
         : deps.feedback,
-    reviews:
-      deps.reviews === undefined ? pickReviewStore(db) : deps.reviews,
+    reviews,
   });
+  // 232-7 E6: the review assistant shares the same review_case seam.
+  registerReviewAssistRunner({ reviews });
   registerAiFeedbackHook({ aiStore: deps.aiStore, config: deps.config });
   registerAiReviewHook({ aiStore: deps.aiStore, config: deps.config });
 }

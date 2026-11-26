@@ -65,7 +65,7 @@ const FALLBACK_FEEDBACK_EXTRACT =
   "positive|negative|neutral|mixed, confidence 0..1}], " +
   "overallConfidence 0..1}. JSON only.";
 
-const FEEDBACK_RUNNER_SUBJECTS = ["feedback", "review"] as const;
+const FEEDBACK_RUNNER_SUBJECTS = ["feedback", "review_case"] as const;
 
 async function feedbackText(
   store: FeedbackStore,
@@ -121,7 +121,7 @@ export function registerFeedbackExtractRunner(opts: {
     if (job.subjectType === "feedback") {
       if (!feedback) return { notAvailable: "feedback_store" };
       user = `feedback record:\n${await feedbackText(feedback, job.subjectId)}`;
-    } else if (job.subjectType === "review") {
+    } else if (job.subjectType === "review_case") {
       if (!reviews) return { notAvailable: "review_store" };
       user = `review case:\n${await reviewText(reviews, job.subjectId)}`;
     } else {

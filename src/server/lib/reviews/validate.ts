@@ -134,6 +134,8 @@ export const decideReviewSchema = z
       .max(REVIEW_SUMMARY_MAX)
       .refine(noCtrlBody, { message: CTRL_MSG }),
     criteriaResults: z.array(criterionResultSchema).min(1).max(50),
+    /** 232-7 E6: optional advisory run ref (human-path only). */
+    aiRunRef: z.string().trim().min(1).max(128).optional(),
   })
   .strict();
 export type DecideReviewInput = z.infer<typeof decideReviewSchema>;

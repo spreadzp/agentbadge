@@ -179,7 +179,7 @@ describe("feedback_extract runner (E5)", () => {
     expect(j!.status).toBe("done");
   });
 
-  it("review subject → prompt carries case fields + evidence", async () => {
+  it("review_case subject → prompt carries case fields + evidence", async () => {
     await ai.upsertPolicy(FEEDBACK_EXTRACT_SCENARIO, {
       mode: "assist",
       updatedBy: "op",
@@ -189,7 +189,7 @@ describe("feedback_extract runner (E5)", () => {
     const runner = getScenarioRunner(FEEDBACK_EXTRACT_SCENARIO)!;
     const { job } = await enqueueAiJob(ai, {
       scenario: FEEDBACK_EXTRACT_SCENARIO,
-      subjectType: "review",
+      subjectType: "review_case",
       subjectId: rec.id,
     });
     const p = await runner({ job, store: ai });
@@ -282,7 +282,7 @@ describe("intake hooks + gating", () => {
     });
     const rvDup = await enqueueAiJob(ai, {
       scenario: FEEDBACK_EXTRACT_SCENARIO,
-      subjectType: "review",
+      subjectType: "review_case",
       subjectId: "rv_ev",
     });
     expect(fbDup.duplicate).toBe(true);

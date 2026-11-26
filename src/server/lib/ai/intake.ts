@@ -164,6 +164,8 @@ export function wireAiIntake(
 
 export interface AiSuggestionView {
   scenario: string;
+  /** AiRun id — null when no visible run exists (232-7 aiRunRef). */
+  runId: string | null;
   /** Latest run status, or "none" when the subject has no run yet. */
   status: string;
   /** modeAtTime on the run (declared policy when no run). */
@@ -214,6 +216,7 @@ export async function loadAiSuggestions(
     const confidence = run?.confidence ?? null;
     out.push({
       scenario,
+      runId: run?.id ?? null,
       status: run?.status ?? "none",
       mode: run?.modeAtTime ?? policy?.mode ?? "off",
       output: run?.output ?? null,

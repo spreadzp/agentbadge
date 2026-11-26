@@ -120,6 +120,9 @@ export async function decideReview(
       criteriaResults: input.criteriaResults,
       summary: input.summary,
       decidedBy: operatorRef,
+      // 232-7 E6: the human's optional reference to an advisory run —
+      // decidedBy stays the only identity on the row (D-232-4).
+      aiRunRef: input.aiRunRef ?? null,
     },
     event,
   );

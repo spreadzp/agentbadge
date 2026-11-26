@@ -158,6 +158,10 @@ export function registerReviewCenterMutations(
         outcome: formStr(g.body, "outcome"),
         summary: formStr(g.body, "summary"),
         criteriaResults,
+        // 232-7 E6: hidden field carries the advisory run id the page
+        // rendered — human submit records it (D-232-4 boundary intact:
+        // decidedBy is still the operator).
+        aiRunRef: formStr(g.body, "aiRunRef") || undefined,
       },
       g.operator,
     );
