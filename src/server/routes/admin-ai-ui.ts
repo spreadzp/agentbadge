@@ -19,7 +19,10 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import type { AiEnvConfig } from "../../config/env/ai-types";
+import {
+  AI_SUBJECT_STREAMS,
+  type AiEnvConfig,
+} from "../../config/env/ai-types";
 import { getConfig } from "../../config/env";
 import { capabilityGate } from "../middleware/operator-gate";
 import { operatorBrowserAuth } from "../middleware/operatorAuth";
@@ -31,6 +34,7 @@ import { wrapFragment } from "./ui/helpers";
 import {
   resolveEffectiveMode,
   checkBudget,
+  utcDayStart,
   type BudgetState,
 } from "../lib/ai/budget";
 import { AI_MODES } from "../lib/ai/types";
@@ -132,6 +136,15 @@ export function createAdminAiUi(deps: {
         subjectDailyCallLimit: 0,
       },
     );
+    // Delta-4 N3-M2: per-stream daily usage — a partition hit must
+    // be readable on /admin/ai, not inferred from the global meter.
+    const dayStart = utcDayStart(new Date());
+    const streams = await Promise.all(
+      AI_SUBJECT_STREAMS.map(async (type) => ({
+        type,
+        calls: await aiStore.countProviderCallsSince(dayStart, type),
+      })),
+    );
     const [rows, changes] = await Promise.all([
       policyRows(aiStore, config !== undefined, budget),
       aiStore.listPolicyChanges({ limit: 100 }),
@@ -143,6 +156,7 @@ export function createAdminAiUi(deps: {
         changes,
         enabled: config !== undefined,
         budget,
+        streams,
         limits: config
           ? {
               dailyCallLimit: config.dailyCallLimit,

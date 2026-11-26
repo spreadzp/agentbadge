@@ -38,8 +38,19 @@ export interface AiEnvConfig {
    *  queued jobs stops enqueuing (unbounded backlog = unbounded
    *  provider-call liability). AI_JOB_QUEUE_CAP, default 500. */
   jobQueueCap: number;
-  /** Delta-3 H-8: per-subjectType daily provider-call partition —
-   *  one stream can exhaust only its own share, not the review
-   *  lane's. AI_SUBJECT_DAILY_LIMIT, 0 = no partition. */
+  /** Delta-4 H-8: per-subjectType daily provider-call share. Derived
+   *  from dailyCallLimit when unset (floor(daily/N_STREAMS)); an
+   *  explicit 0 disables the partition. Load-time invariant:
+   *  limit * (N_STREAMS - 1) must stay below dailyCallLimit or two
+   *  flooded streams can still exhaust the whole day. */
   subjectDailyCallLimit: number;
 }
+
+/** Delta-4 H-8: the known AI subject streams the daily partition
+ *  covers — one daily-call share each. Adding a stream without
+ *  widening the invariant count weakens the isolation guarantee. */
+export const AI_SUBJECT_STREAMS = [
+  "agent_request",
+  "feedback",
+  "review_case",
+] as const;

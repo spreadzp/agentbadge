@@ -33,8 +33,19 @@ export interface LlmCompleteRequest {
 
 export interface LlmCompleteResult {
   text: string;
+  /** Delta-3 N3-M5: CUMULATIVE billed usage across provider-internal
+   * retries — a schema-retry bills both attempts. */
   usage: AiUsage;
   model: string;
+  /** Provider HTTP calls made (1 = no retry); optional for stubs. */
+  attempts?: number;
+}
+
+/** Sum two usage blocks; absent fields stay absent. */
+function addUsage(a: AiUsage, b: AiUsage): AiUsage {
+  const sum = (x?: number, y?: number) =>
+    x === undefined && y === undefined ? undefined : (x ?? 0) + (y ?? 0);
+  return { prompt: sum(a.prompt, b.prompt), completion: sum(a.completion, b.completion), total: sum(a.total, b.total) };
 }
 
 export type LlmErrorKind =
@@ -149,7 +160,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     return JSON.stringify(payload);
   }
 
-  private async attempt(req: LlmCompleteRequest, schemaRetry: boolean): Promise<LlmCompleteResult> {
+  private async attempt(req: LlmCompleteRequest, schemaRetry: boolean): Promise<{ text: string; usage: AiUsage; model: string }> {
     const fetchImpl = this.opts.fetchImpl ?? fetch;
     let res: Response;
     try {
@@ -233,17 +244,29 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     const sleep = this.opts.sleepImpl ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     const maxAttempts = this.opts.retryOnce ? 2 : 1;
     let lastErr: LlmError | null = null;
+    // Delta-3 N3-M5: every attempt is billed — accumulate usage so a
+    // retried call meters its real spend, not the last attempt only.
+    let priorUsage: AiUsage = {};
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // Second pass doubles as the schema-retry: invalid_json re-asks
       // with the corrective hint (D-232-1 own schema-retry).
       const schemaRetry = attempt > 0 && lastErr?.kind === "invalid_json";
       try {
-        return await this.attempt(req, schemaRetry);
+        const res = await this.attempt(req, schemaRetry);
+        return {
+          ...res,
+          usage: addUsage(priorUsage, res.usage),
+          attempts: attempt + 1,
+        };
       } catch (e) {
         const err = e instanceof LlmError ? e : new LlmError("network", String(e));
+        priorUsage = addUsage(priorUsage, err.usage ?? {});
         lastErr = err;
         const canRetry = this.retryable(err) || err.kind === "invalid_json";
-        if (!canRetry || attempt + 1 >= maxAttempts) throw err;
+        if (!canRetry || attempt + 1 >= maxAttempts) {
+          // Surface CUMULATIVE usage on the terminal error.
+          throw new LlmError(err.kind, err.message, err.httpStatus, priorUsage);
+        }
         await sleep(this.opts.backoffMs);
       }
     }

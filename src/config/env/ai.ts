@@ -18,7 +18,7 @@
  * (manual path keeps working); no boot crash.
  */
 
-import type { AiEnvConfig } from "./ai-types";
+import { AI_SUBJECT_STREAMS, type AiEnvConfig } from "./ai-types";
 import { booleanFlag } from "./validators";
 
 function intVar(
@@ -81,12 +81,31 @@ export function loadAi(errors: string[]): AiEnvConfig | undefined {
   const jobLeaseMs = intVar("AI_JOB_LEASE_MS", 120_000, 5_000, errors);
   const jobMaxAttempts = intVar("AI_JOB_MAX_ATTEMPTS", 3, 1, errors);
   const jobQueueCap = intVar("AI_JOB_QUEUE_CAP", 500, 10, errors);
-  const subjectDailyCallLimit = intVar(
-    "AI_SUBJECT_DAILY_LIMIT",
-    0,
-    0,
-    errors,
-  );
+  // Delta-4 H-8: unset → derived floor(daily/N_STREAMS) so the
+  // partition is ON in stock deploys; explicit 0 opts out.
+  const subjectLimitRaw = process.env.AI_SUBJECT_DAILY_LIMIT;
+  const subjectDailyCallLimit =
+    subjectLimitRaw === undefined || subjectLimitRaw === ""
+      ? dailyCallLimit > 0
+        ? Math.floor(dailyCallLimit / AI_SUBJECT_STREAMS.length)
+        : 0
+      : intVar("AI_SUBJECT_DAILY_LIMIT", 0, 0, errors);
+  // Isolation invariant: (N_STREAMS - 1) saturated streams must not
+  // reach the global daily cap, or a multi-stream flood still
+  // starves the remaining stream.
+  if (
+    subjectDailyCallLimit > 0 &&
+    dailyCallLimit > 0 &&
+    subjectDailyCallLimit * (AI_SUBJECT_STREAMS.length - 1) >=
+      dailyCallLimit
+  ) {
+    errors.push(
+      `AI_SUBJECT_DAILY_LIMIT=${subjectDailyCallLimit} breaks ` +
+        `stream isolation: ${AI_SUBJECT_STREAMS.length - 1} flooded ` +
+        `streams can exhaust AI_DAILY_CALL_LIMIT=${dailyCallLimit} ` +
+        `(need < ${Math.ceil(dailyCallLimit / (AI_SUBJECT_STREAMS.length - 1))})`,
+    );
+  }
 
   return {
     enabled: true,

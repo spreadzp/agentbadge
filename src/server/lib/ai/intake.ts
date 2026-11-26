@@ -218,6 +218,11 @@ export interface AiSuggestionView {
  * never reach the operator surface — shadow agreement only counts if
  * the human decided without seeing the AI output. Skipped/error runs
  * with modeAtTime=off stay visible (no AI output exists to leak).
+ *
+ * The suggestion fields come from the newest non-shadow SUCCESS run
+ * (delta-2 N-H1); `lastAttemptStatus`/`lastAttemptError` carry the
+ * newest non-shadow attempt of ANY status (delta-3 M-5) so a later
+ * provider fault stays visible next to the older success.
  */
 export async function loadAiSuggestions(
   aiStore: AiStore,

@@ -12,6 +12,7 @@ import {
   checkBudget,
   resolveEffectiveMode,
 } from "./budget";
+import type { BudgetState } from "./budget";
 import { capError } from "./jobs";
 import type { LlmProvider } from "./provider";
 import type { AiJobRecord, AiStore, AiUsage } from "./types";
@@ -103,7 +104,7 @@ export async function recordGatedSkip(
   job: AiJobRecord,
   effective: string,
   declaredMode: string,
-  budget: { state: "ok" | "shadow_cut" | "exhausted"; dailyCalls: number; monthlyUsdEstimate: number },
+  budget: BudgetState,
   cfg: AiEnvConfig,
   alert: AiAlertSender,
   enabled: boolean,

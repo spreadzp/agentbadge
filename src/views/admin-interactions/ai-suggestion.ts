@@ -120,6 +120,19 @@ export function aiSuggestionSection(list: AiSuggestionView[]) {
               : ""}
           </div>
           ${runBody(s)}
+          ${
+            // Delta-4 N3-M3: surface a LATER failed attempt even when
+            // the suggestion below comes from an older success run —
+            // "provider errored after the success" must not look like
+            // "quiet since the success".
+            s.status === "success" &&
+            s.lastAttemptStatus !== "success" &&
+            s.lastAttemptStatus !== "none"
+              ? html`<div class="mt-1 text-[10px] text-amber-400/90">
+                  last attempt: ${s.lastAttemptStatus}${s.lastAttemptError ? ` — ${s.lastAttemptError}` : ""}
+                </div>`
+              : ""
+          }
           <div class="mt-1 text-[10px] text-slate-600">
             mode ${s.mode} · model ${s.model ?? "—"} · prompt
             ${s.promptVersion ?? "—"}

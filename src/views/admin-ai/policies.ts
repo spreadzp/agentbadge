@@ -62,6 +62,8 @@ const envStrip = (opts: {
   enabled: boolean;
   budget: BudgetState;
   limits: { dailyCallLimit: number; monthlyBudgetUsd: number } | null;
+  /** Delta-4 N3-M2: per-stream daily provider-call counts. */
+  streams?: readonly { type: string; calls: number }[];
 }) => html`<section
   class="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-3 text-xs text-slate-300"
 >
@@ -79,8 +81,16 @@ const envStrip = (opts: {
         >${opts.budget.state}</strong
       >
       — ${opts.budget.dailyCalls} calls today,
-      ~$${opts.budget.monthlyUsdEstimate.toFixed(4)} this month</span
+      ~$${opts.budget.monthlyUsdEstimate.toFixed(4)} this month${opts
+        .budget.cause
+        ? html` <span class="text-amber-400/80">(cause: ${opts.budget.cause})</span>`
+        : ""}</span
     >
+    ${(opts.streams ?? []).map(
+      (st) => html`<span class="text-slate-500"
+        >${st.type}: ${st.calls}</span
+      >`,
+    )}
     ${opts.limits
       ? html`<span class="text-slate-500"
           >limits: ${opts.limits.dailyCallLimit || "∞"} calls/day,
@@ -190,6 +200,7 @@ export function adminAiPage(opts: {
   changes: PolicyChangeRecord[];
   enabled: boolean;
   budget: BudgetState;
+  streams?: readonly { type: string; calls: number }[];
   limits: { dailyCallLimit: number; monthlyBudgetUsd: number } | null;
   modes: readonly string[];
   formToken: string;

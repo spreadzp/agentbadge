@@ -81,11 +81,20 @@ export function sanitizeUntrusted(
   // ASCII < and > in untrusted content becomes the fullwidth
   // look-alike, so no tag (</untrusted_input>, malformed, split,
   // fullwidth-double) can ever close the block. This replaces the
-  // bypassable tag-regex blacklist. Zero-width / bidi / invisible
-  // format chars are stripped outright; slice by code point.
+  // bypassable tag-regex blacklist. Delta-4 N3-M4: ALL format chars
+  // (\p{Cf} — zero-width, bidi, the U+E0000-E007F Tag block used by
+  // "ASCII smuggling", deprecated controls), C0/C1 controls except
+  // \n\t, separators, and variation selectors are stripped
+  // outright; lone surrogates are repaired before they can burn a
+  // provider attempt on a 400 (paired surrogates pass through as
+  // the two-unit alternative below). Slice by code point.
   const clean = text
     .replace(
-      /[\x00-\x08\x0B-\x1F\x7F\u0085\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g,
+      /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF]|[\uDC00-\uDFFF]/g,
+      (m) => (m.length === 2 ? m : "\uFFFD"),
+    )
+    .replace(
+      /[\x00-\x08\x0B-\x1F\x7F-\x9F\u2028\u2029\p{Cf}\u{034F}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/gu,
       "",
     )
     .replace(/</g, "＜")

@@ -28,6 +28,14 @@ export type BudgetStateName = "ok" | "shadow_cut" | "exhausted";
 
 export interface BudgetState {
   state: BudgetStateName;
+  /** Delta-3 N3-M2: which meter tripped — "global" (daily calls),
+   * "usd" (monthly estimate) or `subject:<type>` (the stream's own
+   * daily partition). Absent on ok/shadow_cut. Audits/alerts key on
+   * this so a partition hit is not reported as a global incident. */
+  cause?: string;
+  /** Stream counters when cause is `subject:*`. */
+  subjectType?: string;
+  subjectCalls?: number;
   dailyCalls: number;
   monthlyUsdEstimate: number;
 }
@@ -70,20 +78,31 @@ export async function checkBudget(
   // Delta-3: per-subjectType partition — the stream's own meter,
   // not the global one. An agent_request flood hits ITS cap while
   // review_case keeps its share of the day.
+  let subjectCalls = 0;
   let subjectExhausted = false;
   if (
     subjectType !== undefined &&
     cfg.subjectDailyCallLimit !== undefined &&
     cfg.subjectDailyCallLimit > 0
   ) {
-    const subjectCalls = await store.countProviderCallsSince(
+    subjectCalls = await store.countProviderCallsSince(
       utcDayStart(now),
       subjectType,
     );
     subjectExhausted = subjectCalls >= cfg.subjectDailyCallLimit;
   }
   if (callsExhausted || usdExhausted || subjectExhausted) {
-    return { state: "exhausted", dailyCalls, monthlyUsdEstimate };
+    return {
+      state: "exhausted",
+      dailyCalls,
+      monthlyUsdEstimate,
+      cause: callsExhausted
+        ? "global"
+        : usdExhausted
+          ? "usd"
+          : `subject:${subjectType}`,
+      ...(subjectExhausted ? { subjectType, subjectCalls } : {}),
+    };
   }
   if (
     cfg.dailyCallLimit > 0 &&
@@ -130,15 +149,27 @@ export async function applyBudgetDegradation(
   declaredMode: string,
   scenario: string,
   budget: BudgetState,
-  cfg: Pick<AiEnvConfig, "dailyCallLimit" | "monthlyBudgetUsd">,
+  cfg: Pick<
+    AiEnvConfig,
+    "dailyCallLimit" | "monthlyBudgetUsd" | "subjectDailyCallLimit"
+  >,
   alert: AiAlertSender,
   now: Date = new Date(),
   degraded: Set<string> = defaultDegradedSet,
 ): Promise<void> {
   const day = now.toISOString().slice(0, 10);
-  const key = `${scenario}:${day}`;
+  const cause = budget.cause ?? "global";
+  // Delta-3 N3-M2: dedupe per (scenario, cause) — a subject-partition
+  // hit must not suppress the genuine global-exhaustion audit/alert
+  // that may follow for the same scenario today.
+  const key = `${scenario}:${cause}:${day}`;
   if (degraded.has(key)) return;
   degraded.add(key);
+  const subjectNote =
+    cause.startsWith("subject:") && budget.subjectType !== undefined
+      ? `; stream ${budget.subjectType}: ` +
+        `${budget.subjectCalls ?? 0}/${cfg.subjectDailyCallLimit} calls`
+      : "";
   await store.appendPolicyChange({
     scenario,
     field: "mode",
@@ -146,14 +177,17 @@ export async function applyBudgetDegradation(
     newValue: "off",
     actor: "budget-guard",
     reason:
-      `budget_exhausted: ${budget.dailyCalls}/${cfg.dailyCallLimit} calls, ` +
-      `~$${budget.monthlyUsdEstimate.toFixed(4)}/$${cfg.monthlyBudgetUsd}`,
+      `budget_exhausted[${cause}]: ${budget.dailyCalls}/${cfg.dailyCallLimit} calls, ` +
+      `~$${budget.monthlyUsdEstimate.toFixed(4)}/$${cfg.monthlyBudgetUsd}${subjectNote}`,
   });
   await alert(
     "ai-budget",
-    `AI budget exhausted — automation degraded to off\n` +
+    `AI budget exhausted (${cause}) — automation degraded to off\n` +
       `calls today: ${budget.dailyCalls}/${cfg.dailyCallLimit}\n` +
       `est. month spend: ~$${budget.monthlyUsdEstimate.toFixed(4)}/$${cfg.monthlyBudgetUsd}\n` +
+      (subjectNote
+        ? `subject stream:${subjectNote.slice(1)}\n`
+        : "") +
       `scenario hit: ${scenario} (declared ${declaredMode})`,
   );
 }
