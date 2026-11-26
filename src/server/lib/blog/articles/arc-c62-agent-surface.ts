@@ -22,7 +22,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "9 min",
   shortAnswer:
-    "We sell a scanner that measures how ready a site is for AI agents - so before selling it we pointed three external AI reviewers at our own production surface for six adversarial rounds. They found 17 real bugs, all fixed and re-verified on production. None was exotic. All were in classes that have no OWASP category yet, because they only exist when the reader of your site is a machine. This is that taxonomy - with the curl commands to check each fix.",
+    "We sell a scanner that measures how ready a site is for AI agents - so before selling it we pointed three external AI reviewers at our own production surface for six adversarial rounds. They found 17 real bugs, all fixed and re-verified on production. To be precise: SSRF, broken access control, information disclosure - those classes are old and OWASP-named. What's new is the surface: agent-readable contracts (MCP tools, agent cards, llms.txt, DID documents) where those classic bugs manifest in ways a human-reader review never exercises. This is that taxonomy - with the curl commands to check each fix.",
   heroImage: "/images/blog/arc-c62-agent-surface-hero.webp",
   ogImage: "/images/blog/arc-c62-agent-surface-og.jpeg",
   status: "LIVE",
