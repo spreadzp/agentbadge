@@ -64,6 +64,20 @@ export {
   registerIntakeRunners,
 } from "./intake-runners";
 export {
+  compareShadowRun,
+  getComparator,
+  registerAiComparisonHook,
+  registerComparator,
+  resetAiComparisonHook,
+  resetComparators,
+} from "./compare";
+export type {
+  AgreementResult,
+  AiComparator,
+  CompareHookOpts,
+  FieldAgreement,
+} from "./compare";
+export {
   AI_JOB_STATUSES,
   AI_MODES,
   AI_RUN_STATUSES,

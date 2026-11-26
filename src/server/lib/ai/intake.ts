@@ -25,10 +25,11 @@ import { getDatabase } from "../database";
 import { pickRequestInboxStores } from "../request-inbox/db-stores";
 import type { RequestInboxStores } from "../request-inbox/store";
 
+import { registerAiComparisonHook } from "./compare";
 import { pickAiStores } from "./db-stores";
 import { registerIntakeRunners } from "./intake-runners";
 import { enqueueAiJob } from "./jobs";
-import type { AiStore } from "./types";
+import type { AiRunRecord, AiStore } from "./types";
 
 /** Scenarios enqueued on every new intake request (E1+E2). */
 export const INTAKE_AI_SCENARIOS = ["classification", "summary"] as const;
@@ -133,10 +134,13 @@ export function wireAiIntake(
     config?: () => AiEnvConfig | undefined;
   } = {},
 ): void {
-  registerIntakeRunners({
-    stores: deps.stores ?? pickRequestInboxStores(getDatabase()),
-  });
-  registerAiIntakeHook({ aiStore: deps.aiStore, config: deps.config });
+  const stores = deps.stores ?? pickRequestInboxStores(getDatabase());
+  const aiStore = deps.aiStore ?? pickAiStores(getDatabase());
+  registerIntakeRunners({ stores });
+  registerAiIntakeHook({ aiStore, config: deps.config });
+  // 232-3 E7: lazy shadow comparison — classified events →
+  // ai.agreement.computed audit rows (never surfaces shadow output).
+  registerAiComparisonHook({ stores, aiStore });
 }
 
 // ─── admin suggestion view-model (§16.5 — advisory only) ────────
@@ -164,6 +168,11 @@ export interface AiSuggestionView {
  * Latest run + policy threshold per intake scenario for one request.
  * Read-only — the admin page renders this as an advisory block next
  * to (never inside) the human classification form.
+ *
+ * BLIND (D-232-5, slice 232-3): runs recorded under modeAtTime=shadow
+ * never reach the operator surface — shadow agreement only counts if
+ * the human decided without seeing the AI output. Skipped/error runs
+ * with modeAtTime=off stay visible (no AI output exists to leak).
  */
 export async function loadAiSuggestions(
   aiStore: AiStore,
@@ -172,10 +181,18 @@ export async function loadAiSuggestions(
 ): Promise<AiSuggestionView[]> {
   const out: AiSuggestionView[] = [];
   for (const scenario of scenarios) {
-    const [run, policy] = await Promise.all([
-      aiStore.latestRunFor(AI_SUBJECT_AGENT_REQUEST, requestId, scenario),
+    const [runs, policy] = await Promise.all([
+      aiStore.listRuns({
+        subjectType: AI_SUBJECT_AGENT_REQUEST,
+        subjectId: requestId,
+        scenario,
+        limit: 10,
+      }),
       aiStore.getPolicy(scenario),
     ]);
+    const run: AiRunRecord | undefined = runs.find(
+      (r) => r.modeAtTime !== "shadow",
+    );
     const threshold = policy?.confidenceThreshold ?? null;
     const confidence = run?.confidence ?? null;
     out.push({
