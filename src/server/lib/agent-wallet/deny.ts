@@ -125,6 +125,41 @@ export async function emitKindDeny(
 }
 
 /**
+ * EPIC-263-1: amount-validity gate — NaN/±Infinity/zero/negative deny
+ * BEFORE any caps check (draft §4 NON_POSITIVE ordering, K08; closes
+ * the V04/V17/V29/V33 class on the enforcer path). Durable denied
+ * entry keeps convention; non-finite amounts can't persist to the
+ * ledger backends → recorded as 0, the raw attempt lives in the alert.
+ */
+export async function emitInvalidAmountDeny(
+  ledger: SpendLedger,
+  ctx: SpendDenyCtx,
+): Promise<Record<string, unknown>> {
+  await ledger.insert({
+    id: newSpendId(),
+    wallet: ctx.wallet,
+    amountUsd: Number.isFinite(ctx.amountUsd) ? ctx.amountUsd : 0,
+    kind: ctx.kind,
+    refId: ctx.refId,
+    state: "denied",
+    denialReason: "invalid_amount",
+    at: Date.now(),
+    ...(ctx.venueId ? { venueId: ctx.venueId } : {}),
+  });
+  emitSpendAlert(
+    "spend.invalid_amount",
+    ctx.address,
+    {
+      attemptedAmountUsd: String(ctx.amountUsd),
+      kind: ctx.kind,
+      refId: ctx.refId,
+    },
+    ctx.venueId,
+  );
+  return { error: "invalid_amount" };
+}
+
+/**
  * SLICE-176-4: kill-switch deny — suspended wallet, first branch of
  * enforcer.begin (before kind/permit/caps). Durable denied entry +
  * wallet.suspended_deny alert for the owner.

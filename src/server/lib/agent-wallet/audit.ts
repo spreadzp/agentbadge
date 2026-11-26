@@ -25,6 +25,8 @@ export type SpendAlertType =
   | "approval.expired"
   | "spend.failed"
   | "spend.release_late"
+  | "spend.invalid_amount"
+  | "spend.clamp_mismatch"
   | "wallet.low_balance";
 
 export interface SpendAlertEvent {

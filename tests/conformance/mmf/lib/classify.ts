@@ -37,6 +37,8 @@ const OUR_CHECKS = new Set([
   "VELOCITY",
   "REVOKED",
   "REVOKED_REGISTRY",
+  // 263-1: enforcer.begin validity-gate emits invalid_amount → mapped.
+  "NON_POSITIVE",
 ]);
 
 export function classifyCore(

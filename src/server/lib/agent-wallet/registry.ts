@@ -39,6 +39,11 @@ export interface SpendCaps {
   maxAmountPerHour?: number;
   /** Allow-list of spend kinds (176-3). Unset = allow-all. */
   allowedKinds?: SpendKind[];
+  /** EPIC-263-1: MMF v0.5-clamp — a valid over-perTx request authorizes
+   *  at effective=perTxUsd instead of denying (draft check-5). Owner-only
+   *  declaration via PATCH /envelope; absent/false = byte-identical
+   *  legacy deny (D4). */
+  clamp?: boolean;
 }
 
 export interface AgentWalletRecord {

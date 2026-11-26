@@ -102,6 +102,10 @@ export function checkIdForDeny(deny: string): string | null {
     // wallet-suspend is the closest mechanism to mandate revocation.
     case "spend_suspended":
       return "REVOKED";
+    // 263-1: enforcer.begin validity-gate — NaN/±∞/≤0/non-numeric
+    // scalars deny BEFORE caps (draft §4 NON_POSITIVE ordering).
+    case "invalid_amount":
+      return "NON_POSITIVE";
     // delegate-path reasons (spendAsDelegate).
     case "no-active-delegate":
     case "delegate-suspended":

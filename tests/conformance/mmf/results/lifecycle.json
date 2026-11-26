@@ -4481,10 +4481,11 @@
           "tx_id": "t2",
           "verdict": "mismatch",
           "actual": {
-            "allowed": true,
-            "checkId": "WITHIN",
+            "allowed": false,
+            "checkId": "NON_POSITIVE",
+            "rawDeny": "invalid_amount",
             "replayed": false,
-            "state": "reserved",
+            "state": "denied",
             "reservationsForTxId": 3
           }
         },
@@ -4643,10 +4644,11 @@
           "replayed": true
         },
         "actual": {
-          "allowed": true,
-          "checkId": "WITHIN",
+          "allowed": false,
+          "checkId": "NON_POSITIVE",
+          "rawDeny": "invalid_amount",
           "replayed": false,
-          "state": "reserved",
+          "state": "denied",
           "reservationsForTxId": 3
         }
       },

@@ -77,9 +77,13 @@ describe("SLICE-255-6 consolidated report", () => {
     expect(report.summary["crypto-evidence"].n).toBe(9);
 
     const bugIds = report.findings.bugs.map((b) => b.vector_id).sort();
-    expect(bugIds).toEqual(["L05", "L09", "V04", "V17", "V29", "V33", "V36"]);
+    // EPIC-263-1: V04/V17/V29/V33 closed by the begin validity-gate
+    // (invalid_amount → NON_POSITIVE) — PASS, no longer bug findings.
+    expect(bugIds).toEqual(["L05", "L09", "V36"]);
     expect(report.findings.gate_exceptions.sort()).toEqual(["L24", "V21"]);
-    expect(report.findings.not_mappable_count).toBe(15);
+    // V31/V32/V34 lexical-form vectors moved NOT_MAPPABLE → MODEL once
+    // NON_POSITIVE became a real check (12 = 15 − 3).
+    expect(report.findings.not_mappable_count).toBe(12);
   });
 
   it("writes report.json + report.md (deterministic, metric-aware)", () => {
@@ -96,7 +100,7 @@ describe("SLICE-255-6 consolidated report", () => {
     expect(md).toContain("delegation | 18");
     expect(md).toContain("lifecycle | 29");
     expect(md).toContain("crypto-evidence | 9");
-    expect(md).toContain("V04");
+    expect(md).toContain("V36");
     expect(md).toContain("OWN-1");
     expect(report.vectors).toHaveLength(92);
   });

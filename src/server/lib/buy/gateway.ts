@@ -438,13 +438,16 @@ export async function buyPay(
       };
     }
   }
+  // D6 (263-1): reserve the verdict amount — effective after clamp,
+  // never re-derived from the request here.
   const entry: SpendEntry = await insertReserved(
     deps.ledger,
     w,
-    amountUsd,
+    verdict.amount,
     "buy-gateway",
     refId,
     rec.venueId,
+    verdict.clamped,
   );
 
   // ─── paid call — envelope reserved, spawn the CLI ───────────────

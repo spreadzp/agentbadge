@@ -68,6 +68,12 @@ export interface SpendEntry {
   venueId?: string;
   /** SLICE-155-11: why a `denied` entry was blocked (cap name). */
   denialReason?: string;
+  /** EPIC-263-1: present only when the spend was clamped — amountUsd is
+   *  the EFFECTIVE amount, requestedAmountUsd the agent's intent,
+   *  effectiveCapUsd the cap it was clamped to (MMF v0.5 draft §5). */
+  clamped?: boolean;
+  requestedAmountUsd?: number;
+  effectiveCapUsd?: number;
   state: SpendState;
   /** Reserved-at epoch ms — window anchoring timestamp. */
   at: number;

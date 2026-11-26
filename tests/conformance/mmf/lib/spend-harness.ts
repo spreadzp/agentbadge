@@ -100,13 +100,17 @@ function coreDimensions(v: CoreVector): Record<string, DimensionNote> {
     };
   }
   if (v.expect.check === "NON_POSITIVE") {
-    d.amount_validation = {
-      mapped_to: null,
-      equivalence: "None",
-      note: v.tx.amount_json
-        ? "lexical amount form cannot reach our number API"
-        : "no amount-validity check in enforcer",
-    };
+    d.amount_validation = v.tx.amount_json
+      ? {
+          mapped_to: null,
+          equivalence: "None",
+          note: "lexical amount form cannot reach our number API",
+        }
+      : {
+          mapped_to: "enforcer.begin validity-gate → invalid_amount",
+          equivalence: "Exact",
+          note: "263-1: !finite|≤0|non-numeric denied before caps",
+        };
   }
   if (v.expect.rejected) {
     d.input_validation = {

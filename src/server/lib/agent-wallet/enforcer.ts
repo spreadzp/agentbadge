@@ -22,20 +22,22 @@ import { isAddress } from "viem";
 
 import { errorResponse } from "../error-response";
 import { ErrorCodes } from "../error-codes";
-import type { AgentWalletStore, SpendCaps } from "./registry";
-import { newSpendId, type SpendEntry, type SpendKind, type SpendLedger } from "./ledger";
 import { checkEnvelope, insertReserved } from "./envelope";
 import {
   emitSpendDeny,
   emitKindDeny,
   emitSuspendedDeny,
+  emitInvalidAmountDeny,
   tryApprovalHold,
 } from "./deny";
 import { emitSpendAlert } from "./audit";
-import {
-  DEFAULT_APPROVAL_TTL_MS,
-  type ApprovalStore,
-} from "./approvals";
+import { DEFAULT_APPROVAL_TTL_MS } from "./approvals";
+import { createCompleter } from "./enforcer-complete";
+import type {
+  EnforceBegin,
+  SpendEnforcer,
+  SpendEnforcerDeps,
+} from "./enforcer-types";
 
 /* ------------------------------ wallet resolve ---------------------------- */
 
@@ -46,50 +48,13 @@ import { resolveSpendWallet } from "./wallet-resolve";
 
 /* ------------------------------- enforcer --------------------------------- */
 
-export interface SpendEnforcerDeps {
-  ledger: SpendLedger;
-  registry: AgentWalletStore;
-  /** AGENT_WALLET_REQUIRE_REGISTERED — deny unregistered wallets. */
-  requireRegistered: boolean;
-  /** AGENT_WALLET_DEFAULT_CAPS — applied when record has no envelope. */
-  defaultCaps?: SpendCaps;
-  /** SLICE-176-7: parked-intent store for the approval hold-path;
-   *  absent → approvalAboveUsd is inert (feature-off pass-through). */
-  approvals?: ApprovalStore;
-  /** APPROVAL_TTL_MS — parked intent expiry (default 1h, D-176-2). */
-  approvalTtlMs?: number;
-}
-
-export interface EnforceBegin {
-  /** Set when a reservation was made (caps applied). */
-  entry?: SpendEntry;
-  /** Resolved wallet — for post-settle accounting even without caps. */
-  wallet?: `0x${string}`;
-  /** SLICE-155-11: venue of the wallet record (typed col on settled rows). */
-  venueId?: string;
-}
-
-export interface SpendEnforcer {
-  /** Returns Response (402 spend_cap) when denied — return it directly. */
-  begin(
-    c: Context,
-    amountUsd: number,
-    kind: SpendKind,
-    refId: string,
-  ): Promise<Response | EnforceBegin>;
-  /** Post-execution transition; also records settled spend when no
-   *  reservation existed (no caps configured — ledger completeness).
-   *  Async since SLICE-155-11 — ledger writes must be awaited (fail-closed). */
-  complete(
-    begun: EnforceBegin,
-    ok: boolean,
-    amountUsd?: number,
-    kind?: SpendKind,
-    refId?: string,
-    txHash?: string,
-    sourceChain?: string,
-  ): Promise<void>;
-}
+// Contract types live in enforcer-types.ts (300-line guard) —
+// re-exported so enforcer.ts stays the single import surface.
+export type {
+  EnforceBegin,
+  SpendEnforcer,
+  SpendEnforcerDeps,
+} from "./enforcer-types";
 
 export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
   return {
@@ -123,6 +88,20 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       // resume (store.setSuspended false) restores instantly.
       if (rec.suspended) {
         const body = await emitSuspendedDeny(deps.ledger, {
+          wallet: wallet as `0x${string}`,
+          address: rec.address,
+          ...(rec.venueId ? { venueId: rec.venueId } : {}),
+          amountUsd,
+          kind,
+          refId,
+        });
+        return c.json(body, 402);
+      }
+      // EPIC-263-1: amount-validity gate — draft §4 NON_POSITIVE before
+      // ANY caps check (K08); !finite|≤0 → structured deny, durable
+      // entry. Closes the V04/V17/V29/V33 class on this path.
+      if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+        const body = await emitInvalidAmountDeny(deps.ledger, {
           wallet: wallet as `0x${string}`,
           address: rec.address,
           ...(rec.venueId ? { venueId: rec.venueId } : {}),
@@ -215,13 +194,17 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         );
         return c.json(body, 402);
       }
+      // D6: the ONLY amount that may be reserved is verdict.amount
+      // (effective after clamp resolution) — begin never re-derives it
+      // (D7: entry.amountUsd === verdict.amount, no arithmetic).
       const entry = await insertReserved(
         deps.ledger,
         wallet as `0x${string}`,
-        amountUsd,
+        verdict.amount,
         kind,
         refId,
         rec.venueId,
+        verdict.clamped,
       );
       // 176-8: emit only once the entry exists — alert links permit↔spendId.
       if (consumedApproval) {
@@ -238,44 +221,22 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
           rec.venueId,
         );
       }
-      return { wallet: wallet as `0x${string}`, entry };
+      return {
+        wallet: wallet as `0x${string}`,
+        entry,
+        ...(verdict.clamped
+          ? {
+              clamped: true,
+              requestedAmountUsd: verdict.clamped.requested,
+              effectiveCapUsd: verdict.clamped.cap,
+            }
+          : {}),
+      };
     },
 
-    async complete(begun, ok, amountUsd, kind, refId, txHash, sourceChain) {
-      if (begun.entry) {
-        await deps.ledger.transition(
-          begun.entry.id,
-          ok ? "settled" : "released",
-          txHash,
-          sourceChain,
-        );
-        // SLICE-155-6: settle tx failed after reserve — alertable.
-        if (!ok && begun.wallet) {
-          emitSpendAlert(
-            "spend.failed",
-            begun.wallet,
-            { entryId: begun.entry.id, amountUsd, kind, refId },
-          );
-        }
-        return;
-      }
-      // No reservation (no caps) — still record settled spend so the
-      // ledger reflects every platform payment.
-      if (ok && begun.wallet && amountUsd !== undefined && kind && refId) {
-        await deps.ledger.insert({
-          id: newSpendId(),
-          wallet: begun.wallet,
-          amountUsd,
-          kind,
-          refId,
-          state: "settled",
-          at: Date.now(),
-          ...(txHash ? { txHash: txHash as `0x${string}` } : {}),
-          ...(sourceChain ? { sourceChain } : {}),
-          ...(begun.venueId ? { venueId: begun.venueId } : {}),
-        });
-      }
-    },
+    // 263-1: settlement side lives in enforcer-complete.ts (300-line
+    // guard) — transition + clamp consistency-guard + no-caps insert.
+    complete: createCompleter(deps),
   };
 }
 
@@ -289,6 +250,21 @@ export function initSpendEnforcer(e: SpendEnforcer | null): void {
 }
 export function getSpendEnforcer(): SpendEnforcer | null {
   return _enforcer;
+}
+
+/**
+ * EPIC-263-1: caller-visible clamp (draft §5 MUST) — appends
+ * X-Spend-Clamped/-Effective-Usd/-Requested-Usd onto the FINAL
+ * response. `c.header` either mutates an existing c.res (post-next())
+ * or lands in preparedHeaders merged into the next response — in both
+ * cases downstream headers/status are preserved (D8). Emitted only on
+ * an actual clamp — never `X-Spend-Clamped:false` on ordinary spends.
+ */
+export function applyClampHeaders(c: Context, begun: EnforceBegin): void {
+  if (begun.clamped !== true || !begun.entry) return;
+  c.header("X-Spend-Clamped", "true");
+  c.header("X-Spend-Effective-Usd", String(begun.entry.amountUsd));
+  c.header("X-Spend-Requested-Usd", String(begun.requestedAmountUsd));
 }
 
 // Gate middleware + withEnvelope live in envelope-gate.ts

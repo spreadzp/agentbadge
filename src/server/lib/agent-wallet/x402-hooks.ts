@@ -12,7 +12,11 @@ import type {
   PaymentInfo,
 } from "@agentbadge/circle-payments";
 
-import { getSpendEnforcer, type EnforceBegin } from "./enforcer";
+import {
+  applyClampHeaders,
+  getSpendEnforcer,
+  type EnforceBegin,
+} from "./enforcer";
 import type { SpendKind } from "./ledger";
 
 const CTX_KEY = "_spendBegun";
@@ -58,6 +62,9 @@ export function createSpendX402Hooks(): SpendX402Hooks {
       );
       if (res instanceof Response) return res;
       c.set(CTX_KEY, res);
+      // 263-1: caller-visible clamp on the x402 gated path too —
+      // preparedHeaders merge into the eventual payment response (D8).
+      applyClampHeaders(c, res);
       return;
     },
     onSettleResult: async ({ c, ok, payment }) => {

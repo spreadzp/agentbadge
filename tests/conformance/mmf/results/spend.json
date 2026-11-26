@@ -124,15 +124,17 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V04",
-    "result": "DIVERGENCE-BUG",
-    "equivalence": "None",
+    "result": "PASS",
+    "equivalence": "Exact",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
       "allowed": false,
       "check": "NON_POSITIVE"
     },
     "actual": {
-      "allowed": true,
+      "allowed": false,
+      "rawDeny": "invalid_amount",
+      "checkId": "NON_POSITIVE",
       "unsafeAmount": true,
       "amount": 0
     },
@@ -142,12 +144,11 @@
         "equivalence": "Exact"
       },
       "amount_validation": {
-        "mapped_to": null,
-        "equivalence": "None",
-        "note": "no amount-validity check in enforcer"
+        "mapped_to": "enforcer.begin validity-gate → invalid_amount",
+        "equivalence": "Exact",
+        "note": "263-1: !finite|≤0|non-numeric denied before caps"
       }
-    },
-    "notes": "non-positive amount"
+    }
   },
   {
     "schema_version": 1,
@@ -516,15 +517,17 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V17",
-    "result": "DIVERGENCE-BUG",
-    "equivalence": "None",
+    "result": "PASS",
+    "equivalence": "Exact",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
       "allowed": false,
       "check": "NON_POSITIVE"
     },
     "actual": {
-      "allowed": true,
+      "allowed": false,
+      "rawDeny": "invalid_amount",
+      "checkId": "NON_POSITIVE",
       "unsafeAmount": true,
       "amount": -50
     },
@@ -534,12 +537,11 @@
         "equivalence": "Exact"
       },
       "amount_validation": {
-        "mapped_to": null,
-        "equivalence": "None",
-        "note": "no amount-validity check in enforcer"
+        "mapped_to": "enforcer.begin validity-gate → invalid_amount",
+        "equivalence": "Exact",
+        "note": "263-1: !finite|≤0|non-numeric denied before caps"
       }
-    },
-    "notes": "negative amount rejected"
+    }
   },
   {
     "schema_version": 1,
@@ -872,8 +874,8 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V27",
-    "result": "NOT_MAPPABLE",
-    "equivalence": "None",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Exact",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
       "allowed": false,
@@ -890,9 +892,9 @@
         "equivalence": "Exact"
       },
       "amount_validation": {
-        "mapped_to": null,
-        "equivalence": "None",
-        "note": "no amount-validity check in enforcer"
+        "mapped_to": "enforcer.begin validity-gate → invalid_amount",
+        "equivalence": "Exact",
+        "note": "263-1: !finite|≤0|non-numeric denied before caps"
       }
     },
     "notes": "fractional amount is not a minor-unit integer"
@@ -904,7 +906,7 @@
     "track": "spend",
     "vector_id": "V28",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "None",
+    "equivalence": "Exact",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
       "allowed": false,
@@ -923,9 +925,9 @@
         "equivalence": "Exact"
       },
       "amount_validation": {
-        "mapped_to": null,
-        "equivalence": "None",
-        "note": "no amount-validity check in enforcer"
+        "mapped_to": "enforcer.begin validity-gate → invalid_amount",
+        "equivalence": "Exact",
+        "note": "263-1: !finite|≤0|non-numeric denied before caps"
       }
     },
     "notes": "amount above 2^53-1 is outside the interoperable integer range"
@@ -936,15 +938,17 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V29",
-    "result": "DIVERGENCE-BUG",
-    "equivalence": "None",
+    "result": "PASS",
+    "equivalence": "Exact",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
       "allowed": false,
       "check": "NON_POSITIVE"
     },
     "actual": {
-      "allowed": true,
+      "allowed": false,
+      "rawDeny": "invalid_amount",
+      "checkId": "NON_POSITIVE",
       "unsafeAmount": true,
       "amount": "10"
     },
@@ -954,12 +958,11 @@
         "equivalence": "Exact"
       },
       "amount_validation": {
-        "mapped_to": null,
-        "equivalence": "None",
-        "note": "no amount-validity check in enforcer"
+        "mapped_to": "enforcer.begin validity-gate → invalid_amount",
+        "equivalence": "Exact",
+        "note": "263-1: !finite|≤0|non-numeric denied before caps"
       }
-    },
-    "notes": "decimal string amount is not accepted on the wire"
+    }
   },
   {
     "schema_version": 1,
@@ -1002,7 +1005,7 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V31",
-    "result": "NOT_MAPPABLE",
+    "result": "DIVERGENCE-MODEL",
     "equivalence": "None",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
@@ -1055,7 +1058,7 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V32",
-    "result": "NOT_MAPPABLE",
+    "result": "DIVERGENCE-MODEL",
     "equivalence": "None",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
@@ -1108,7 +1111,7 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V33",
-    "result": "DIVERGENCE-BUG",
+    "result": "PASS",
     "equivalence": "None",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
@@ -1116,7 +1119,9 @@
       "check": "NON_POSITIVE"
     },
     "actual": {
-      "allowed": true,
+      "allowed": false,
+      "rawDeny": "invalid_amount",
+      "checkId": "NON_POSITIVE",
       "unsafeAmount": true,
       "amount": 0
     },
@@ -1152,8 +1157,7 @@
         "mapped_to": null,
         "equivalence": "None"
       }
-    },
-    "notes": "amount token -0 is zero: not positive, so NON_POSITIVE"
+    }
   },
   {
     "schema_version": 1,

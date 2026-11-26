@@ -9,6 +9,7 @@ import type { Context, MiddlewareHandler } from "hono";
 
 import type { SpendKind } from "./ledger";
 import {
+  applyClampHeaders,
   getSpendEnforcer,
   type EnforceBegin,
   type SpendEnforcer,
@@ -45,11 +46,15 @@ export function spendEnvelopeGate(opts: EnvelopeGateOpts): MiddlewareHandler {
     if (begun instanceof Response) return begun;
     try {
       await next();
+      // D8: X-Spend-* land on the downstream response AFTER next() —
+      // its own headers/status are preserved (263-1).
+      applyClampHeaders(c, begun);
       const tx = (
         c.get("payment") as { transaction?: string } | undefined
       )?.transaction;
       await enforcer.complete(begun, c.res.ok, amountUsd, opts.kind, refId, tx);
     } catch (err) {
+      applyClampHeaders(c, begun);
       await enforcer.complete(begun, false, amountUsd, opts.kind, refId);
       throw err;
     }
@@ -67,9 +72,13 @@ export async function withEnvelope<T>(
   if (begun instanceof Response) return { ok: false, res: begun };
   try {
     const result = await fn();
+    // Same D8 contract as the middleware form — headers are prepared
+    // on the context and merge into the response the caller builds.
+    applyClampHeaders(c, begun);
     await enforcer.complete(begun, true, args.amountUsd, args.kind, args.refId);
     return { ok: true, result };
   } catch (err) {
+    applyClampHeaders(c, begun);
     await enforcer.complete(begun, false, args.amountUsd, args.kind, args.refId);
     throw err;
   }
