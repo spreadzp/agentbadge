@@ -43,6 +43,16 @@ export async function resolvePolicy(
   };
 }
 
+/** Delta-2 N-M6: policy-layer contract — supervised is refused
+ * without a positive calibrated threshold, whichever caller writes
+ * it (route guards can be bypassed by future callers). */
+export class AiPolicyContractError extends Error {
+  constructor(message: string) {
+    super(`ai_policy_contract: ${message}`);
+    this.name = "AiPolicyContractError";
+  }
+}
+
 export async function setPolicyMode(
   store: AiStore,
   scenario: string,
@@ -54,6 +64,14 @@ export async function setPolicyMode(
   change: PolicyChangeRecord | null;
 }> {
   const before = await store.getPolicy(scenario);
+  if (mode === "supervised") {
+    const th = before?.confidenceThreshold ?? null;
+    if (th === null || th <= 0) {
+      throw new AiPolicyContractError(
+        "supervised requires a positive confidenceThreshold",
+      );
+    }
+  }
   return store.upsertPolicy(
     scenario,
     { mode, updatedBy: actor },
@@ -99,6 +117,16 @@ export async function setPolicyThreshold(
   reason?: string,
 ) {
   const before = await store.getPolicy(scenario);
+  // Delta-2 N-M6: while supervised, the threshold cannot drop to
+  // null/0 — that combination is the fail-open prefill path.
+  if (
+    before?.mode === "supervised" &&
+    (confidenceThreshold === null || confidenceThreshold <= 0)
+  ) {
+    throw new AiPolicyContractError(
+      "supervised policy cannot clear/zero its confidenceThreshold",
+    );
+  }
   return store.upsertPolicy(
     scenario,
     { confidenceThreshold, updatedBy: actor },

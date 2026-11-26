@@ -32,6 +32,7 @@ import {
   reviewDraftInput,
 } from "../../lib/knowledge-draft/convert";
 import {
+  latestVisibleReviewRun,
   loadReviewAiSuggestions,
   readOffset,
   readQueue,
@@ -143,18 +144,10 @@ export function createReviewCenter(deps: {
     // 232-9 E9: per-row AI lane — a successful review_assist run's
     // modeAtTime drives "needs confirm" vs "ai suggested" vs "manual".
     const items = await Promise.all(
-      page50.map(async (row) => {
-        const run = deps.aiStore
-          ? await deps.aiStore.latestRunFor("review_case", row.id, "review_assist")
-          : null;
-        const aiState =
-          run?.modeAtTime === "supervised"
-            ? ("confirm" as const)
-            : run != null
-              ? ("suggested" as const)
-              : ("manual" as const);
-        return { row, aiState };
-      }),
+      page50.map(async (row) => ({
+        row,
+        aiState: await latestVisibleReviewRun(deps.aiStore, row.id),
+      })),
     );
     return page(
       c,

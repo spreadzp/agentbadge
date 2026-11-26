@@ -47,11 +47,21 @@ export type LlmErrorKind =
 export class LlmError extends Error {
   readonly kind: LlmErrorKind;
   readonly httpStatus?: number;
-  constructor(kind: LlmErrorKind, message: string, httpStatus?: number) {
+  /** Delta-2 H-8: usage the provider DID bill on a failed attempt
+   * (invalid_json/http responses carry a usage block) — the budget
+   * meter must see that spend, not hide it. */
+  readonly usage?: AiUsage;
+  constructor(
+    kind: LlmErrorKind,
+    message: string,
+    httpStatus?: number,
+    usage?: AiUsage,
+  ) {
     super(message);
     this.name = "LlmError";
     this.kind = kind;
     this.httpStatus = httpStatus;
+    this.usage = usage;
   }
 }
 
@@ -178,27 +188,37 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     } catch {
       throw new LlmError("invalid_response", "provider returned non-JSON body");
     }
+    // Billed usage travels with failures too — the run row and the
+    // budget meter must see spend on invalid output (delta-2 H-8).
+    const billed: AiUsage = {
+      prompt: data.usage?.prompt_tokens,
+      completion: data.usage?.completion_tokens,
+      total: data.usage?.total_tokens,
+    };
     const text = data.choices?.[0]?.message?.content;
     if (typeof text !== "string" || text.length === 0) {
       throw new LlmError(
         "invalid_response",
         `no choices[0].message.content (keys: ${Object.keys(data).join(",")})`,
+        undefined,
+        billed,
       );
     }
     if (req.jsonSchema) {
       try {
         JSON.parse(text);
       } catch {
-        throw new LlmError("invalid_json", "output is not valid JSON");
+        throw new LlmError(
+          "invalid_json",
+          "output is not valid JSON",
+          undefined,
+          billed,
+        );
       }
     }
     return {
       text,
-      usage: {
-        prompt: data.usage?.prompt_tokens,
-        completion: data.usage?.completion_tokens,
-        total: data.usage?.total_tokens,
-      },
+      usage: billed,
       model: data.model ?? this.opts.model,
     };
   }

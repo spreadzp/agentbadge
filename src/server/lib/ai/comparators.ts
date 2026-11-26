@@ -50,7 +50,11 @@ export function resetComparators(): void {
   registerDefaultComparators();
 }
 
-/** classification: intent exact-match + category vs declared kind. */
+/** classification: intent exact-match only. Delta-2 H-9: the
+ * category-vs-`kind` field was dropped — `kind` is agent-declared
+ * and visible inside the prompt, so the model was scored against
+ * input it could see (agreement was self-confirming, not
+ * independent). */
 function classificationComparator(
   output: unknown,
   human: Record<string, unknown>,
@@ -63,14 +67,6 @@ function classificationComparator(
       ai: out.intent ?? null,
       human: human.intent,
       match: out.intent === human.intent,
-    });
-  }
-  if (typeof human.kind === "string" && human.kind) {
-    fields.push({
-      field: "category",
-      ai: out.category ?? null,
-      human: human.kind,
-      match: out.category === human.kind,
     });
   }
   const comparable = fields.filter((f) => f.ai !== null);

@@ -96,11 +96,24 @@ export async function computeAiMetrics(
 ): Promise<AiMetrics> {
   const { aiStore, reviews, interactions } = deps;
 
-  const runs = await aiStore.listRuns({
-    scenario: filter.scenario,
-    limit: CAP,
-  });
-  const windowed = runs.filter((r) => inWindow(r.createdAt, filter));
+  // Delta-2 H-9: skipped audit rows never reached the provider —
+  // they get their own CAP window so they cannot crowd real runs
+  // out of the projection (and vice versa).
+  const [runs, skippedRuns] = await Promise.all([
+    aiStore.listRuns({
+      scenario: filter.scenario,
+      excludeStatus: "skipped",
+      limit: CAP,
+    }),
+    aiStore.listRuns({
+      scenario: filter.scenario,
+      status: "skipped",
+      limit: CAP,
+    }),
+  ]);
+  const windowed = [...runs, ...skippedRuns]
+    .filter((r) => inWindow(r.createdAt, filter))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const runById = new Map(windowed.map((r) => [r.id, r]));
 
   // ─── per scenario × modeAtTime split ──────────────────────────
@@ -272,6 +285,9 @@ export async function computeAiMetrics(
       interventionRate:
         suggestionInPlay > 0 ? interventions / suggestionInPlay : null,
     },
-    truncated: { runs: runs.length >= CAP, cases: cases.length >= CAP },
+    truncated: {
+      runs: runs.length >= CAP || skippedRuns.length >= CAP,
+      cases: cases.length >= CAP,
+    },
   };
 }

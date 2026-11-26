@@ -99,12 +99,12 @@ export function registerAdminAiMutations(
     const model =
       modelRaw === "" ? undefined : modelRaw === "clear" ? null : modelRaw.slice(0, 64);
 
-    // 232-12 H-5: supervised without a calibrated threshold is a
-    // fail-open prefill path — refuse the FINAL state, whichever
-    // field(s) the form actually changed.
+    // 232-12 H-5 + delta-2 N-M6: supervised without a POSITIVE
+    // calibrated threshold is a fail-open prefill path — threshold
+    // 0 admits every confidence, so it refuses the same as null.
     const finalMode = mode !== "" ? mode : before?.mode ?? "off";
     const finalTh = th !== undefined ? th : before?.confidenceThreshold ?? null;
-    if (finalMode === "supervised" && finalTh === null) {
+    if (finalMode === "supervised" && (finalTh === null || finalTh <= 0)) {
       return c.redirect(
         backWith({ err: "supervised_requires_threshold" }),
         303,
@@ -112,14 +112,17 @@ export function registerAdminAiMutations(
     }
 
     const reason = str(b, "reason").slice(0, 200) || undefined;
-    if (mode && mode !== before?.mode) {
-      await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
-    }
+    // Delta-2 N-M6: threshold/model write BEFORE mode — a transient
+    // {mode:supervised, threshold:null} row can never exist, even
+    // between the two writes.
     if (th !== undefined && th !== (before?.confidenceThreshold ?? null)) {
       await setPolicyThreshold(aiStore, scenario, th, actor.id, reason);
     }
     if (model !== undefined && model !== (before?.model ?? null)) {
       await setPolicyModel(aiStore, scenario, model, actor.id, reason);
+    }
+    if (mode && mode !== before?.mode) {
+      await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
     }
     return c.redirect(backWith({ ok: `updated_${scenario}` }), 303);
   });

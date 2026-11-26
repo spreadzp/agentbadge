@@ -60,8 +60,8 @@ export class DbAiStore implements AiStore {
     return this.repo.countProviderCallsSince(sinceIso);
   }
 
-  countJobsByStatus(status: string): Promise<number> {
-    return this.repo.countJobsByStatus(status);
+  countJobsByStatus(status: string, subjectType?: string): Promise<number> {
+    return this.repo.countJobsByStatus(status, subjectType);
   }
 
   sumTokensSince(sinceIso: string): Promise<number> {

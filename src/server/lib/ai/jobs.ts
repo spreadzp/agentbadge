@@ -47,15 +47,24 @@ function cap(field: keyof typeof AI_FIELD_LIMITS, v: string | null | undefined):
 export async function enqueueAiJob(
   store: AiStore,
   input: AiJobInsert,
-  opts?: { queueCap?: number },
+  opts?: { queueCap?: number; log?: (msg: string) => void },
 ): Promise<{
   job: AiJobRecord | null;
   duplicate: boolean;
   refused?: "queue_full";
 }> {
+  // Delta-2 N-H2: the cap applies per subjectType — one shared
+  // bucket let an intake flood permanently starve review_assist
+  // jobs (review work silently dropped at enqueue). Per-stream
+  // budgets give review_case its own lane; a refusal is logged so
+  // it is visible rather than silent.
   if (opts?.queueCap != null && opts.queueCap > 0) {
-    const queued = await store.countJobsByStatus("queued");
+    const queued = await store.countJobsByStatus("queued", input.subjectType);
     if (queued >= opts.queueCap) {
+      (opts.log ?? console.warn)(
+        `[ai-jobs] queue_full: refused ${input.scenario} on ` +
+          `${input.subjectType}:${input.subjectId} (${queued} queued)`,
+      );
       return { job: null, duplicate: false, refused: "queue_full" };
     }
   }

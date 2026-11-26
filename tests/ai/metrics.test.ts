@@ -88,13 +88,14 @@ beforeEach(() => {
 });
 
 describe("comparators — all shipped scenarios", () => {
-  it("classification: intent + category fields", () => {
+  it("classification: intent only — kind is agent-declared (delta-2 H-9)", () => {
     const r = getComparator("classification")!(
       { intent: "A", category: "question" },
       { intent: "A", kind: "question" },
     );
     expect(r.agree).toBe(true);
-    expect(r.fields).toHaveLength(2);
+    expect(r.fields).toHaveLength(1);
+    expect(r.fields[0]!.field).toBe("intent");
   });
   it("answer_draft: verbatim field", () => {
     const c = getComparator("answer_draft")!;

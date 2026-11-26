@@ -114,15 +114,19 @@ export function registerReviewAssistRunner(opts: {
     const tpl = template
       .map((c) => `- ${c.key}: ${c.label}${c.required ? " (required)" : ""}`)
       .join("\n");
-    const user =
+    // Delta-2 H-6: reviewType/workRef are agent-controlled fields —
+    // they ride inside the evidence fence, not on instruction lines.
+    const caseFields =
       `reviewType: ${sanitizeInline(rec.reviewType, 64)}\n` +
-      `workRef: ${sanitizeInline(rec.workRef, 200)}\n` +
+      `workRef: ${sanitizeInline(rec.workRef, 200)}\n\n`;
+    const user =
+      `case data:\n${untrustedBlock(caseFields + (ev || "(evidence: none)"))}\n` +
       (rec.agentCriteria
         ? `agentCriteria:\n${untrustedBlock(
             sanitizeUntrusted(JSON.stringify(rec.agentCriteria), 2000),
           )}\n`
         : "") +
-      `platform criteria template:\n${tpl}\n\nevidence:\n${untrustedBlock(ev || "(none)")}`;
+      `platform criteria template:\n${tpl}`;
     const prompt = promptFor(
       REVIEW_ASSIST_SCENARIO,
       FALLBACK_REVIEW_ASSIST,

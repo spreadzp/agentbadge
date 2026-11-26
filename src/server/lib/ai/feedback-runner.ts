@@ -86,7 +86,11 @@ async function feedbackText(
   ]
     .filter(Boolean)
     .join("\n");
-  return `${meta ? meta + "\n" : ""}text:\n${untrustedBlock(rec.text)}`;
+  // Delta-2 H-6: kind/target/severity are agent-controlled — they
+  // ride INSIDE the fence, not on instruction lines outside it.
+  return `feedback data:\n${untrustedBlock(
+    `${meta ? meta + "\n\n" : ""}${rec.text}`,
+  )}`;
 }
 
 async function reviewText(

@@ -172,6 +172,9 @@ export interface AiStore {
     scenario?: string;
     modeAtTime?: string;
     status?: string;
+    /** Delta-2 H-9: exclude a status — skipped audit rows must not
+     * consume a caller's row-limit window. */
+    excludeStatus?: string;
     limit?: number;
     offset?: number;
   }): Promise<AiRunRecord[]>;
@@ -219,7 +222,9 @@ export interface AiStore {
     opts?: { expectedLockedAt?: string | null },
   ): Promise<AiJobRecord | null>;
   /** Jobs in a given status — queue-depth guard input (H-8). */
-  countJobsByStatus(status: string): Promise<number>;
+  /** Delta-2 N-H2: per-subjectType buckets — intake volume cannot
+   * starve review_assist jobs behind one shared cap. */
+  countJobsByStatus(status: string, subjectType?: string): Promise<number>;
 
   // AutomationPolicy + PolicyChange
   getPolicy(scenario: string): Promise<AutomationPolicyRecord | null>;

@@ -78,6 +78,7 @@ export class InMemoryAiStore implements AiStore {
     scenario?: string;
     modeAtTime?: string;
     status?: string;
+    excludeStatus?: string;
     limit?: number;
     offset?: number;
   }): Promise<AiRunRecord[]> {
@@ -98,6 +99,9 @@ export class InMemoryAiStore implements AiStore {
     }
     if (opts?.status !== undefined) {
       all = all.filter((r) => r.status === opts.status);
+    }
+    if (opts?.excludeStatus !== undefined) {
+      all = all.filter((r) => r.status !== opts.excludeStatus);
     }
     const offset = opts?.offset ?? 0;
     const limit = opts?.limit ?? all.length;
@@ -128,8 +132,12 @@ export class InMemoryAiStore implements AiStore {
     ).length;
   }
 
-  async countJobsByStatus(status: string): Promise<number> {
-    return [...this.jobs.values()].filter((j) => j.status === status).length;
+  async countJobsByStatus(status: string, subjectType?: string): Promise<number> {
+    return [...this.jobs.values()].filter(
+      (j) =>
+        j.status === status &&
+        (subjectType === undefined || j.subjectType === subjectType),
+    ).length;
   }
 
   async sumTokensSince(sinceIso: string): Promise<number> {
@@ -180,6 +188,21 @@ export class InMemoryAiStore implements AiStore {
     now: string;
     maxAttempts?: number;
   }): Promise<AiJobRecord[]> {
+    // Delta-2 N-M2: sweep exhausted jobs to a terminal state — a job
+    // that burned its last attempt mid-flight must not sit `working`
+    // (or `queued` under a lowered max) forever.
+    if (opts.maxAttempts !== undefined) {
+      for (const j of this.jobs.values()) {
+        if (
+          (j.status === "queued" || j.status === "working") &&
+          j.attempts >= opts.maxAttempts
+        ) {
+          j.status = "failed";
+          j.lastError = "attempts_exhausted";
+          j.updatedAt = opts.now;
+        }
+      }
+    }
     const claimable = [...this.jobs.values()]
       .filter(
         (j) =>
@@ -201,7 +224,10 @@ export class InMemoryAiStore implements AiStore {
       j.attempts += 1;
       j.updatedAt = opts.now;
     }
-    return claimable;
+    // Delta-2 N-M2: CLONE on claim — the caller's record must not
+    // alias the stored row, or a stale claim would read (and pass
+    // CAS against) the re-claimer's lockedAt.
+    return claimable.map((j) => ({ ...j }));
   }
 
   async completeJob(

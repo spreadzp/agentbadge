@@ -54,6 +54,9 @@ export function decideForm(
     suggestion.mode === "supervised" &&
     suggestion.effectiveNow === "supervised" &&
     suggestion.threshold != null &&
+    // Delta-2 N-M6: a stale threshold=0 row would admit every
+    // confidence — require a strictly positive floor.
+    suggestion.threshold > 0 &&
     suggestion.confidence != null &&
     suggestion.confidence >= suggestion.threshold;
   const byName = new Map(

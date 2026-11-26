@@ -47,8 +47,19 @@ export async function compareShadowRun(
   /** 232-12 H-9: polymorphic — review_case comparisons share it. */
   subjectType: string = "agent_request",
 ): Promise<{ run: AiRunRecord; result: AgreementResult } | null> {
-  const run = await aiStore.latestRunFor(subjectType, requestId, scenario);
-  if (!run || run.modeAtTime !== "shadow" || run.status !== "success") {
+  // Delta-2 N-H1: newest SHADOW SUCCESS run — a newer error row from
+  // a stale claim must not hide the shadow answer from comparison
+  // (that is exactly the selection bias H-9 removed).
+  const runs = await aiStore.listRuns({
+    subjectType,
+    subjectId: requestId,
+    scenario,
+    limit: 10,
+  });
+  const run = runs.find(
+    (r) => r.modeAtTime === "shadow" && r.status === "success",
+  );
+  if (!run) {
     return null;
   }
   const cmp = getComparator(scenario);

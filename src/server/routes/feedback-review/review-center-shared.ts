@@ -137,3 +137,26 @@ export async function loadReviewAiSuggestions(
     effectiveNow,
   );
 }
+
+/** Delta-2 N-M3/N-H1: newest non-shadow SUCCESS review_assist run —
+ *  a shadow-only or failed/skipped run must not light the queue
+ *  lane ("confirm" vs "suggested" vs "manual"). */
+export async function latestVisibleReviewRun(
+  aiStore: AiStore | undefined,
+  reviewId: string,
+): Promise<"confirm" | "suggested" | "manual"> {
+  if (!aiStore) return "manual";
+  const run = (
+    await aiStore.listRuns({
+      subjectType: "review_case",
+      subjectId: reviewId,
+      scenario: "review_assist",
+      limit: 10,
+    })
+  ).find((r) => r.modeAtTime !== "shadow" && r.status === "success");
+  return run?.modeAtTime === "supervised"
+    ? "confirm"
+    : run != null
+      ? "suggested"
+      : "manual";
+}

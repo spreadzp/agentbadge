@@ -17,42 +17,26 @@
  * env-gated interval service wired in wiring/background.ts.
  */
 
-import type { AiEnvConfig } from "../../../config/env/ai-types";
 import { getConfig } from "../../../config/env";
 import { getDatabase } from "../database";
 
-import { createAiAlertSender, type AiAlertSender } from "./alerts";
-import { applyBudgetDegradation, checkBudget, resolveEffectiveMode } from "./budget";
+import { createAiAlertSender } from "./alerts";
 import { notifyAiRunAppended } from "./compare";
 import { pickAiStores } from "./db-stores";
 import { validateScenarioOutput } from "./output-schemas";
-import { LlmError, createOpenAiProvider, type LlmProvider } from "./provider";
+import { LlmError, createOpenAiProvider } from "./provider";
 import { getScenarioRunner, isNotAvailable } from "./scenarios";
-import type { AiStore } from "./types";
-import { recordError, recordSkip, skipReason } from "./worker-record";
+import {
+  leaseHeld,
+  recordError,
+  recordGatedSkip,
+  recordSkip,
+  resolveJobMode,
+} from "./worker-record";
 
-export interface DrainAiDeps {
-  store?: AiStore;
-  /** `getConfig().ai` — undefined when AI_AUTOMATION_ENABLED is off. */
-  config?: AiEnvConfig;
-  /** Provider seam — undefined → built from config; null → forced absent. */
-  provider?: LlmProvider | null;
-  alert?: AiAlertSender;
-  /** Jobs claimed per drain (default 25). */
-  limit?: number;
-  leaseMs?: number;
-  maxAttempts?: number;
-  now?: () => Date;
-  log?: (msg: string) => void;
-}
+import type { AiDrainResult, DrainAiDeps } from "./worker-record";
 
-export interface AiDrainResult {
-  processed: number;
-  succeeded: number;
-  failed: number;
-  skipped: number;
-  errors: string[];
-}
+export type { AiDrainResult, DrainAiDeps };
 
 /**
  * One drain pass over claimable jobs. Called by the interval service
@@ -90,34 +74,37 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
 
   for (const job of jobs) {
     res.processed++;
+    // Delta-2 H-7: the CAS on completeJob protects the job ROW but
+    // not the side effects — check the lease FIRST so a stale claim
+    // writes no runs at all (the re-claimer owns the job and will
+    // produce its own audit trail).
+    if (!(await leaseHeld(store, job))) {
+      res.errors.push(`${job.id} ${job.scenario}: lease_lost`);
+      continue;
+    }
     let modeAtTime = "off";
     try {
-      const policy = await store.getPolicy(job.scenario);
-      const declaredMode = policy?.mode ?? "off";
-      // Budget is read per job — call count grows inside the drain.
-      const budget = enabled
-        ? await checkBudget(store, cfg!, now())
-        : { state: "ok" as const, dailyCalls: 0, monthlyUsdEstimate: 0 };
-      const effective = resolveEffectiveMode(declaredMode, {
+      const { declaredMode, effective, budget } = await resolveJobMode(
+        store,
+        job,
+        cfg!,
         enabled,
-        budget: budget.state,
-      });
+        now(),
+      );
       modeAtTime = effective;
 
       if (effective === "off") {
-        const reason = skipReason(enabled, declaredMode, budget.state);
-        if (budget.state === "exhausted" && declaredMode !== "off") {
-          await applyBudgetDegradation(
-            store,
-            declaredMode,
-            job.scenario,
-            budget,
-            cfg!,
-            alert,
-            now(),
-          );
-        }
-        await recordSkip(store, job, effective, reason);
+        await recordGatedSkip(
+          store,
+          job,
+          effective,
+          declaredMode,
+          budget,
+          cfg!,
+          alert,
+          enabled,
+          now(),
+        );
         res.skipped++;
         continue;
       }
@@ -159,6 +146,14 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
         await recordSkip(store, job, effective, reason);
         res.skipped++;
         res.errors.push(`${job.id} ${job.scenario}: ${reason}`);
+        continue;
+      }
+      // Delta-2 H-7: the CAS on completeJob protects the job ROW but
+      // not the side effects — re-read the lease before the provider
+      // call and again before appendRun; a stale claim produces zero
+      // LLM spend and zero run rows (the re-claimer owns the job).
+      if (!(await leaseHeld(store, job))) {
+        res.errors.push(`${job.id} ${job.scenario}: lease_lost_pre_call`);
         continue;
       }
       const t0 = Date.now();
@@ -203,11 +198,22 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
                 model: out.model,
                 promptVersion: prompt.promptVersion ?? null,
                 latencyMs,
+                // Delta-2 H-8: provider billed this attempt.
+                usage: out.usage,
+                tokensTotal: out.usage?.total ?? null,
               },
             );
             if (terminal === "failed") res.failed++;
             continue;
           }
+        }
+        // Delta-2 H-7/N-H1: lease re-check BEFORE appendRun — a stale
+        // claim must not write a run that masks the winner's result
+        // (newest-first readers would show the loser's error/stale
+        // row instead of the winner's success).
+        if (!(await leaseHeld(store, job))) {
+          res.errors.push(`${job.id} ${job.scenario}: lease_lost_pre_append`);
+          continue;
         }
         const run = await store.appendRun({
           scenario: job.scenario,
@@ -227,11 +233,18 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
           status: "success",
           jobId: job.id,
         });
-        await store.completeJob(
+        const completed = await store.completeJob(
           job.id,
           { status: "done", runId: run.id },
           { expectedLockedAt: job.lockedAt },
         );
+        // CAS lost between append and complete — the run row stands
+        // (append-only) but the job belongs to another claim; do not
+        // count or trigger comparisons for it.
+        if (completed === null) {
+          res.errors.push(`${job.id} ${job.scenario}: lease_lost_complete`);
+          continue;
+        }
         res.succeeded++;
         // 232-12 H-9: a shadow run that finishes AFTER the human
         // outcome still gets its lazy comparison — registered
@@ -259,6 +272,9 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
             provider: provider.id,
             promptVersion: prompt.promptVersion ?? null,
             latencyMs: Date.now() - t0,
+            // Delta-2 H-8: usage the provider billed before failing.
+            usage: err.usage ?? null,
+            tokensTotal: err.usage?.total ?? null,
           },
         );
         if (terminal === "failed") res.failed++;

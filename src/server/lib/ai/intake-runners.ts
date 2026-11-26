@@ -77,17 +77,31 @@ export function sanitizeUntrusted(
   text: string,
   max: number = MAX_UNTRUSTED_CHARS,
 ): string {
-  return text.replace(/[\x00-\x08\x0B\x1F\x7F]/g, "").slice(0, max);
+  // Delta-2 N-M1: \x0B-\x1F is a RANGE (form feed, ESC, \x0E-\x1E all
+  // stripped); plus Unicode line/paragraph separators + bidi marks.
+  return text
+    .replace(/[\x00-\x08\x0B-\x1F\x7F\u0085\u2028\u2029\u202A-\u202E]/g, "")
+    .slice(0, max);
 }
 
-/** Wrap untrusted text in a fenced data block (H-6). */
+/**
+ * Delta-2 H-6: the fence itself must be unforgeable — an author who
+ * can write `</untrusted_input>` inside the payload would close the
+ * data block and smuggle instructions after it. Neutralize the tag
+ * name wherever it appears in content (case-insensitive).
+ */
+const FENCE_TAG_RE = /<\/?\s*untrusted_input\s*>/gi;
 export function untrustedBlock(text: string): string {
-  return `<untrusted_input>\n${sanitizeUntrusted(text)}\n</untrusted_input>`;
+  const safe = sanitizeUntrusted(text).replace(FENCE_TAG_RE, " ");
+  return `<untrusted_input>\n${safe}\n</untrusted_input>`;
 }
 
 /** One-line untrusted field (labels, kinds) — no newlines. */
 export function sanitizeInline(text: string, max = 160): string {
-  return sanitizeUntrusted(text, max).replace(/[\r\n]+/g, " ").trim();
+  return sanitizeUntrusted(text, max)
+    .replace(FENCE_TAG_RE, " ")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
 }
 
 export async function loadSubject(
@@ -142,10 +156,12 @@ export function userBlock(subject: {
   text: string;
   kind: string | null;
 }): string {
+  // Delta-2 H-6: the declared kind is agent-controlled too — it
+  // rides INSIDE the fence, not on an instruction line outside it.
   const kind = subject.kind
-    ? `declared kind: ${sanitizeInline(subject.kind, 64)}\n`
+    ? `declared kind: ${sanitizeInline(subject.kind, 64)}\n\n`
     : "";
-  return `${kind}request text:\n${untrustedBlock(subject.text)}`;
+  return `request data:\n${untrustedBlock(`${kind}${subject.text}`)}`;
 }
 
 /** Bind the inbox stores into the two intake runners (idempotent). */

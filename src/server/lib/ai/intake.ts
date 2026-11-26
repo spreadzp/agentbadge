@@ -237,8 +237,11 @@ export async function loadAiSuggestions(
       }),
       aiStore.getPolicy(scenario),
     ]);
+    // Delta-2 N-H1: newest non-shadow SUCCESS run — a newer
+    // error/skipped row from a stale claim must not mask the
+    // suggestion that actually landed.
     const run: AiRunRecord | undefined = runs.find(
-      (r) => r.modeAtTime !== "shadow",
+      (r) => r.modeAtTime !== "shadow" && r.status === "success",
     );
     const declared = policy?.mode ?? "off";
     const threshold = policy?.confidenceThreshold ?? null;
