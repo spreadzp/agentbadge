@@ -13,6 +13,8 @@ import { getConfig } from "../../config/env";
 import { getDatabase } from "../lib/database";
 import { pickAiStores } from "../lib/ai/db-stores";
 import { pickOperatorStores } from "../lib/operators";
+import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
+import { pickReviewStore } from "../lib/reviews/db-stores";
 import { createAdminAiUi } from "../routes/admin-ai-ui";
 
 export function wireAdminAi(app: Hono): void {
@@ -23,6 +25,9 @@ export function wireAdminAi(app: Hono): void {
       aiStore: pickAiStores(db),
       operatorStore: pickOperatorStores(db),
       config: getConfig().ai,
+      // 232-10: metrics projection joins — review + interaction seams.
+      reviews: pickReviewStore(db),
+      interactions: pickRequestInboxStores(db).interactions,
     }),
   );
 }

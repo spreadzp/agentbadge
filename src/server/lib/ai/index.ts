@@ -104,6 +104,12 @@ export type {
   CompareHookOpts,
   FieldAgreement,
 } from "./compare";
+export { computeAiMetrics } from "./metrics/projection";
+export type {
+  AiMetrics,
+  AiMetricsFilter,
+  ScenarioModeCell,
+} from "./metrics/projection";
 export {
   AI_JOB_STATUSES,
   AI_MODES,

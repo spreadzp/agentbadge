@@ -56,10 +56,15 @@ import type {
   AutomationPolicyRecord,
 } from "../lib/ai/types";
 
+import type { InteractionStore } from "../lib/request-inbox/interaction-store";
+import type { ReviewStore } from "../lib/reviews/store";
+import { computeAiMetrics } from "../lib/ai/metrics/projection";
+
 import {
   adminAiPage,
   type AiPolicyRow,
 } from "../../views/admin-ai/policies";
+import { aiMetricsPage } from "../../views/admin-ai/metrics";
 
 const FORM_TOKEN_ERR = "form_expired_or_duplicate";
 const str = (b: Record<string, unknown>, k: string): string =>
@@ -125,6 +130,9 @@ export function createAdminAiUi(deps: {
   /** `getConfig().ai` — undefined = master kill engaged (tests pass
    *  a value explicitly). */
   config?: AiEnvConfig;
+  /** 232-10 E10: projection joins — absent → metrics page refuses. */
+  reviews?: ReviewStore;
+  interactions?: InteractionStore;
 }): Hono {
   const { aiStore, operatorStore } = deps;
   const cfg = () => deps.config;
@@ -182,6 +190,36 @@ export function createAdminAiUi(deps: {
         modes: AI_MODES,
         formToken: mintFormToken(),
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
+      }),
+    );
+  });
+
+  // 232-10 E10: on-demand §17.3 projection — computed at request
+  // time from AiRun + human entities (D-232-6, no metric tables).
+  app.get("/admin/ai/metrics", async (c) => {
+    if (!deps.reviews || !deps.interactions) {
+      return errorResponse(
+        c, 503, ErrorCodes.DATA_UNAVAILABLE, "metrics projection unavailable",
+      );
+    }
+    const scenario = c.req.query("scenario")?.trim() || undefined;
+    const m = await computeAiMetrics(
+      {
+        aiStore,
+        reviews: deps.reviews,
+        interactions: deps.interactions,
+      },
+      {
+        from: c.req.query("from")?.trim() || undefined,
+        to: c.req.query("to")?.trim() || undefined,
+        scenario,
+      },
+    );
+    return page(
+      c,
+      aiMetricsPage({
+        metrics: m,
+        filter: { from: m.window.from ?? "", to: m.window.to ?? "", scenario: scenario ?? "" },
       }),
     );
   });
