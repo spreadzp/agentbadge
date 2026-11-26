@@ -30,3 +30,11 @@ coverage/
 
 # probe-bot local state (per-machine, D-234-38-Q8)
 scripts/probe-bot/probe-state.db*
+
+# Tool/agent session artifacts — generated, never commit
+graphify-out/
+deploy/database/.agents/
+deploy/database/.claude/
+deploy/database/.cursor/
+deploy/database/.devin/
+deploy/database/bun.lock
