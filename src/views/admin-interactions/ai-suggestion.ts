@@ -32,6 +32,19 @@ function field(label: string, value: unknown) {
   </div>`;
 }
 
+function itemsBlock(out: Record<string, unknown>) {
+  if (!Array.isArray(out.items)) return "";
+  return html`<ul class="mt-1 list-disc space-y-0.5 pl-4 text-xs text-slate-300">
+    ${(out.items as { type?: string; text?: string; sentiment?: string }[]).map(
+      (i) => html`<li>
+        <span class="text-slate-500">${i.type ?? "item"}:</span>
+        ${i.text ?? ""}
+        ${i.sentiment ? html`<span class="text-slate-600">(${i.sentiment})</span>` : ""}
+      </li>`,
+    )}
+  </ul>`;
+}
+
 function runBody(s: AiSuggestionView) {
   if (s.status === "none") {
     return html`<div class="text-xs text-slate-500">no run yet</div>`;
@@ -55,7 +68,7 @@ function runBody(s: AiSuggestionView) {
     ${field("capabilities", out.capabilities)}
     ${field("summary", out.summary)} ${field("key facts", out.keyFacts)}
     ${field("query", out.query)} ${field("matched", matched)}
-    ${field("confidence", s.confidence)}
+    ${itemsBlock(out)} ${field("confidence", s.confidence)}
   </div>`;
 }
 

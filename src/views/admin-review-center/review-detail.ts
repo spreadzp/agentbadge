@@ -8,6 +8,8 @@
 import { html } from "hono/html";
 
 import { criteriaForReview } from "../../server/lib/reviews/criteria";
+import type { AiSuggestionView } from "../../server/lib/ai/intake";
+import { aiSuggestionSection } from "../admin-interactions/ai-suggestion";
 import type {
   ReviewCaseRecord,
   ReviewDecisionRecord,
@@ -197,6 +199,8 @@ export function reviewDetailPage(input: {
   evidence: ReviewEvidenceRecord[];
   decisions: ReviewDecisionRecord[];
   events: ReviewEventRecord[];
+  /** 232-6 E5: advisory extraction suggestions (advisory block). */
+  aiSuggestions?: AiSuggestionView[];
   formToken: string;
   flash?: { ok?: string; err?: string };
 }): string {
@@ -204,6 +208,7 @@ export function reviewDetailPage(input: {
   const body = html`
     ${queueTabs("reviews", "all")} ${flashBanner(input.flash ?? {})}
     ${metaSection(r)} ${workSection(r)} ${evidenceSection(input.evidence)}
+    ${aiSuggestionSection(input.aiSuggestions ?? [])}
     ${decisionsSection(input.decisions)}
     ${claimForm(r, input.formToken)} ${decideForm(r, input.formToken)}
     ${declineForm(r, input.formToken)} ${reopenForm(r, input.formToken)}

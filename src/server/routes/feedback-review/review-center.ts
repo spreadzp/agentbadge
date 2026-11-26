@@ -38,6 +38,8 @@ import {
 } from "./review-center-shared";
 import { registerReviewCenterMutations } from "./review-center-mutations";
 import { registerReviewCenterConversions } from "./review-center-convert";
+import { loadAiSuggestions } from "../../lib/ai/intake";
+import type { AiStore } from "../../lib/ai/types";
 import {
   feedbackQueuePage,
   reviewsQueuePage,
@@ -62,6 +64,8 @@ export function createReviewCenter(deps: {
   stores: FeedbackReviewStores;
   /** SLICE-264-8: credential store for operatorAuth — tests inject. */
   operatorStore?: OperatorStore;
+  /** 232-6 E5: advisory AI extraction suggestions — absent → none shown. */
+  aiStore?: AiStore;
 }): Hono {
   const app = new Hono();
   const { stores } = deps;
@@ -152,12 +156,18 @@ export function createReviewCenter(deps: {
     if (!rec) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such feedback");
     }
-    const events = await stores.feedback.listEvents(id.data);
+    const [events, aiSuggestions] = await Promise.all([
+      stores.feedback.listEvents(id.data),
+      deps.aiStore
+        ? loadAiSuggestions(deps.aiStore, id.data, ["feedback_extract"])
+        : Promise.resolve([]),
+    ]);
     return page(
       c,
       feedbackDetailPage({
         record: rec,
         events,
+        aiSuggestions,
         formToken: mintFormToken(),
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
@@ -174,10 +184,13 @@ export function createReviewCenter(deps: {
     if (!rec) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such review");
     }
-    const [evidence, decisions, events] = await Promise.all([
+    const [evidence, decisions, events, aiSuggestions] = await Promise.all([
       stores.reviews.listEvidence(id.data),
       stores.reviews.listDecisions(id.data),
       stores.reviews.listEvents(id.data),
+      deps.aiStore
+        ? loadAiSuggestions(deps.aiStore, id.data, ["feedback_extract"])
+        : Promise.resolve([]),
     ]);
     return page(
       c,
@@ -186,6 +199,7 @@ export function createReviewCenter(deps: {
         evidence,
         decisions,
         events,
+        aiSuggestions,
         formToken: mintFormToken(),
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),

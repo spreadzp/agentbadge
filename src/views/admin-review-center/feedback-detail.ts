@@ -15,6 +15,8 @@ import {
   FEEDBACK_SEVERITIES,
   FEEDBACK_TARGETS,
 } from "../../server/lib/feedback/types";
+import type { AiSuggestionView } from "../../server/lib/ai/intake";
+import { aiSuggestionSection } from "../admin-interactions/ai-suggestion";
 import { emptyMsg, fmtMs, kv } from "../finops/shared";
 import {
   fbPill,
@@ -222,12 +224,15 @@ function eventsSection(events: FeedbackEventRecord[]) {
 export function feedbackDetailPage(input: {
   record: FeedbackRecord;
   events: FeedbackEventRecord[];
+  /** 232-6 E5: advisory extraction suggestions (advisory block). */
+  aiSuggestions?: AiSuggestionView[];
   formToken: string;
   flash?: { ok?: string; err?: string };
 }): string {
   const body = html`
     ${queueTabs("feedback", "all")} ${flashBanner(input.flash ?? {})}
     ${metaSection(input.record)} ${textSection(input.record)}
+    ${aiSuggestionSection(input.aiSuggestions ?? [])}
     ${actionsSection(input.record, input.formToken)}
     ${eventsSection(input.events)}
   `;

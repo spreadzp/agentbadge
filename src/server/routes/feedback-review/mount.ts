@@ -10,6 +10,7 @@ import type { FeedbackStore } from "../../lib/feedback/store";
 import type { ReviewStore } from "../../lib/reviews/store";
 import type { KnowledgeDraftPort } from "../../lib/knowledge-draft/port";
 import type { OperatorStore } from "../../lib/operators";
+import type { AiStore } from "../../lib/ai/types";
 import { createAgentFeedbackRoutes } from "./agent-feedback-api";
 import { createAgentReviewsRoutes } from "./agent-reviews-api";
 import { createReviewCenter } from "./review-center";
@@ -25,10 +26,16 @@ export function mountFeedbackReviewRoutes(
   app: Hono,
   stores: FeedbackReviewStores,
   operatorStore?: OperatorStore,
+  /** 232-6 E5: optional — review-center pages show extraction
+   *  suggestions when present; absent → advisory block not rendered. */
+  aiStore?: AiStore,
 ): void {
   // 230-4: public — POST/GET /api/v1/agent/feedback|reviews.
   app.route("/", createAgentFeedbackRoutes({ store: stores.feedback }));
   app.route("/", createAgentReviewsRoutes({ store: stores.reviews }));
   // 230-5: operator SSR — /admin/review-center?queue= behind operatorBrowserAuth.
-  app.route("/", createReviewCenter({ stores, operatorStore }));
+  app.route(
+    "/",
+    createReviewCenter({ stores, operatorStore, aiStore }),
+  );
 }

@@ -70,6 +70,18 @@ export {
   registerKnowledgeSearchRunner,
 } from "./knowledge-runner";
 export {
+  FEEDBACK_EXTRACT_SCENARIO,
+  FEEDBACK_ITEM_TYPES,
+  FEEDBACK_SENTIMENTS,
+  registerFeedbackExtractRunner,
+} from "./feedback-runner";
+export {
+  registerAiFeedbackHook,
+  registerAiReviewHook,
+  resetAiFeedbackHooks,
+  wireAiFeedback,
+} from "./feedback-intake";
+export {
   compareShadowRun,
   getComparator,
   registerAiComparisonHook,

@@ -23,6 +23,7 @@ import { pickKnowledgeStores } from "../lib/knowledge/db-stores";
 import { knowledgeDraftPort } from "../lib/knowledge-draft/port";
 import { onFeedbackEvent } from "../lib/feedback/events";
 import { onReviewEvent } from "../lib/reviews/events";
+import { pickAiStores } from "../lib/ai/db-stores";
 import {
   escHtml,
   sendTelegramMessage,
@@ -205,6 +206,13 @@ export function wireFeedbackReview(app: Hono): void {
     // the draft lands in the same seam the admin knowledge UI reads.
     draftPort: knowledgeDraftPort(pickKnowledgeStores(db)),
   };
-  mountFeedbackReviewRoutes(app, stores, pickOperatorStores(db));
+  mountFeedbackReviewRoutes(
+    app,
+    stores,
+    pickOperatorStores(db),
+    // 232-6 E5: advisory extraction suggestions on detail pages —
+    // absent store renders nothing (fail-open).
+    pickAiStores(db),
+  );
   registerHooks(stores.reviews);
 }

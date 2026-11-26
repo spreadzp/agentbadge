@@ -20,6 +20,7 @@ import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startAiWorker } from "../lib/ai/worker";
 import { wireAiIntake } from "../lib/ai/intake";
+import { wireAiFeedback } from "../lib/ai/feedback-intake";
 import { startArchiveWorkers } from "./archive-workers";
 import { getDatabase } from "../lib/database";
 import { getConfig } from "../../config/env";
@@ -91,6 +92,10 @@ export function startBackgroundJobs(): void {
   // enqueues AiJobs on committed interaction requests when the
   // scenario's declared policy mode ≠ off. Inert under the kill-switch.
   wireAiIntake();
+  // 232-6 E5: feedback/review received|submitted hooks →
+  // feedback_extract AiJobs; extracted items surface in the review
+  // center as advisory suggestions (never auto-created records).
+  wireAiFeedback();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.
