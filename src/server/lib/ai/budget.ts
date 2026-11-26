@@ -180,8 +180,11 @@ export async function applyBudgetDegradation(
       `budget_exhausted[${cause}]: ${budget.dailyCalls}/${cfg.dailyCallLimit} calls, ` +
       `~$${budget.monthlyUsdEstimate.toFixed(4)}/$${cfg.monthlyBudgetUsd}${subjectNote}`,
   });
+  // Delta-4 N4-M1: per-CAUSE alert subject — the 5-min cooldown is
+  // keyed on it, so a subject-partition alert cannot swallow the
+  // global/usd alert (or a different stream's) in the same window.
   await alert(
-    "ai-budget",
+    `ai-budget:${cause}`,
     `AI budget exhausted (${cause}) — automation degraded to off\n` +
       `calls today: ${budget.dailyCalls}/${cfg.dailyCallLimit}\n` +
       `est. month spend: ~$${budget.monthlyUsdEstimate.toFixed(4)}/$${cfg.monthlyBudgetUsd}\n` +

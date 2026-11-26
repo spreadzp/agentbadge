@@ -121,11 +121,11 @@ export function aiSuggestionSection(list: AiSuggestionView[]) {
           </div>
           ${runBody(s)}
           ${
-            // Delta-4 N3-M3: surface a LATER failed attempt even when
-            // the suggestion below comes from an older success run —
-            // "provider errored after the success" must not look like
-            // "quiet since the success".
-            s.status === "success" &&
+            // Delta-4 N3-M3/N4-M2: surface a failed attempt even when
+            // the suggestion comes from an older success run — AND
+            // when NO success exists at all (status "none" would
+            // otherwise print "no run yet" over a provider outage or
+            // a budget skip).
             s.lastAttemptStatus !== "success" &&
             s.lastAttemptStatus !== "none"
               ? html`<div class="mt-1 text-[10px] text-amber-400/90">

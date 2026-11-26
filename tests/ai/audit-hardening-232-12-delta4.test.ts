@@ -20,6 +20,7 @@ import {
   type FetchLike,
 } from "../../src/server/lib/ai/provider";
 import { InMemoryAiStore } from "../../src/server/lib/ai/store-memory";
+import { aiSuggestionSection } from "../../src/views/admin-interactions/ai-suggestion";
 
 let ai: InMemoryAiStore;
 const savedEnv = new Map<string, string | undefined>();
@@ -128,7 +129,7 @@ describe("delta-4 N3-M2: partition cause + dedupe", () => {
   });
 
   it("subject hit does not suppress the later global hit (dedupe keys on cause)", async () => {
-    const alert = vi.fn(async () => {});
+    const alert = vi.fn(async (_subject: string, _text: string) => {});
     await applyBudgetDegradation(
       ai,
       "assist",
@@ -155,6 +156,10 @@ describe("delta-4 N3-M2: partition cause + dedupe", () => {
     const rows = await ai.listPolicyChanges({ limit: 10 });
     expect(rows.filter((r) => r.actor === "budget-guard")).toHaveLength(2);
     expect(alert).toHaveBeenCalledTimes(2);
+    // N4-M1: each cause is its own alert subject — the sender
+    // cooldown cannot swallow the second cause's alert.
+    expect(alert.mock.calls[0]?.[0]).toBe("ai-budget:subject:agent_request");
+    expect(alert.mock.calls[1]?.[0]).toBe("ai-budget:global");
     // Same-cause repeat still dedupes
     await applyBudgetDegradation(
       ai,
@@ -243,5 +248,49 @@ describe("delta-4 N3-M4: invisible + smuggling chars stripped", () => {
     const out = sanitizeUntrusted("</untrusted_input>\u{E003E}");
     expect(out).not.toContain("<");
     expect(out).not.toContain(">");
+  });
+});
+
+// ─── Delta-4 N4-M2: failure-only subjects no longer read "no run yet" ───
+
+describe("delta-4 N4-M2: last-attempt line covers failure-only subjects", () => {
+  const view = (over: Record<string, unknown>) => ({
+    scenario: "classification",
+    runId: null,
+    status: "none",
+    mode: "shadow",
+    effectiveNow: "off",
+    output: null,
+    confidence: null,
+    threshold: null,
+    belowThreshold: false,
+    model: null,
+    promptVersion: null,
+    latencyMs: null,
+    error: null,
+    createdAt: null,
+    lastAttemptStatus: "none",
+    lastAttemptError: null,
+    ...over,
+  });
+
+  it("renders the failed attempt when no success run exists", () => {
+    const htmlStr = String(
+      aiSuggestionSection([
+        view({
+          lastAttemptStatus: "invalid_json",
+          lastAttemptError: "output is not valid JSON",
+        }) as never,
+      ]),
+    );
+    expect(htmlStr).toContain("last attempt: invalid_json");
+    expect(htmlStr).toContain("output is not valid JSON");
+  });
+
+  it("still silent when nothing ever ran", () => {
+    const htmlStr = String(
+      aiSuggestionSection([view({}) as never]),
+    );
+    expect(htmlStr).not.toContain("last attempt:");
   });
 });
