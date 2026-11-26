@@ -23,6 +23,11 @@ import type { Context } from "hono";
 import z from "zod";
 
 import { resolveActor, type ResolvedActor } from "./actor";
+import {
+  handleAsk,
+  handleDiscover,
+  handleGetRequestStatus,
+} from "./tools/read";
 import { REQUEST_ID_RE } from "../request-inbox/types";
 
 export const AGENT_INTERACTION_PROTOCOL_VERSION = "2025-03-26";
@@ -105,7 +110,7 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
     rest_equivalent: "GET /.well-known/agent-interaction.json",
     channel: ["mcp", "webmcp"],
     inputSchema: z.object({}).strict(),
-    handler: notImplemented("agentbadge_discover", "SLICE-233-2"),
+    handler: handleDiscover,
   },
   {
     name: "agentbadge_ask",
@@ -118,7 +123,7 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
     rest_equivalent: "GET /api/requests/qa?q={question}",
     channel: ["mcp", "webmcp"],
     inputSchema: z.object({ question: str(2000) }).strict(),
-    handler: notImplemented("agentbadge_ask", "SLICE-233-2"),
+    handler: handleAsk,
   },
   {
     name: "agentbadge_get_request_status",
@@ -134,7 +139,7 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
     inputSchema: z
       .object({ request_id: z.string().regex(REQUEST_ID_RE) })
       .strict(),
-    handler: notImplemented("agentbadge_get_request_status", "SLICE-233-2"),
+    handler: handleGetRequestStatus,
   },
   {
     name: "agentbadge_create_task_request",

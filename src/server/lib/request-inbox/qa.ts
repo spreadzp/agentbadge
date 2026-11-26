@@ -145,6 +145,19 @@ export function toPublicQaResult(p: InboxQaPair) {
   };
 }
 
+/** EPIC-233 (SLICE-233-2): public QA corpus search — THE code path
+ *  shared by GET /api/requests/qa (REST) and agentbadge_ask (MCP).
+ *  normalize → substring search → public projection; parity is
+ *  structural, not tested-into. */
+export async function searchPublicQa(
+  requests: RequestStore,
+  q: string,
+  limit = 25,
+) {
+  const pairs = await requests.searchQa(normalizeQuestion(q), limit);
+  return pairs.map(toPublicQaResult);
+}
+
 /** D-256-Q15: POST fast-path body — honest provenance: no new row
  *  was created; the answer comes from the public corpus. */
 export function qaFastPathBody(pair: InboxQaPair) {

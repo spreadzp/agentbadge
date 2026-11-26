@@ -16,8 +16,8 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
 import { resolveActor } from "../../lib/agent-interaction/actor";
+import { requestPoll } from "../../lib/request-inbox/poll";
 import type { RequestStore } from "../../lib/request-inbox/store";
-import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 
 const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
 
@@ -36,29 +36,18 @@ export function registerRequestPollRoute(
       // EPIC-228: superseded by GET /api/v1/agent/requests/:id (D-206-8).
       legacyRequestInboxDeprecation(c);
       const id = c.req.param("id");
-      if (!REQUEST_ID_RE.test(id)) {
-        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
-      }
-      const { record, expired } = await requests.get(id);
-      if (!record) {
+      // EPIC-233: shared outcome with agentbadge_get_request_status —
+      // id-format, lookup, R2-H2 identity gate, expiry all live in
+      // lib/request-inbox/poll.ts.
+      const outcome = await requestPoll(
+        requests,
+        id,
+        resolveActor(c).actorRef,
+      );
+      if (outcome.kind === "not_found") {
         return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
       }
-      // Arc-audit R2-H2: this route reads the SHARED agentRequest row,
-      // so it must not become a side door around the v1 identity gate.
-      // Same rule as v1 tenantDeny: API_KEY-owned rows require the
-      // owning key; identified callers can't read foreign identified
-      // rows; DID/ANON stay capability-URL (no DID auth on GET).
-      const callerRef = resolveActor(c).actorRef;
-      if (
-        (record.actorResolution === "API_KEY" &&
-          callerRef !== record.actorRef) ||
-        (callerRef !== null &&
-          record.actorRef !== null &&
-          callerRef !== record.actorRef)
-      ) {
-        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
-      }
-      if (expired) {
+      if (outcome.kind === "expired") {
         return errorResponse(
           c,
           410,
@@ -69,11 +58,12 @@ export function registerRequestPollRoute(
       }
       // D-256-Q16: lifecycle visibility — poll hint stays honest
       // (ops-pull, hours–days; no SLA promised).
+      const { record } = outcome;
       const lifecycle = {
         created_at: record.createdAtMs,
         expires_at: record.expiresAtMs,
       };
-      if (record.state === "submitted" || record.state === "working") {
+      if (outcome.kind === "pending") {
         c.header("Retry-After", String(RETRY_AFTER_SEC));
         return c.json(
           { state: record.state, ...lifecycle, retry_after: RETRY_AFTER_SEC },

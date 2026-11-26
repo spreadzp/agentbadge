@@ -13,8 +13,7 @@ import { describeRoute } from "hono-openapi";
 
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
-import { normalizeQuestion } from "../../lib/request-inbox/fingerprint";
-import { toPublicQaResult } from "../../lib/request-inbox/qa";
+import { searchPublicQa } from "../../lib/request-inbox/qa";
 import type { RequestStore } from "../../lib/request-inbox/store";
 
 /** Registers `GET /api/requests/qa` on the given app — mount BEFORE
@@ -39,8 +38,8 @@ export function registerQaSearchRoute(
           hint: "example: GET /api/requests/qa?q=how+do+I+verify+a+verdict",
         });
       }
-      const pairs = await requests.searchQa(normalizeQuestion(q), 25);
-      return c.json({ results: pairs.map(toPublicQaResult) });
+      // EPIC-233: shared code path with agentbadge_ask (MCP tool).
+      return c.json({ results: await searchPublicQa(requests, q, 25) });
     },
   );
 }
