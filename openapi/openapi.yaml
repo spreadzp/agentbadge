@@ -7,7 +7,7 @@ info:
     x402 scans return a full ruleset verdict and can mint an AccessPass NFT on
     Arc; free endpoints expose the verdict registry, service catalog and
     machine-readable descriptors for discovery.
-  version: 0.16.0
+  version: 0.17.0
   x-guidance: "Verify an AI agent or API for agent-readiness. Input: POST
     /api/total-scan with a target URL; the endpoint answers 402 first — pay in
     USDC over x402 (EIP-3009, Arc eip155:5042) and retry. Output: a full ruleset
@@ -52,6 +52,16 @@ tags:
     description: On-chain scan recording via KeeperHub workflows on Base Sepolia
   - name: Attestcoin
     description: Cross-chain task verification (Ethereum Sepolia ↔ Creditcoin)
+x_rate_limit:
+  requests_per_minute: "60"
+  window_seconds: "60"
+  scope: per-IP
+  over_limit: 429 + Retry-After
+x_pricing:
+  price_per_call: "0.001"
+  price_unit: USDC
+  canonical: /pricing.json
+  note: per-call floor — bundle prices in services[]
 x-rate-limit:
   defaultLimit: 60
   windowSeconds: 60
@@ -129,6 +139,23 @@ x-agent-badge-onboarding:
         → /api/tasks/{id}/status"
   error_hints: JSON 401/402/403 bodies carry how_to_fix + register/payment pointers
 components:
+  securitySchemes:
+    agbApiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Free-tier agent key — `Authorization: Bearer agb_…`. Issued once
+        by POST /api/v1/agents/register; stored sha256-only server-side."
+    sigAuth:
+      type: http
+      scheme: signature
+      description: EIP-191 signature auth — X-Wallet + X-Sig + X-Timestamp (+
+        X-Nonce). Used by market/task mutating routes.
+    x402Payment:
+      type: http
+      scheme: x402
+      description: HTTP 402 payment — retry the request with a PAYMENT-SIGNATURE
+        header after settling the quoted USDC amount (EIP-3009, eip155:5042).
   headers:
     X-RateLimit-Limit:
       description: Maximum number of requests per window
@@ -786,6 +813,21 @@ paths:
           in: path
           name: did
           required: true
+  /auth/challenge:
+    get:
+      operationId: getAuthChallenge
+      tags:
+        - DID
+      summary: Issue a DID-auth challenge (nonce + timestamp)
+      description: Returns the canonical `agentbadge-action:v1` challenge string, a
+        single-use nonce and a unix timestamp for ?did&method&path. Sign the
+        challenge with the DID's account key and send it back via the
+        X-AgentBadge-* headers on mutation endpoints.
+      responses:
+        "200":
+          description: challenge + nonce + timestamp
+        "400":
+          description: Missing did/method/path query params
   /agents:
     get:
       operationId: getAgents
@@ -1003,368 +1045,6 @@ paths:
                 required:
                   - error
                   - code
-  /admin/revoke:
-    post:
-      operationId: postAdminRevoke
-      tags:
-        - Admin
-      summary: Revoke agent passport
-      description: Wipes the NFT and submits an audit message. Protected by admin
-        authentication.
-      responses:
-        "200":
-          description: Passport revoked successfully
-        "400":
-          description: tokenId and serial are required
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Human-readable error message
-                  code:
-                    type: string
-                    description: Machine-readable error code (stable constant)
-                  retryable:
-                    description: Whether the request can be retried
-                    type: boolean
-                  hint:
-                    description: Suggested action for the caller
-                    type: string
-                required:
-                  - error
-                  - code
-        "404":
-          description: Passport not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Human-readable error message
-                  code:
-                    type: string
-                    description: Machine-readable error code (stable constant)
-                  retryable:
-                    description: Whether the request can be retried
-                    type: boolean
-                  hint:
-                    description: Suggested action for the caller
-                    type: string
-                required:
-                  - error
-                  - code
-        "409":
-          description: Passport already revoked
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Human-readable error message
-                  code:
-                    type: string
-                    description: Machine-readable error code (stable constant)
-                  retryable:
-                    description: Whether the request can be retried
-                    type: boolean
-                  hint:
-                    description: Suggested action for the caller
-                    type: string
-                required:
-                  - error
-                  - code
-        "500":
-          description: Revocation failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Human-readable error message
-                  code:
-                    type: string
-                    description: Machine-readable error code (stable constant)
-                  retryable:
-                    description: Whether the request can be retried
-                    type: boolean
-                  hint:
-                    description: Suggested action for the caller
-                    type: string
-                required:
-                  - error
-                  - code
-  /admin/rebuild-cache:
-    post:
-      operationId: postAdminRebuildCache
-      tags:
-        - Admin
-      summary: Full directory cache rebuild
-      description: Triggers a full rebuild of the directory cache from HCS messages.
-        Protected by admin authentication.
-      responses:
-        "200":
-          description: Cache rebuilt successfully
-        "500":
-          description: Rebuild failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Human-readable error message
-                  code:
-                    type: string
-                    description: Machine-readable error code (stable constant)
-                  retryable:
-                    description: Whether the request can be retried
-                    type: boolean
-                  hint:
-                    description: Suggested action for the caller
-                    type: string
-                required:
-                  - error
-                  - code
-  /admin/finance/payments:
-    get:
-      operationId: getAdminFinancePayments
-      tags:
-        - Admin FinOps
-      summary: Payments list (admin)
-      responses:
-        "200":
-          description: Payments page or table fragment
-  /admin/finance/payments/{id}:
-    get:
-      operationId: getAdminFinancePaymentsById
-      tags:
-        - Admin FinOps
-      summary: Payment detail + trace (admin)
-      responses:
-        "200":
-          description: Detail page
-        "404":
-          description: Payment not found
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/exceptions:
-    get:
-      operationId: getAdminFinanceExceptions
-      tags:
-        - Admin FinOps
-      summary: Reconciliation exceptions queue (admin)
-      responses:
-        "200":
-          description: Exceptions page
-  /admin/finance/reports:
-    get:
-      operationId: getAdminFinanceReports
-      tags:
-        - Admin FinOps
-      summary: Financial report (admin)
-      description: Gross/net, fee estimates, splits. ?format=csv export.
-      responses:
-        "200":
-          description: Report page or CSV
-  /admin/finance/audit:
-    get:
-      operationId: getAdminFinanceAudit
-      tags:
-        - Admin FinOps
-      summary: Admin action trail (admin)
-      responses:
-        "200":
-          description: Audit page
-  /admin/finance/payments/{id}/review:
-    post:
-      operationId: postAdminFinancePaymentsByIdReview
-      tags:
-        - Admin FinOps
-      summary: Mark payment reviewed
-      responses:
-        "200":
-          description: AdminAction recorded
-        "400":
-          description: Missing operator / oversized evidence
-        "401":
-          description: Unauthorized
-        "404":
-          description: Payment not found
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/payments/{id}/retry-verification:
-    post:
-      operationId: postAdminFinancePaymentsByIdRetryVerification
-      tags:
-        - Admin FinOps
-      summary: Record a verification retry for the payment's open attempts
-      responses:
-        "200":
-          description: AdminAction + retryable attempts
-        "400":
-          description: Missing operator
-        "401":
-          description: Unauthorized
-        "404":
-          description: Payment not found
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/payments/{id}/review-external:
-    post:
-      operationId: postAdminFinancePaymentsByIdReviewExternal
-      tags:
-        - Admin FinOps
-      summary: Mark an external/off-chain subject reviewed (evidence required)
-      responses:
-        "200":
-          description: AdminAction recorded
-        "400":
-          description: Missing operator/evidence/subject
-        "401":
-          description: Unauthorized
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/payments/{id}/refund:
-    post:
-      operationId: postAdminFinancePaymentsByIdRefund
-      tags:
-        - Admin FinOps
-      summary: Refund a payment — Stripe auto (provider call) or manual intent
-      responses:
-        "200":
-          description: Stripe refund id or RefundIntent
-        "400":
-          description: Missing operator/reason/amount
-        "401":
-          description: Unauthorized
-        "404":
-          description: Payment not found
-        "409":
-          description: Payment not CONFIRMED
-        "503":
-          description: Stripe/refund path not configured
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/payments/{id}/refund-resolution:
-    post:
-      operationId: postAdminFinancePaymentsByIdRefundResolution
-      tags:
-        - Admin FinOps
-      summary: Resolve an UNCERTAIN Stripe refund — operator confirms out-of-band
-        whether it landed
-      responses:
-        "200":
-          description: Terminal audit row written
-        "400":
-          description: Missing operator/evidence
-        "401":
-          description: Unauthorized
-        "409":
-          description: No open refund initiation
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/refunds:
-    get:
-      operationId: getAdminFinanceRefunds
-      tags:
-        - Admin FinOps
-      summary: Refund intents list (admin)
-      responses:
-        "200":
-          description: Refund intents, newest first
-  /admin/finance/refunds/{id}/complete:
-    post:
-      operationId: postAdminFinanceRefundsByIdComplete
-      tags:
-        - Admin FinOps
-      summary: Complete a refund intent behind verified txHash
-      responses:
-        "200":
-          description: Intent COMPLETED
-        "400":
-          description: Missing operator/txHash
-        "401":
-          description: Unauthorized
-        "404":
-          description: Intent not found
-        "503":
-          description: Tx verification not configured
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/finance/exceptions/detect:
-    post:
-      operationId: postAdminFinanceExceptionsDetect
-      tags:
-        - Admin FinOps
-      summary: Scan for reconciliation exceptions (audited)
-      responses:
-        "200":
-          description: Created + skipped exception ids
-        "400":
-          description: Missing operator
-        "401":
-          description: Unauthorized
-  /admin/finance/exceptions/{id}/resolve:
-    post:
-      operationId: postAdminFinanceExceptionsByIdResolve
-      tags:
-        - Admin FinOps
-      summary: Resolve an exception — MATCHED|IGNORED|MANUAL_ADJUSTED|REFUNDED
-      responses:
-        "200":
-          description: Exception RESOLVED + audit
-        "400":
-          description: Missing operator/resolution
-        "401":
-          description: Unauthorized
-        "404":
-          description: Exception not found
-        "409":
-          description: Already resolved
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
   /api/settlement/plans:
     post:
       operationId: postApiSettlementPlans
@@ -2067,349 +1747,6 @@ paths:
             type: string
           in: path
           name: agreementId
-          required: true
-  /admin/settlement/intents/{id}/mark-paid:
-    post:
-      operationId: postAdminSettlementIntentsByIdMarkPaid
-      tags:
-        - Admin Settlement
-      summary: Mark a payout leg paid with a real txHash
-      description: Operator attests the transfer for one leg (legId required when the
-        intent has multiple OPEN legs). txHash is format-validated, replay-bound
-        per (network, hash) and bound set-once; when a VerifyPayoutTx adapter is
-        wired it must pass. Response carries auditRecorded for the append-only
-        AdminAction.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                operator:
-                  type: string
-                  minLength: 1
-                  maxLength: 128
-                txHash:
-                  type: string
-                legId:
-                  type: string
-                  maxLength: 128
-              required:
-                - operator
-                - txHash
-      responses:
-        "200":
-          description: Leg completed + AdminAction
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  auditRecorded:
-                    type: boolean
-                required:
-                  - auditRecorded
-                additionalProperties: {}
-        "400":
-          description: Missing operator / bad txHash
-        "401":
-          description: Unauthorized
-        "404":
-          description: Intent/leg not found
-        "409":
-          description: Invalid state / txHash replay
-        "503":
-          description: Verifier unavailable
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/settlement/disputes/{id}/resolve:
-    post:
-      operationId: postAdminSettlementDisputesByIdResolve
-      tags:
-        - Admin Settlement
-      summary: Resolve an open settlement dispute
-      description: "Operator arbitration: FOR_PROVIDER restores the frozen work to
-        payable, FOR_BUYER cancels it, SPLIT re-legs the intent with a new split
-        that must sum to the milestone amount. Response carries auditRecorded
-        for the append-only AdminAction."
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                operator:
-                  type: string
-                  minLength: 1
-                  maxLength: 128
-                resolution:
-                  type: string
-                  enum:
-                    - FOR_BUYER
-                    - FOR_PROVIDER
-                    - SPLIT
-                splitLegs:
-                  maxItems: 32
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      payee:
-                        type: string
-                        pattern: ^0x[0-9a-fA-F]{40}$
-                      amountUsdc:
-                        type: string
-                        minLength: 1
-                        maxLength: 32
-                      role:
-                        type: string
-                        enum:
-                          - PROVIDER
-                          - COLLABORATOR
-                          - PLATFORM_FEE
-                    required:
-                      - payee
-                      - amountUsdc
-                      - role
-                note:
-                  type: string
-                  maxLength: 4000
-                resolverRef:
-                  type: string
-                  maxLength: 128
-              required:
-                - operator
-                - resolution
-      responses:
-        "200":
-          description: Dispute resolved + AdminAction
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  auditRecorded:
-                    type: boolean
-                required:
-                  - auditRecorded
-                additionalProperties: {}
-        "400":
-          description: Missing operator / bad resolution
-        "401":
-          description: Unauthorized
-        "404":
-          description: Dispute not found
-        "409":
-          description: Invalid state
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/settlement/milestones/{id}/approve:
-    post:
-      operationId: postAdminSettlementMilestonesByIdApprove
-      tags:
-        - Admin Settlement
-      summary: Force-approve a READY milestone (operator recovery)
-      description: Transitions a READY milestone to APPROVED and opens its payout
-        intent when the buyer path cannot (stranded post-commit state,
-        EVALUATOR_VERDICT legacy plan). Idempotent replay only on an `ops_`
-        epoch — a commerce (`appr_`) or resolver (`rsv_`) approval refuses (use
-        force-release or the dispute path); an OPEN dispute on the milestone
-        409s. Requires a reason; writes an AdminAction and the event records
-        admin:true.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                operator:
-                  type: string
-                  minLength: 1
-                  maxLength: 128
-                reason:
-                  type: string
-                  minLength: 1
-                  maxLength: 2000
-                submissionRef:
-                  type: string
-                  maxLength: 128
-              required:
-                - operator
-                - reason
-      responses:
-        "200":
-          description: Milestone approved + payout intent
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  intentId:
-                    type: string
-                required:
-                  - intentId
-                additionalProperties: {}
-        "400":
-          description: Missing operator / reason
-        "401":
-          description: Unauthorized
-        "404":
-          description: Milestone not found
-        "409":
-          description: Invalid state / open dispute
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/settlement/milestones/{id}/reopen:
-    post:
-      operationId: postAdminSettlementMilestonesByIdReopen
-      tags:
-        - Admin Settlement
-      summary: Reopen a stuck READY milestone (operator recovery)
-      description: Releases a READY milestone back to PENDING and clears its
-        submissionRef — the safe exit when a reject-verdict release failed or
-        raced (R4-M5 residual). Under a CLOSED commerce agreement the cleanup
-        lands CANCELLED instead (`cancelled:true`) — PENDING would orphan.
-        Idempotent on non-READY (reopened:false when the row already moved);
-        requires a reason; writes an AdminAction only when the transition
-        landed.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                operator:
-                  type: string
-                  minLength: 1
-                  maxLength: 128
-                reason:
-                  type: string
-                  minLength: 1
-                  maxLength: 2000
-              required:
-                - operator
-                - reason
-      responses:
-        "200":
-          description: Milestone released to PENDING + AdminAction
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reopened:
-                    type: boolean
-                required:
-                  - reopened
-                additionalProperties: {}
-        "400":
-          description: Missing operator / reason
-        "401":
-          description: Unauthorized
-        "404":
-          description: Milestone not found
-        "409":
-          description: Live OPEN/FROZEN payout intent / verdict in flight /
-            would_cancel_accepted_work (COMPLETED agreement + ACCEPTED bound
-            submission — the owed entitlement's exit is force-approve, then
-            release with confirmCancel)
-        "503":
-          description: Cannot verify agreement/submission state
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/settlement/milestones/{id}/release:
-    post:
-      operationId: postAdminSettlementMilestonesByIdRelease
-      tags:
-        - Admin Settlement
-      summary: Force-release an APPROVED milestone (operator ruling undo)
-      description: Releases an APPROVED milestone back to PENDING and cancels its OPEN
-        payout intent — the audited undo for a resolver-restored or force-minted
-        approval a buyer verdict cannot touch; it is also the operator's
-        deliberate un-accept of a commerce (`appr_`) approval while the
-        agreement is live. Under a terminal agreement the cleanup lands
-        CANCELLED instead — a PENDING row would orphan; CANCELLED agreements
-        auto-cancel, COMPLETED requires `confirmCancel:true` (an APPROVED row
-        there is usually an owed payout — 409 would_cancel_approved_payout
-        without it). `acknowledgeInFlight:true` overrides a dormant in-flight
-        gate — a verdict observed ACCEPTED immediately after the release reports
-        `verdictLanded:true` (point-in-time sample — a verdict committing after
-        the read is a documented residual). 409 when a leg already paid, the
-        intent is dispute-frozen, the milestone is not APPROVED, the approval
-        epoch moved on, or an owned verdict is in flight. A release that orphans
-        in the last race window reports `orphaned:true`. Requires a reason;
-        writes an AdminAction.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                operator:
-                  type: string
-                  minLength: 1
-                  maxLength: 128
-                reason:
-                  type: string
-                  minLength: 1
-                  maxLength: 2000
-                confirmCancel:
-                  type: boolean
-                acknowledgeInFlight:
-                  type: boolean
-              required:
-                - operator
-                - reason
-      responses:
-        "200":
-          description: Milestone released to PENDING + AdminAction
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  released:
-                    type: boolean
-                required:
-                  - released
-                additionalProperties: {}
-        "400":
-          description: Missing operator / reason
-        "401":
-          description: Unauthorized
-        "404":
-          description: Milestone not found
-        "409":
-          description: Not APPROVED / paid leg / frozen intent / agreement not ACTIVE /
-            verdict in flight
-        "503":
-          description: Cannot verify agreement/submission state
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
           required: true
   /passport/{tokenId}/{serial}/upgrade:
     post:
@@ -3147,15 +2484,15 @@ paths:
       summary: Mark a payment refunded (admin)
       description: "Records an ops-executed on-chain refund: appends a REFUND_REQUEST
         exception, transitions the payment CONFIRMED → REFUNDED, resolves the
-        exception. Requires admin auth (X-Admin-Key or Bearer). `txHash` must be
-        the refund transaction hash (0x + 64 hex)."
+        exception. Requires an operator credential (X-Admin-Key or Bearer opk_).
+        `txHash` must be the refund transaction hash (0x + 64 hex)."
       responses:
         "200":
           description: Payment marked REFUNDED
         "400":
           description: Missing/invalid txHash
         "401":
-          description: Missing/invalid admin key
+          description: Missing/invalid operator credential
         "404":
           description: Unknown payment
         "409":
@@ -3178,7 +2515,7 @@ paths:
         "200":
           description: Exception rows, newest first
         "401":
-          description: Missing/invalid admin key
+          description: Missing/invalid operator credential
   /api/v1/payments/{id}:
     get:
       operationId: getApiV1PaymentsById
@@ -6853,24 +6190,6 @@ paths:
           in: path
           name: id
           required: true
-  /a2a/ext/debug/tasks:
-    get:
-      operationId: getA2aExtDebugTasks
-      tags:
-        - A2A v1.0
-      summary: "Ext debug: flat task list (dev-only)"
-      description: AgentBadge extension — A2A_DEBUG_VIEW=1 + Postgres only — flat
-        cross-owner task listing. Requires EIP-191 signed headers (passport
-        tier, own ext rate bucket).
-      responses:
-        "200":
-          description: Success — `application/a2a+json`
-        "403":
-          description: Anonymous tier — passport required
-        "404":
-          description: Not found or not addressed to caller
-        "429":
-          description: Rate limit exceeded
   /a2a/send:
     post:
       operationId: postA2aSend
@@ -7853,6 +7172,84 @@ paths:
                 required:
                   - jsonrpc
                   - id
+  /mcp/agent-interaction:
+    get:
+      operationId: getMcpAgentInteraction
+      tags:
+        - MCP
+      summary: Agent-interaction MCP namespace info (keyless)
+      description: "Keyless agent-protocol endpoint info: protocol version, transport,
+        auth model and the agentbadge_* tool roster. POST JSON-RPC to the same
+        path. Capability manifest: /.well-known/agent-interaction.json."
+      responses:
+        "200":
+          description: Namespace descriptor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  protocol_version:
+                    type: string
+                  transport:
+                    type: string
+                  auth:
+                    type: string
+                  tools:
+                    type: array
+                    items:
+                      type: string
+                  manifest:
+                    type: string
+                required:
+                  - name
+                  - protocol_version
+                  - transport
+                  - auth
+                  - tools
+                  - manifest
+    post:
+      operationId: postMcpAgentInteraction
+      tags:
+        - MCP
+      summary: Agent-interaction MCP JSON-RPC endpoint (keyless)
+      description: "JSON-RPC 2.0 over plain JSON responses. Methods: initialize, ping,
+        tools/list, tools/call. Roster: 8 agentbadge_* tools (see
+        /.well-known/agent-interaction.json). Single messages only — no batch,
+        no SSE, no mcp-session-id. Optional Bearer agb_ elevates to the keyed
+        lane (verified agentId)."
+      responses:
+        "200":
+          description: JSON-RPC response envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jsonrpc:
+                    type: string
+                    const: "2.0"
+                  id:
+                    anyOf:
+                      - type: string
+                      - type: number
+                      - type: "null"
+                  result: {}
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: number
+                      message:
+                        type: string
+                    required:
+                      - code
+                      - message
+                required:
+                  - jsonrpc
+                  - id
   /api/meta/errors:
     get:
       operationId: getApiMetaErrors
@@ -8662,8 +8059,8 @@ paths:
   /faq:
     get:
       operationId: getFaq
-      description: FAQ page with 40+ Q&A pairs about AgentBadge, organized by
-        category, rendered server-side with FAQPage JSON-LD.
+      description: FAQ page with categorized Q&A pairs about AgentBadge, rendered
+        server-side with FAQPage JSON-LD.
       responses:
         "200":
           description: HTML FAQ page
@@ -9143,7 +8540,7 @@ paths:
       tags:
         - API
       summary: List all rule descriptions
-      description: All 156 agent readiness rules with full metadata, categories, and
+      description: All 159 agent readiness rules with full metadata, categories, and
         fix hints.
       responses:
         "200":
@@ -9382,7 +8779,7 @@ paths:
         "200":
           description: Request list with payload + fingerprint
         "401":
-          description: Admin key required
+          description: Operator credential required
   /api/ops/requests/{id}/respond:
     post:
       operationId: postApiOpsRequestsByIdRespond
@@ -9524,397 +8921,6 @@ paths:
           description: Malformed/invalid auth headers
         "429":
           description: Tier rate limit exceeded
-  /api/admin/interactions:
-    get:
-      operationId: getApiAdminInteractions
-      summary: Operator queue — FIFO, default status PENDING_REVIEW
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: Queue page + nextCursor
-  /api/admin/interactions/{id}:
-    get:
-      operationId: getApiAdminInteractionsById
-      summary: Full interaction detail — payload, classification, thread, events
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: internalHistory + session thread
-        "404":
-          description: Unknown id
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /api/admin/interactions/{id}/events:
-    get:
-      operationId: getApiAdminInteractionsByIdEvents
-      summary: Full internal event log — both visibilities (audit)
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: events[] + responses[]
-        "404":
-          description: Unknown id
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /api/admin/interactions/{id}/classify:
-    post:
-      operationId: postApiAdminInteractionsByIdClassify
-      summary: Classify an interaction — vocabulary-validated patch → IN_REVIEW
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: Applied — {id,status,transitioned}
-        "400":
-          description: Vocabulary/schema violation
-        "404":
-          description: Unknown id
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /api/admin/interactions/{id}/respond:
-    post:
-      operationId: postApiAdminInteractionsByIdRespond
-      summary: Answer an interaction — InteractionResponse + ANSWERED
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: "{id,status,responseId}"
-        "400":
-          description: Empty/oversized body
-        "404":
-          description: Unknown id
-        "409":
-          description: Terminal row — replay refused, nothing written
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /api/admin/interactions/{id}/reject:
-    post:
-      operationId: postApiAdminInteractionsByIdReject
-      summary: Reject an interaction — REJECTED + internal event
-      tags:
-        - Admin Interactions
-      responses:
-        "200":
-          description: "{id,status}"
-        "404":
-          description: Unknown id
-        "409":
-          description: Terminal row — replay refused
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/items:
-    get:
-      operationId: getAdminApiKnowledgeItems
-      summary: Knowledge items list — operator console backing
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: Filtered item list
-    post:
-      operationId: postAdminApiKnowledgeItems
-      summary: Create a knowledge item (DRAFT + version 1)
-      tags:
-        - Admin Knowledge
-      responses:
-        "201":
-          description: Created item + first version
-        "400":
-          description: Validation/idempotency-key failure
-        "409":
-          description: Slug taken
-  /admin/api/knowledge/items/{id}:
-    get:
-      operationId: getAdminApiKnowledgeItemsById
-      summary: Knowledge item detail — versions + status audit
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: Item + versions + status events
-        "404":
-          description: Unknown id
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/items/{id}/transition:
-    post:
-      operationId: postAdminApiKnowledgeItemsByIdTransition
-      summary: Transition a knowledge item through the approval machine
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: Applied — {item,event}
-        "400":
-          description: Validation/idempotency-key failure
-        "403":
-          description: Agent actor attempted verify/publish
-        "404":
-          description: Unknown id
-        "409":
-          description: INVALID_TRANSITION
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/items/{id}/transitions:
-    get:
-      operationId: getAdminApiKnowledgeItemsByIdTransitions
-      summary: Legal transitions for an item's current status
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{from, allowed[]}"
-        "404":
-          description: Unknown id
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/capabilities:
-    get:
-      operationId: getAdminApiKnowledgeCapabilities
-      summary: List capability registry entries
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: Filtered capability list
-    post:
-      operationId: postAdminApiKnowledgeCapabilities
-      summary: Register a MANUAL capability (verified:false)
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: Upserted — {capability, created}
-        "400":
-          description: Validation/idempotency-key failure
-  /admin/api/knowledge/items/{id}/capabilities:
-    post:
-      operationId: postAdminApiKnowledgeItemsByIdCapabilities
-      summary: Link a capability to an item
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{created}"
-        "400":
-          description: Validation/idempotency-key failure
-        "404":
-          description: Unknown item/capability
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/items/{id}/capabilities/unlink:
-    post:
-      operationId: postAdminApiKnowledgeItemsByIdCapabilitiesUnlink
-      summary: Unlink a capability from an item
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{removed}"
-        "400":
-          description: Validation/idempotency-key failure
-        "404":
-          description: Unknown item/capability
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/relations:
-    post:
-      operationId: postAdminApiKnowledgeRelations
-      summary: Add a typed relation edge (dedup, no self-loop/cycle)
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{relation, created}"
-        "400":
-          description: Validation/self-loop/SUPERSEDES-cycle
-        "404":
-          description: Endpoint item missing
-  /admin/api/knowledge/relations/remove:
-    post:
-      operationId: postAdminApiKnowledgeRelationsRemove
-      summary: Remove a relation edge by id
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{removed}"
-  /admin/api/knowledge/items/{id}/relations:
-    get:
-      operationId: getAdminApiKnowledgeItemsByIdRelations
-      summary: Relation edges for an item — both directions
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{outgoing, incoming}"
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/versions/{vid}/evidence:
-    post:
-      operationId: postAdminApiKnowledgeVersionsByVidEvidence
-      summary: Attach an evidence ref to a version (cap 50)
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{evidence}"
-        "400":
-          description: bad type/uri or cap exceeded
-        "404":
-          description: Version missing
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: vid
-          required: true
-    get:
-      operationId: getAdminApiKnowledgeVersionsByVidEvidence
-      summary: Evidence refs on a version
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{evidence[]}"
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: vid
-          required: true
-  /admin/api/knowledge/evidence/remove:
-    post:
-      operationId: postAdminApiKnowledgeEvidenceRemove
-      summary: Remove an evidence ref by id
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{removed}"
-  /admin/api/knowledge/evidence/citing:
-    get:
-      operationId: getAdminApiKnowledgeEvidenceCiting
-      summary: Versions citing a uri — staleness/withdrawal lookup
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{evidence[]}"
-  /admin/api/knowledge/gaps:
-    get:
-      operationId: getAdminApiKnowledgeGaps
-      summary: List knowledge gaps — deduped agent-signal backlog
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{gaps[], count}"
-  /admin/api/knowledge/gaps/{id}/triage:
-    post:
-      operationId: postAdminApiKnowledgeGapsByIdTriage
-      summary: "Gap lifecycle: triage"
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{gap}"
-        "400":
-          description: Invalid transition / missing linked item
-        "404":
-          description: Unknown gap
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/gaps/{id}/resolve:
-    post:
-      operationId: postAdminApiKnowledgeGapsByIdResolve
-      summary: "Gap lifecycle: resolve"
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{gap}"
-        "400":
-          description: Invalid transition / missing linked item
-        "404":
-          description: Unknown gap
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
-  /admin/api/knowledge/gaps/{id}/wontfix:
-    post:
-      operationId: postAdminApiKnowledgeGapsByIdWontfix
-      summary: "Gap lifecycle: wontfix"
-      tags:
-        - Admin Knowledge
-      responses:
-        "200":
-          description: "{gap}"
-        "400":
-          description: Invalid transition / missing linked item
-        "404":
-          description: Unknown gap
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
   /api/v1/agent/knowledge/search:
     get:
       operationId: getApiV1AgentKnowledgeSearch
@@ -9941,6 +8947,118 @@ paths:
           description: Query validation failure
         "429":
           description: Rate limit
+  /api/v1/agent/feedback:
+    post:
+      operationId: postApiV1AgentFeedback
+      summary: Submit feedback (async, human-triaged)
+      description: "Structured agent feedback {text, kind?, target?, severity?}.
+        Idempotent via the required idempotency-key header. Response: 202
+        {id,statusUrl}; a replayed key returns 200 {id,duplicate:true}."
+      tags:
+        - Agent Feedback
+      responses:
+        "200":
+          description: Idempotent replay — same id, duplicate:true
+        "202":
+          description: Accepted for triage
+        "400":
+          description: Schema violation or missing idempotency-key
+        "401":
+          description: Malformed/invalid auth headers
+        "409":
+          description: Key reused by a different actor
+        "422":
+          description: Key reused with a different payload
+        "429":
+          description: Tier rate limit exceeded
+  /api/v1/agent/feedback/{id}:
+    get:
+      operationId: getApiV1AgentFeedbackById
+      summary: Poll feedback status — public projection
+      tags:
+        - Agent Feedback
+      responses:
+        "200":
+          description: "{id,status,suggestion?,createdAt,updatedAt}"
+        "404":
+          description: Unknown id or other-tenant record
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/reviews:
+    post:
+      operationId: postApiV1AgentReviews
+      summary: Request a human review (advisory, poll for decision)
+      description: Structured review request {reviewType, workRef, agentCriteria?[],
+        evidence?[]}. Review is ADVISORY human work — not an EaaS verdict,
+        attestation or trust artifact. Idempotent via the required
+        idempotency-key header.
+      tags:
+        - Agent Reviews
+      responses:
+        "200":
+          description: Idempotent replay — same id, duplicate:true
+        "202":
+          description: Accepted for triage
+        "400":
+          description: Schema violation or missing idempotency-key
+        "401":
+          description: Malformed/invalid auth headers
+        "409":
+          description: Key reused by a different actor
+        "422":
+          description: Key reused with a different payload
+        "429":
+          description: Tier rate limit exceeded
+  /api/v1/agent/reviews/{id}:
+    get:
+      operationId: getApiV1AgentReviewsById
+      summary: Poll a review — advisory public projection
+      tags:
+        - Agent Reviews
+      responses:
+        "200":
+          description: "{id,reviewType,status,submittedAt,decidedAt?,decision?{outcome,su\
+            mmary,criteriaResults,binding:ADVISORY_HUMAN,decidedBy:OPERATOR}}"
+        "404":
+          description: Unknown id or other-tenant record
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/reviews/{id}/evidence:
+    post:
+      operationId: postApiV1AgentReviewsByIdEvidence
+      summary: Append agent evidence to a pending review
+      description: AGENT-side evidence dosylka — allowed only while the case is
+        PENDING_TRIAGE; the ≤50 cap applies across all rows. Idempotent via the
+        required idempotency-key header (24h replay window).
+      tags:
+        - Agent Reviews
+      responses:
+        "200":
+          description: "{added, ids[]} — replay marked duplicate:true"
+        "400":
+          description: Schema violation or missing idempotency-key
+        "404":
+          description: Unknown review id
+        "409":
+          description: Case no longer accepts agent evidence
+        "422":
+          description: Evidence cap exceeded
+        "429":
+          description: Tier rate limit exceeded
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/surveys/open:
     get:
       operationId: getApiSurveysOpen
@@ -10017,7 +9135,7 @@ paths:
         "200":
           description: "Digest sent (or skipped: 0 new / no creds)"
         "401":
-          description: Admin key required
+          description: Operator credential required
   /api/board/cards/{id}/claim:
     post:
       operationId: postApiBoardCardsByIdClaim
@@ -10549,9 +9667,10 @@ paths:
         hour."
       responses:
         "200":
-          description: Overall benchmark data
+          description: Overall benchmark data (empty collection with note:no_data when
+            corpus has <50 records)
         "503":
-          description: Insufficient data (fewer than 50 scans in corpus)
+          description: Benchmark source unavailable
   /api/benchmarks/{category}:
     get:
       operationId: getApiBenchmarksByCategory
@@ -10562,9 +9681,10 @@ paths:
         median, stddev, common gaps."
       responses:
         "200":
-          description: Category benchmark data
+          description: Category benchmark data (empty collection with note:no_data when
+            insufficient samples)
         "503":
-          description: Insufficient data for this category
+          description: Benchmark source unavailable
       parameters:
         - schema:
             type: string
@@ -10581,9 +9701,10 @@ paths:
         median."
       responses:
         "200":
-          description: Pillar benchmark data
+          description: Pillar benchmark data (empty collection with note:no_data when
+            insufficient samples)
         "503":
-          description: Insufficient data for this pillar
+          description: Benchmark source unavailable
       parameters:
         - schema:
             type: string
@@ -11332,27 +10453,6 @@ paths:
           in: path
           name: jobId
           required: true
-  /api/venue/instances/{id}/admin:
-    get:
-      operationId: getApiVenueInstancesByIdAdmin
-      tags:
-        - Venue
-      summary: "Venue admin payload: record + members + stats + audit trail"
-      responses:
-        "200":
-          description: Admin payload
-        "401":
-          description: Signature check failed
-        "403":
-          description: Requires admin+ role
-        "404":
-          description: Unknown venue
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: id
-          required: true
   /api/venue/instances/{id}/delegates:
     post:
       operationId: postApiVenueInstancesByIdDelegates
@@ -11700,25 +10800,6 @@ paths:
           in: path
           name: slug
           required: true
-  /market/v/{slug}/admin:
-    get:
-      operationId: getMarketVBySlugAdmin
-      tags:
-        - Venue
-      summary: Venue admin console (admin+ wallet)
-      responses:
-        "200":
-          description: HTML page
-        "403":
-          description: Not an admin
-        "404":
-          description: Unknown venue slug
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: slug
-          required: true
   /market/attestations:
     get:
       operationId: getMarketAttestations
@@ -12034,9 +11115,33 @@ paths:
       description: Self-serve agent registration — mints into the canonical ERC-8004
         identity registry and returns a single-use-shown agb_ api key (observer
         tier, keyed free-tier limits).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              basic:
+                value:
+                  name: my-agent
+                  endpoint: https://agent.example.com
+              sponsored:
+                value:
+                  name: my-agent
+                  owner: "0x742d35cc6634c0532925a3b844bc9e7595f8fe00"
+                  signature: 0x<eip191-signature>
+                  expiresAt: 1762800000
       responses:
         "201":
           description: Registered agent + api key (shown once)
+          content:
+            application/json:
+              example:
+                agent_id: eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432:7
+                registry: erc-8004
+                registry_tx: 0x<txhash>
+                agent_uri: data:application/json;base64,…
+                api_key: agb_<shown-once>
+                tier: observer
         "400":
           description: Invalid input
         "429":
@@ -12079,26 +11184,6 @@ paths:
           description: Key revoked
         "401":
           description: Missing/malformed/revoked api key
-  /api/v1/admin/agents/{agentId}:
-    delete:
-      operationId: deleteApiV1AdminAgentsByAgentId
-      description: Admin-revoke a registered agent — instant, auth-cache busted.
-        Requires X-Admin-Key or Bearer ADMIN_API_KEY.
-      responses:
-        "200":
-          description: Agent revoked (idempotent)
-        "401":
-          description: Missing/invalid admin key
-        "404":
-          description: Unknown agentId
-        "500":
-          description: ADMIN_API_KEY not configured
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: agentId
-          required: true
   /api/v1/witness/enroll:
     post:
       operationId: postApiV1WitnessEnroll

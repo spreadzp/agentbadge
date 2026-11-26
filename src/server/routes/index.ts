@@ -64,6 +64,7 @@ import { tasksReadRoutes } from "./tasks/tasks-read";
 import { tasksWriteRoutes } from "./tasks/tasks-write";
 import { tasksWriteFlowRoutes } from "./tasks/tasks-write-flow";
 import { mcpPublicRoutes } from "./mcp/mcp-public";
+import { mcpAgentInteractionRoutes } from "./mcp-agent-interaction";
 import { metaRoutes } from "./meta/meta";
 import { metaTrafficRoutes } from "./meta/meta-traffic";
 import { opsStatsRoutes } from "./ops/ops-stats";
@@ -221,6 +222,9 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", tasksWriteRoutes); // EPIC-206-5: agent-contour verdict writes
   app.route("/", tasksWriteFlowRoutes); // EPIC-206-6: bid→award→deliver
   app.route("/", mcpPublicRoutes); // EPIC-206-4: keyless read-only MCP facade
+  // EPIC-233-1: keyless agent-interaction MCP namespace — global
+  // agentKeyAuth + mcpAbuseGuard(/mcp/*) already cover the path.
+  app.route("/", mcpAgentInteractionRoutes);
   app.route("/", metaRoutes);
   app.route("/", metaTrafficRoutes);
   app.route("/", opsStatsRoutes); // EPIC-217-1: ops stats digest → Telegram
