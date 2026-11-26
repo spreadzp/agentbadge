@@ -17,7 +17,12 @@
 import type { FeedbackStore } from "../feedback/store";
 import type { ReviewStore } from "../reviews/store";
 
-import { promptFor } from "./intake-runners";
+import {
+  promptFor,
+  sanitizeInline,
+  UNTRUSTED_RULE,
+  untrustedBlock,
+} from "./intake-runners";
 import { registerScenarioRunner } from "./scenarios";
 import type { AiScenarioRunner } from "./scenarios";
 
@@ -63,7 +68,8 @@ const FALLBACK_FEEDBACK_EXTRACT =
   "Extract structured items from the text: {items[{type ∈ " +
   "suggestion|issue|topic, text, sentiment ∈ " +
   "positive|negative|neutral|mixed, confidence 0..1}], " +
-  "overallConfidence 0..1}. JSON only.";
+  "overallConfidence 0..1}. JSON only. " +
+  UNTRUSTED_RULE;
 
 const FEEDBACK_RUNNER_SUBJECTS = ["feedback", "review_case"] as const;
 
@@ -74,13 +80,13 @@ async function feedbackText(
   const rec = await store.getFeedback(subjectId);
   if (!rec) throw new Error(`subject_not_found: ${subjectId}`);
   const meta = [
-    rec.kind ? `kind: ${rec.kind}` : "",
-    rec.target ? `target: ${rec.target}` : "",
-    rec.severity ? `severity hint: ${rec.severity}` : "",
+    rec.kind ? `kind: ${sanitizeInline(rec.kind, 64)}` : "",
+    rec.target ? `target: ${sanitizeInline(rec.target, 120)}` : "",
+    rec.severity ? `severity hint: ${sanitizeInline(rec.severity, 40)}` : "",
   ]
     .filter(Boolean)
     .join("\n");
-  return `${meta ? meta + "\n" : ""}text:\n${rec.text}`;
+  return `${meta ? meta + "\n" : ""}text:\n${untrustedBlock(rec.text)}`;
 }
 
 async function reviewText(
@@ -93,17 +99,18 @@ async function reviewText(
   const ev = evidence
     .map(
       (e) =>
-        `- [${e.type}] ${e.uri}` +
-        (e.label ? ` (${e.label})` : "") +
-        (e.description ? ` — ${e.description}` : ""),
+        `- [${sanitizeInline(e.type, 40)}] ${sanitizeInline(e.uri, 500)}` +
+        (e.label ? ` (${sanitizeInline(e.label, 120)})` : "") +
+        (e.description ? ` — ${sanitizeInline(e.description, 400)}` : ""),
     )
     .join("\n");
   const criteria = rec.agentCriteria
-    ? `agentCriteria: ${JSON.stringify(rec.agentCriteria)}\n`
+    ? `agentCriteria:\n${untrustedBlock(JSON.stringify(rec.agentCriteria).slice(0, 2000))}\n`
     : "";
   return (
-    `reviewType: ${rec.reviewType}\nworkRef: ${rec.workRef}\n${criteria}` +
-    `evidence:\n${ev || "(none)"}`
+    `reviewType: ${sanitizeInline(rec.reviewType, 64)}\n` +
+    `workRef: ${sanitizeInline(rec.workRef, 200)}\n${criteria}` +
+    `evidence:\n${untrustedBlock(ev || "(none)")}`
   );
 }
 

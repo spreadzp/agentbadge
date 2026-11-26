@@ -20,7 +20,13 @@ import { searchKnowledgeItems } from "../knowledge/search";
 import type { KnowledgeSearchHit } from "../knowledge/types";
 import type { RequestInboxStores } from "../request-inbox/store";
 
-import { loadSubject, promptFor, userBlock } from "./intake-runners";
+import {
+  loadSubject,
+  promptFor,
+  sanitizeInline,
+  UNTRUSTED_RULE,
+  userBlock,
+} from "./intake-runners";
 import { registerScenarioRunner } from "./scenarios";
 import type { AiScenarioRunner } from "./scenarios";
 
@@ -39,14 +45,24 @@ const KNOWLEDGE_SEARCH_SCHEMA: Record<string, unknown> = {
       maxItems: 8,
       description: "candidate itemIds relevant to the request",
     },
-    relevanceScores: {
-      type: "object",
-      additionalProperties: { type: "number", minimum: 0, maximum: 1 },
-      description: "itemId → relevance 0..1 for each matched id",
+    scores: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          relevance: { type: "number", minimum: 0, maximum: 1 },
+        },
+        required: ["id", "relevance"],
+        additionalProperties: false,
+      },
+      description: "per-matched-id relevance (array form — strict " +
+        "structured-output providers reject map-shaped properties)",
     },
     confidence: { type: "number", minimum: 0, maximum: 1 },
   },
-  required: ["query", "matchedEntryIds", "relevanceScores", "confidence"],
+  required: ["query", "matchedEntryIds", "scores", "confidence"],
   additionalProperties: false,
 };
 
@@ -55,7 +71,8 @@ const FALLBACK_KNOWLEDGE_SEARCH =
   "and candidate knowledge entries: (1) write a clean reformulated " +
   "search query; (2) pick the relevant candidate ids; (3) score each " +
   "0..1. Reply JSON only: {query, matchedEntryIds[], " +
-  "relevanceScores{<id>:0..1}, confidence 0..1}.";
+  "scores[{id,relevance}], confidence 0..1}. " +
+  UNTRUSTED_RULE;
 
 const MAX_CANDIDATES = 8;
 
@@ -64,11 +81,33 @@ function candidateBlock(candidates: KnowledgeSearchHit[]): string {
   const rows = candidates
     .map(
       (c) =>
-        `- id=${c.itemId} | ${c.title} | kind=${c.kind}` +
-        (c.snippet ? ` | ${c.snippet.slice(0, 160)}` : ""),
+        `- id=${sanitizeInline(c.itemId, 120)} | ` +
+        `${sanitizeInline(c.title, 160)} | kind=${sanitizeInline(c.kind, 40)}` +
+        (c.snippet ? ` | ${sanitizeInline(c.snippet, 160)}` : ""),
     )
     .join("\n");
   return `candidates:\n${rows}`;
+}
+
+/** H-3: model may only rank ids it was actually shown. */
+function idsValidator(candidateIds: Set<string>) {
+  return (output: unknown): string | null => {
+    const out = (output ?? {}) as {
+      matchedEntryIds?: unknown;
+      scores?: unknown;
+    };
+    for (const id of (out.matchedEntryIds ?? []) as unknown[]) {
+      if (typeof id !== "string" || !candidateIds.has(id)) {
+        return `unknown_candidate: ${String(id).slice(0, 120)}`;
+      }
+    }
+    for (const s of (out.scores ?? []) as { id?: unknown }[]) {
+      if (typeof s?.id !== "string" || !candidateIds.has(s.id)) {
+        return `unknown_score_candidate: ${String(s?.id).slice(0, 120)}`;
+      }
+    }
+    return null;
+  };
 }
 
 /** Bind inbox + knowledge stores into the knowledge_search runner. */
@@ -91,13 +130,17 @@ export function registerKnowledgeSearchRunner(opts: {
     const { items } = await searchKnowledgeItems(knowledge, subject.text, {
       limit: MAX_CANDIDATES,
     });
-    return promptFor(
+    const prompt = promptFor(
       KNOWLEDGE_SEARCH_SCENARIO,
       FALLBACK_KNOWLEDGE_SEARCH,
       `${userBlock(subject)}\n\n${candidateBlock(items)}`,
       KNOWLEDGE_SEARCH_SCHEMA,
       400,
     );
+    prompt.validateOutput = idsValidator(
+      new Set(items.map((c) => c.itemId)),
+    );
+    return prompt;
   };
 
   registerScenarioRunner(KNOWLEDGE_SEARCH_SCENARIO, runner);

@@ -72,9 +72,12 @@ export function aiMetricsPage(opts: {
       <div class="flex gap-2">
         <span class="w-52 text-slate-500">Human Intervention Rate</span>
         <span class="font-mono text-slate-200">${pct(m.linkage.interventionRate)}</span>
-        <span class="text-[10px] text-slate-600">directional — signal, not target</span>
+        <span class="text-[10px] text-slate-600">directional — signal, not target · denominator: ${m.linkage.denominator} suggestions in play</span>
       </div>
     </section>
+    ${m.truncated.runs || m.truncated.cases
+      ? html`<p class="mb-4 text-[10px] text-amber-500/80">window truncated at scan cap — counts cover the most recent rows only${m.truncated.runs ? " (runs)" : ""}${m.truncated.cases ? " (cases)" : ""}</p>`
+      : ""}
 
     <section class="rounded-lg border border-slate-800 bg-slate-900 p-3">
       <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">Runs by scenario × modeAtTime</h3>

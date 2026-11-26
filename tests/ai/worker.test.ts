@@ -38,6 +38,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 3,
+  jobQueueCap: 500,
 };
 
 function stubProvider(
@@ -50,7 +51,9 @@ function stubProvider(
       stub.calls++;
       return (
         impl?.() ?? {
-          text: '{"label":"bug","confidence":0.8}',
+          // 232-12 H-4: output must satisfy the classification
+          // output-schema — server-side zod validation is real now.
+          text: '{"category":"bug","intent":"BUG_REPORT","capabilities":[],"confidence":0.8}',
           usage: { prompt: 4, completion: 6, total: 10 },
           model: "m-1-served",
         }
@@ -81,7 +84,7 @@ async function seedJob(
     inputHash: "h-1",
     ...over,
   });
-  return job;
+  return job!;
 }
 
 async function setMode(store: InMemoryAiStore, mode: string): Promise<void> {
@@ -125,7 +128,7 @@ describe("drainAiJobs", () => {
       tokensTotal: 10,
       confidence: 0.8,
     });
-    expect((runs[0]!.output as { label: string }).label).toBe("bug");
+    expect((runs[0]!.output as { category: string }).category).toBe("bug");
     expect(runs[0]!.promptVersion).toBe(promptVersionFor("classify\n"));
     const job = await store.getJob(runs[0]!.jobId!);
     expect(job?.status).toBe("done");
@@ -353,8 +356,8 @@ describe("enqueue + store semantics", () => {
     });
     expect(a.duplicate).toBe(false);
     expect(b.duplicate).toBe(true);
-    expect(b.job.id).toBe(a.job.id);
-    expect(a.job.idempotencyKey).toBe("ai:interaction:r1:classification");
+    expect(b.job!.id).toBe(a.job!.id);
+    expect(a.job!.idempotencyKey).toBe("ai:interaction:r1:classification");
   });
 
   it("field caps refuse oversized input", async () => {

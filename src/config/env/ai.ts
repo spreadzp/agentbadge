@@ -80,6 +80,7 @@ export function loadAi(errors: string[]): AiEnvConfig | undefined {
   const workerIntervalMs = intVar("AI_WORKER_INTERVAL_MS", 5_000, 500, errors);
   const jobLeaseMs = intVar("AI_JOB_LEASE_MS", 120_000, 5_000, errors);
   const jobMaxAttempts = intVar("AI_JOB_MAX_ATTEMPTS", 3, 1, errors);
+  const jobQueueCap = intVar("AI_JOB_QUEUE_CAP", 500, 10, errors);
 
   return {
     enabled: true,
@@ -96,5 +97,6 @@ export function loadAi(errors: string[]): AiEnvConfig | undefined {
     workerIntervalMs,
     jobLeaseMs,
     jobMaxAttempts,
+    jobQueueCap,
   };
 }

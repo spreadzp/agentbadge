@@ -23,9 +23,13 @@ import {
   KNOWLEDGE_SEARCH_SCENARIO,
   registerKnowledgeSearchRunner,
 } from "../../src/server/lib/ai/knowledge-runner";
-import { loadPrompt, resetPromptCache } from "../../src/server/lib/ai/prompts";
+import { resetPromptCache } from "../../src/server/lib/ai/prompts";
 import type { LlmProvider } from "../../src/server/lib/ai/provider";
-import { resetScenarioRunners } from "../../src/server/lib/ai/scenarios";
+import {
+  getScenarioRunner,
+  isNotAvailable,
+  resetScenarioRunners,
+} from "../../src/server/lib/ai/scenarios";
 import { InMemoryAiStore } from "../../src/server/lib/ai/store-memory";
 import { drainAiJobs } from "../../src/server/lib/ai/worker";
 import { buildEvent, emitInteractionHooks } from "../../src/server/lib/agent-interaction/events";
@@ -45,6 +49,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const FP = { ip: null, ua: null, referer: null, src: null, headers: {} };
@@ -52,7 +57,9 @@ const FP = { ip: null, ua: null, referer: null, src: null, headers: {} };
 const SEARCH_OUT = {
   query: "x402 payment integration",
   matchedEntryIds: ["ki_1"],
-  relevanceScores: { ki_1: 0.92 },
+  // 232-12: scores ship as [{id, relevance}] rows — strict
+  // structured-output providers reject map-shaped properties.
+  scores: [{ id: "ki_1", relevance: 0.92 }],
   confidence: 0.85,
 };
 
@@ -155,9 +162,14 @@ describe("knowledge_search runner (E3)", () => {
     );
     expect(run!.status).toBe("success");
     expect(run!.output).toEqual(SEARCH_OUT);
-    expect(run!.promptVersion).toBe(
-      loadPrompt(KNOWLEDGE_SEARCH_SCENARIO)!.version,
-    );
+    // 232-12 M-5: the recorded version covers system text + the
+    // output contract — recompute the combined hash.
+    const rp = await getScenarioRunner(KNOWLEDGE_SEARCH_SCENARIO)!({
+      job: job!,
+      store: ai,
+    });
+    if (isNotAvailable(rp)) throw new Error("unexpected notAvailable");
+    expect(run!.promptVersion).toBe(rp.promptVersion);
     const j = await ai.getJob(job.id);
     expect(j!.status).toBe("done");
   });
@@ -257,6 +269,9 @@ describe("intake + suggestions integration", () => {
       updatedBy: "op",
     });
     await seedRequest("ireq_ro", "docs on payments?");
+    // 232-12 H-3: ki_1 must be a real candidate — the runner now
+    // rejects ids it never showed the model.
+    await seedKnowledgeItem("ki_1", "payments docs", "pay with x402 headers");
     const guarded = new Proxy(knowledge, {
       get(t, prop) {
         const v = (t as never)[prop];

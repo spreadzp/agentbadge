@@ -26,6 +26,13 @@ export interface AiScenarioPrompt {
    * programmatic prompts pass promptVersionFor(text) or a literal tag.
    */
   promptVersion?: string;
+  /**
+   * 232-12 H-3: job-context output check the static zod schema
+   * cannot express (e.g. matchedEntryIds ⊆ fetched candidates).
+   * Runs after validateScenarioOutput; a returned string is the
+   * invalid_json reason — the output never reaches a success row.
+   */
+  validateOutput?: (output: unknown) => string | null;
 }
 
 export interface AiScenarioInput {

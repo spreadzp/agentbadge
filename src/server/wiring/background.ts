@@ -18,7 +18,7 @@ import { startIdentitySweeper } from "../services/identity-sweeper";
 import { startKnowledgeOverdueSweeper } from "../services/knowledge-overdue-sweeper";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
-import { startAiWorker } from "../lib/ai/worker";
+import { startAiWorker } from "../lib/ai/worker-service";
 import { startWebhookWorker } from "../lib/webhooks/worker";
 import { wireAiIntake } from "../lib/ai/intake";
 import { wireAiFeedback } from "../lib/ai/feedback-intake";

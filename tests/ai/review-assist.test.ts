@@ -40,6 +40,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const ASSIST_OUT = {
@@ -208,6 +209,7 @@ describe("D-232-4 boundary — aiRunRef is human-path only", () => {
         aiRunRef: run.id,
       },
       "op-1",
+      { aiStore: ai },
     );
     expect(r.ok).toBe(true);
     if (r.ok) {

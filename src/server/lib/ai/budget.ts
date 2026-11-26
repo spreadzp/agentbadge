@@ -48,7 +48,10 @@ export async function checkBudget(
   >,
   now: Date = new Date(),
 ): Promise<BudgetState> {
-  const dailyCalls = await store.countRunsSince(utcDayStart(now));
+  // 232-12 H-8: the daily meter counts real provider calls only —
+  // error/skipped rows never reached the LLM and must not burn the
+  // budget (a provider outage would otherwise self-lock the day).
+  const dailyCalls = await store.countProviderCallsSince(utcDayStart(now));
   const tokens = await store.sumTokensSince(utcMonthStart(now));
   const monthlyUsdEstimate = (tokens / 1e6) * cfg.usdPer1MTokens;
 

@@ -68,6 +68,7 @@ function assistSuggestion(
   return {
     runId: s.runId,
     mode: s.mode,
+    effectiveNow: s.effectiveNow,
     confidence: s.confidence,
     threshold: s.threshold,
     criteria: out.criteria,

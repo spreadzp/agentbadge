@@ -19,12 +19,26 @@
 import { criteriaForReview } from "../reviews/criteria";
 import type { ReviewStore } from "../reviews/store";
 
-import { promptFor } from "./intake-runners";
+import {
+  promptFor,
+  sanitizeInline,
+  sanitizeUntrusted,
+  UNTRUSTED_RULE,
+  untrustedBlock,
+} from "./intake-runners";
 import { registerScenarioRunner } from "./scenarios";
 import type { AiScenarioRunner } from "./scenarios";
 
 export const REVIEW_ASSIST_SCENARIO = "review_assist";
 export const REVIEW_ASSIST_SUBJECT = "review_case";
+
+/** AI vocabulary — the comparator maps it onto human outcomes. */
+export const REVIEW_ASSIST_RECOMMENDATIONS = [
+  "APPROVE",
+  "APPROVE_WITH_NOTES",
+  "CHANGES_REQUESTED",
+  "REJECT",
+] as const;
 
 const REVIEW_ASSIST_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -38,17 +52,18 @@ const REVIEW_ASSIST_SCHEMA: Record<string, unknown> = {
           /** criterion key FROM THE TEMPLATE — verbatim. */
           name: { type: "string" },
           passed: { type: "boolean" },
-          /** evidence uri/label this verdict leans on (optional). */
-          evidence: { type: "string" },
+          /** evidence uri/label this verdict leans on (nullable —
+           *  strict-mode providers require every property). */
+          evidence: { type: ["string", "null"] },
           confidence: { type: "number", minimum: 0, maximum: 1 },
         },
-        required: ["name", "passed", "confidence"],
+        required: ["name", "passed", "evidence", "confidence"],
         additionalProperties: false,
       },
     },
     recommendation: {
       type: "string",
-      enum: ["APPROVE", "APPROVE_WITH_NOTES", "CHANGES_REQUESTED", "REJECT"],
+      enum: [...REVIEW_ASSIST_RECOMMENDATIONS],
     },
     confidence: { type: "number", minimum: 0, maximum: 1 },
   },
@@ -61,7 +76,8 @@ const FALLBACK_REVIEW_ASSIST =
   "platform criteria template given: {criteria[{name (template key), " +
   "passed, evidence?, confidence 0..1}], recommendation ∈ " +
   "APPROVE|APPROVE_WITH_NOTES|CHANGES_REQUESTED|REJECT, confidence " +
-  "0..1}. Advisory only — a human decides. JSON only.";
+  "0..1}. Advisory only — a human decides. JSON only. " +
+  UNTRUSTED_RULE;
 
 /** Bind the reviews store into the review_assist runner. */
 export function registerReviewAssistRunner(opts: {
@@ -85,30 +101,52 @@ export function registerReviewAssistRunner(opts: {
       reviews.listEvidence(job.subjectId),
       Promise.resolve(criteriaForReview(rec.reviewType)),
     ]);
+    // H-6: agent-controlled fields (evidence label/description,
+    // agentCriteria) are injection surface — sanitize + fence.
     const ev = evidence
       .map(
         (e) =>
-          `- [${e.type}] ${e.uri}` +
-          (e.label ? ` (${e.label})` : "") +
-          (e.description ? ` — ${e.description}` : ""),
+          `- [${sanitizeInline(e.type, 40)}] ${sanitizeInline(e.uri, 500)}` +
+          (e.label ? ` (${sanitizeInline(e.label, 120)})` : "") +
+          (e.description ? ` — ${sanitizeInline(e.description, 400)}` : ""),
       )
       .join("\n");
     const tpl = template
       .map((c) => `- ${c.key}: ${c.label}${c.required ? " (required)" : ""}`)
       .join("\n");
     const user =
-      `reviewType: ${rec.reviewType}\nworkRef: ${rec.workRef}\n` +
+      `reviewType: ${sanitizeInline(rec.reviewType, 64)}\n` +
+      `workRef: ${sanitizeInline(rec.workRef, 200)}\n` +
       (rec.agentCriteria
-        ? `agentCriteria: ${JSON.stringify(rec.agentCriteria)}\n`
+        ? `agentCriteria:\n${untrustedBlock(
+            sanitizeUntrusted(JSON.stringify(rec.agentCriteria), 2000),
+          )}\n`
         : "") +
-      `platform criteria template:\n${tpl}\n\nevidence:\n${ev || "(none)"}`;
-    return promptFor(
+      `platform criteria template:\n${tpl}\n\nevidence:\n${untrustedBlock(ev || "(none)")}`;
+    const prompt = promptFor(
       REVIEW_ASSIST_SCENARIO,
       FALLBACK_REVIEW_ASSIST,
       user,
       REVIEW_ASSIST_SCHEMA,
       600,
     );
+    // H-4: criterion names must be template keys, each at most once —
+    // the model cannot invent criteria or duplicate a verdict.
+    const templateKeys = new Set(template.map((c) => c.key));
+    prompt.validateOutput = (output) => {
+      const seen = new Set<string>();
+      const criteria = (output as { criteria?: unknown })?.criteria;
+      for (const c of Array.isArray(criteria) ? criteria : []) {
+        const name = (c as { name?: unknown })?.name;
+        if (typeof name !== "string" || !templateKeys.has(name)) {
+          return `unknown_criterion: ${String(name).slice(0, 120)}`;
+        }
+        if (seen.has(name)) return `duplicate_criterion: ${name}`;
+        seen.add(name);
+      }
+      return null;
+    };
+    return prompt;
   };
 
   registerScenarioRunner(REVIEW_ASSIST_SCENARIO, runner);

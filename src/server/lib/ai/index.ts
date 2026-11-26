@@ -49,7 +49,8 @@ export type { LoadedPrompt } from "./prompts";
 export { createMemoryAiStore, pickAiStores } from "./db-stores";
 export { InMemoryAiStore } from "./store-memory";
 export { DbAiStore } from "./store-db";
-export { drainAiJobs, startAiWorker, stopAiWorker } from "./worker";
+export { drainAiJobs } from "./worker";
+export { startAiWorker, stopAiWorker } from "./worker-service";
 export type { AiDrainResult, DrainAiDeps } from "./worker";
 export {
   AI_SUBJECT_AGENT_REQUEST,
@@ -92,18 +93,36 @@ export {
 } from "./feedback-intake";
 export {
   compareShadowRun,
-  getComparator,
+  comparedRunIds,
+  notifyAiRunAppended,
   registerAiComparisonHook,
-  registerComparator,
+  registerRunCompletionChecker,
   resetAiComparisonHook,
-  resetComparators,
 } from "./compare";
+export {
+  registerAiReviewComparisonHook,
+  resetAiReviewComparisonHook,
+} from "./compare-review";
+export {
+  getComparator,
+  humanOutcomeFor,
+  registerComparator,
+  resetComparators,
+} from "./comparators";
 export type {
   AgreementResult,
   AiComparator,
-  CompareHookOpts,
   FieldAgreement,
-} from "./compare";
+} from "./comparators";
+export type { CompareHookOpts } from "./compare";
+export {
+  MAX_UNTRUSTED_CHARS,
+  sanitizeInline,
+  sanitizeUntrusted,
+  untrustedBlock,
+} from "./intake-runners";
+export { validateAiRunRef } from "./run-ref";
+export { validateScenarioOutput } from "./output-schemas";
 export { computeAiMetrics } from "./metrics/projection";
 export type {
   AiMetrics,

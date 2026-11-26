@@ -38,15 +38,31 @@ function cap(field: keyof typeof AI_FIELD_LIMITS, v: string | null | undefined):
  * Enqueue an LLM job. `idempotencyKey` absent → derived as
  * `ai:{subjectType}:{subjectId}:{scenario}` — a resubmitted intake
  * write replays onto the same job instead of doubling provider calls.
+ *
+ * 232-12 H-8: `queueCap` refuses once `queued` jobs reach the cap —
+ * an intake flood otherwise becomes an unbounded provider-call
+ * liability (queued rows are promises to spend). A refused job is
+ * NOT written; callers mark the result rather than invent a run.
  */
 export async function enqueueAiJob(
   store: AiStore,
   input: AiJobInsert,
-): Promise<{ job: AiJobRecord; duplicate: boolean }> {
+  opts?: { queueCap?: number },
+): Promise<{
+  job: AiJobRecord | null;
+  duplicate: boolean;
+  refused?: "queue_full";
+}> {
+  if (opts?.queueCap != null && opts.queueCap > 0) {
+    const queued = await store.countJobsByStatus("queued");
+    if (queued >= opts.queueCap) {
+      return { job: null, duplicate: false, refused: "queue_full" };
+    }
+  }
   const idempotencyKey =
     input.idempotencyKey ??
     `ai:${input.subjectType}:${input.subjectId}:${input.scenario}`;
-  return store.enqueueJob({
+  const res = await store.enqueueJob({
     ...(input.id !== undefined ? { id: input.id } : {}),
     scenario: cap("scenario", input.scenario)!,
     subjectType: cap("subjectType", input.subjectType)!,
@@ -55,6 +71,7 @@ export async function enqueueAiJob(
     inputHash: cap("inputHash", input.inputHash),
     idempotencyKey: cap("idempotencyKey", idempotencyKey),
   });
+  return { job: res.job, duplicate: res.duplicate };
 }
 
 /** Truncate an error string to the audited cap (never throws). */

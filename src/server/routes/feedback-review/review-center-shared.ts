@@ -15,6 +15,11 @@
 
 import type { Context } from "hono";
 
+import type { AiEnvConfig } from "../../../config/env/ai-types";
+import { checkBudget, resolveEffectiveMode } from "../../lib/ai/budget";
+import { loadAiSuggestions } from "../../lib/ai/intake";
+import type { AiSuggestionView } from "../../lib/ai/intake";
+import type { AiStore } from "../../lib/ai/types";
 import { FEEDBACK_STATUSES } from "../../lib/feedback/types";
 import { REVIEW_STATUSES } from "../../lib/reviews/types";
 import { principalId } from "../../middleware/operatorAuth";
@@ -106,3 +111,29 @@ export const readOffset = (v: string | undefined): number => {
   if (!Number.isInteger(n) || n < 0 || n > 1_000_000) return 0;
   return n;
 };
+
+/** 232-12 H-5: render-time suggestion load — the frozen modeAtTime
+ *  on the run ignores a kill flip / budget exhaustion since the
+ *  run, so the route re-resolves the effective mode NOW and hands
+ *  it to the loader (fail-closed gates stay honest). */
+export async function loadReviewAiSuggestions(
+  aiStore: AiStore | undefined,
+  aiConfig: AiEnvConfig | undefined,
+  reviewId: string,
+): Promise<AiSuggestionView[]> {
+  if (!aiStore) return [];
+  const enabled = aiConfig?.enabled ?? false;
+  const budget = enabled ? await checkBudget(aiStore, aiConfig!) : undefined;
+  const effectiveNow = (_scenario: string, declared: string) =>
+    resolveEffectiveMode(declared, {
+      enabled,
+      budget: budget?.state ?? "ok",
+    });
+  return loadAiSuggestions(
+    aiStore,
+    reviewId,
+    ["feedback_extract", "review_assist"],
+    "review_case",
+    effectiveNow,
+  );
+}

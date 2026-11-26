@@ -34,4 +34,8 @@ export interface AiEnvConfig {
   jobLeaseMs: number;
   /** Max claim attempts before a job is marked failed (AI_JOB_MAX_ATTEMPTS). */
   jobMaxAttempts: number;
+  /** 232-12 H-8: queue-depth cap — an intake flood beyond this many
+   *  queued jobs stops enqueuing (unbounded backlog = unbounded
+   *  provider-call liability). AI_JOB_QUEUE_CAP, default 500. */
+  jobQueueCap: number;
 }

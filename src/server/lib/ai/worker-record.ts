@@ -37,11 +37,11 @@ export async function recordSkip(
     error: reason,
     jobId: job.id,
   });
-  await store.completeJob(job.id, {
-    status: "skipped",
-    lastError: reason,
-    runId: run.id,
-  });
+  await store.completeJob(
+    job.id,
+    { status: "skipped", lastError: reason, runId: run.id },
+    { expectedLockedAt: job.lockedAt },
+  );
 }
 
 /**
@@ -80,10 +80,10 @@ export async function recordError(
     jobId: job.id,
   });
   const terminal = job.attempts >= maxAttempts ? "failed" : "queued";
-  await store.completeJob(job.id, {
-    status: terminal,
-    lastError: reason,
-    runId: run.id,
-  });
+  await store.completeJob(
+    job.id,
+    { status: terminal, lastError: reason, runId: run.id },
+    { expectedLockedAt: job.lockedAt },
+  );
   return terminal;
 }

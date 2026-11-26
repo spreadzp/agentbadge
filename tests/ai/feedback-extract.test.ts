@@ -53,6 +53,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const EXTRACT_OUT = {
@@ -175,7 +176,7 @@ describe("feedback_extract runner (E5)", () => {
     );
     expect(run!.status).toBe("success");
     expect(run!.output).toEqual(EXTRACT_OUT);
-    const j = await ai.getJob(job.id);
+    const j = await ai.getJob(job!.id);
     expect(j!.status).toBe("done");
   });
 
@@ -192,7 +193,7 @@ describe("feedback_extract runner (E5)", () => {
       subjectType: "review_case",
       subjectId: rec.id,
     });
-    const p = await runner({ job, store: ai });
+    const p = await runner({ job: job!, store: ai });
     if ("notAvailable" in p) throw new Error("unexpected notAvailable");
     expect(p.user).toContain("bundle://w1");
     expect(p.user).toContain("ci run");

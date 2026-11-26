@@ -23,7 +23,9 @@ import { getDatabase } from "../database";
 
 import { createAiAlertSender, type AiAlertSender } from "./alerts";
 import { applyBudgetDegradation, checkBudget, resolveEffectiveMode } from "./budget";
+import { notifyAiRunAppended } from "./compare";
 import { pickAiStores } from "./db-stores";
+import { validateScenarioOutput } from "./output-schemas";
 import { LlmError, createOpenAiProvider, type LlmProvider } from "./provider";
 import { getScenarioRunner, isNotAvailable } from "./scenarios";
 import type { AiStore } from "./types";
@@ -81,6 +83,9 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
     limit: deps.limit ?? 25,
     reclaimBefore: new Date(nowDate.getTime() - leaseMs).toISOString(),
     now: nowDate.toISOString(),
+    // H-7: a job that already burned its attempts is never reclaimed —
+    // poison payloads cannot loop forever on lease expiry.
+    maxAttempts,
   });
 
   for (const job of jobs) {
@@ -168,22 +173,37 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
         const latencyMs = Date.now() - t0;
         let output: unknown = { text: out.text };
         let confidence: number | null = null;
+        let validationError: string | null = null;
         if (prompt.jsonSchema) {
           try {
             output = JSON.parse(out.text);
             const c = (output as { confidence?: unknown }).confidence;
             confidence = typeof c === "number" ? c : null;
+            // 232-12 H-4: provider json_schema is a request, not a
+            // guarantee — validate the parsed output server-side
+            // (per-scenario zod + the runner's job-context checks).
+            validationError =
+              validateScenarioOutput(job.scenario, output) ??
+              prompt.validateOutput?.(output) ??
+              null;
           } catch {
-            // Provider validated json_schema but emitted junk —
-            // treat as invalid_json status (was retried once already).
+            validationError =
+              "output failed JSON.parse after schema retry";
+          }
+          if (validationError !== null) {
             const terminal = await recordError(
               store,
               job,
               effective,
               "invalid_json",
-              "output failed JSON.parse after schema retry",
+              validationError,
               maxAttempts,
-              { provider: provider.id, model: out.model, latencyMs },
+              {
+                provider: provider.id,
+                model: out.model,
+                promptVersion: prompt.promptVersion ?? null,
+                latencyMs,
+              },
             );
             if (terminal === "failed") res.failed++;
             continue;
@@ -207,8 +227,16 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
           status: "success",
           jobId: job.id,
         });
-        await store.completeJob(job.id, { status: "done", runId: run.id });
+        await store.completeJob(
+          job.id,
+          { status: "done", runId: run.id },
+          { expectedLockedAt: job.lockedAt },
+        );
         res.succeeded++;
+        // 232-12 H-9: a shadow run that finishes AFTER the human
+        // outcome still gets its lazy comparison — registered
+        // checkers decide whether an outcome exists yet.
+        await notifyAiRunAppended(store, run);
       } catch (e) {
         const err =
           e instanceof LlmError
@@ -227,7 +255,11 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
           status,
           `${err.kind}: ${err.message}`,
           maxAttempts,
-          { provider: provider.id, latencyMs: Date.now() - t0 },
+          {
+            provider: provider.id,
+            promptVersion: prompt.promptVersion ?? null,
+            latencyMs: Date.now() - t0,
+          },
         );
         if (terminal === "failed") res.failed++;
         res.errors.push(`${job.id} ${job.scenario}: ${err.kind}`);
@@ -248,43 +280,4 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
     }
   }
   return res;
-}
-
-// ─── interval service ────────────────────────────────────────────
-
-let _timer: ReturnType<typeof setInterval> | null = null;
-let _running = false;
-
-/**
- * Env-gated worker (D-232-8). Off when the ai section is absent
- * (AI_AUTOMATION_ENABLED unset) or AI_WORKER_ENABLED=0/false.
- * Interval via AI_WORKER_INTERVAL_MS (default 5s).
- */
-export function startAiWorker(): void {
-  const cfg = getConfig().ai;
-  if (!cfg?.enabled || !cfg.workerEnabled) return;
-  if (_timer) return;
-  _timer = setInterval(() => {
-    if (_running) return;
-    _running = true;
-    drainAiJobs()
-      .then((r) => {
-        if (r.errors.length) {
-          console.warn("[ai-worker]", r.errors.join(" | "));
-        }
-      })
-      .catch((e) => console.error("[ai-worker] drain error", e))
-      .finally(() => {
-        _running = false;
-      });
-  }, cfg.workerIntervalMs);
-  if (typeof _timer.unref === "function") _timer.unref();
-}
-
-/** Test/shutdown hook. */
-export function stopAiWorker(): void {
-  if (_timer) {
-    clearInterval(_timer);
-    _timer = null;
-  }
 }

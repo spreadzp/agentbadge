@@ -14,6 +14,8 @@
  */
 
 import { buildReviewEvent, emitReviewHooks } from "./events";
+import { validateAiRunRef } from "../ai/run-ref";
+import type { AiStore } from "../ai/types";
 import type { ReviewResult } from "./evidence";
 import type { ReviewStore, ReviewTransitionResult } from "./store";
 import type {
@@ -141,4 +143,54 @@ export function returnToTriage(
   operatorRef: string,
 ): Promise<ReviewResult<{ record: ReviewCaseRecord }>> {
   return doTransition(store, id, "REOPENED", "PENDING_TRIAGE", operatorRef);
+}
+
+/**
+ * 232-9 E9 / 232-12 C-1: operator dismisses the advisory suggestion.
+ *
+ * Goes through the same gates as a decide — claimed IN_REVIEW case,
+ * assignee-only, server-verified run ref — then appends ONE
+ * INTERNAL `review.ai_suggestion_rejected` event per run (repeat
+ * submissions are a duplicate no-op, not a metric-inflating second
+ * row). The human still decides normally afterwards.
+ */
+export async function rejectAiSuggestion(
+  store: ReviewStore,
+  aiStore: Pick<AiStore, "listRuns">,
+  id: string,
+  operatorRef: string,
+  input: { runId: string; reason?: string | null },
+): Promise<ReviewResult<{ duplicate: boolean }>> {
+  const cur = await store.getReview(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (cur.status !== "IN_REVIEW") {
+    return { ok: false, error: "status_mismatch" };
+  }
+  if (cur.assignee !== operatorRef) {
+    return { ok: false, error: "not_assignee" };
+  }
+  const v = await validateAiRunRef(aiStore, input.runId, {
+    subjectType: "review_case",
+    subjectId: id,
+    scenario: "review_assist",
+  });
+  if (!v.ok) return { ok: false, error: v.error, field: "aiRunRef" };
+
+  const prior = await store.listEvents(id, { visibility: "INTERNAL" });
+  const dup = prior.some(
+    (e) =>
+      e.kind === "review.ai_suggestion_rejected" &&
+      (e.payload as { runId?: unknown } | null)?.runId === input.runId,
+  );
+  if (dup) return { ok: true, duplicate: true };
+
+  const event = buildReviewEvent("review.ai_suggestion_rejected", "INTERNAL", {
+    runId: input.runId,
+    scenario: "review_assist",
+    actor: operatorRef,
+    reason: input.reason ?? null,
+  });
+  await store.appendEvents(id, [event]);
+  emitReviewHooks(id, [event]);
+  return { ok: true, duplicate: false };
 }

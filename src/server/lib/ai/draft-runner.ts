@@ -18,7 +18,14 @@
 import type { KnowledgeStore } from "../knowledge/store";
 import type { RequestInboxStores } from "../request-inbox/store";
 
-import { loadSubject, promptFor, userBlock } from "./intake-runners";
+import {
+  loadSubject,
+  promptFor,
+  sanitizeInline,
+  sanitizeUntrusted,
+  UNTRUSTED_RULE,
+  userBlock,
+} from "./intake-runners";
 import { registerScenarioRunner } from "./scenarios";
 import type { AiScenarioRunner } from "./scenarios";
 
@@ -47,7 +54,8 @@ const FALLBACK_DRAFT =
   "usedKnowledgeIds[] (ids actually cited), tone ∈ brief|detailed|" +
   "clarifying, confidence 0..1}. Constraints: propose, never commit; " +
   "no verdicts, no promises on behalf of the platform; ask for " +
-  "clarification when the request is ambiguous. JSON only.";
+  "clarification when the request is ambiguous. JSON only. " +
+  UNTRUSTED_RULE;
 
 interface KnowledgeHit {
   id: string;
@@ -55,27 +63,37 @@ interface KnowledgeHit {
   body: string;
 }
 
-/** Hydrate E3 output — matched ids from the latest successful
- *  knowledge_search run — into prompt-ready excerpts. */
+/** Hydrate E3 output — matched ids from the latest NON-SHADOW
+ *  successful knowledge_search run — into prompt-ready excerpts.
+ *  232-12 H-1: a shadow run is invisible to operators; letting its
+ *  picks shape a visible draft leaks the shadow output by
+ *  composition, so shadow runs are skipped entirely.
+ *  232-12 H-3: only PUBLISHED versions hydrate — unpublished
+ *  latestVersionId content must not reach a request-facing draft. */
 async function hydrateHits(
   runner: { store: AiScenarioRunnerStore; subjectId: string },
   knowledge: KnowledgeStore | null,
 ): Promise<KnowledgeHit[]> {
   if (!knowledge) return [];
-  const run = await runner.store.latestRunFor(
-    "agent_request",
-    runner.subjectId,
-    KNOWLEDGE_SEARCH,
+  const runs = await runner.store.listRuns({
+    subjectType: "agent_request",
+    subjectId: runner.subjectId,
+    scenario: KNOWLEDGE_SEARCH,
+    limit: 10,
+  });
+  const run = runs.find(
+    (r) => r.modeAtTime !== "shadow" && r.status === "success" && r.output,
   );
-  if (run?.status !== "success" || !run.output) return [];
+  if (!run) return [];
   const ids = (run.output as { matchedEntryIds?: unknown }).matchedEntryIds;
   if (!Array.isArray(ids)) return [];
   const hits: KnowledgeHit[] = [];
   for (const id of ids.slice(0, MAX_HITS)) {
     if (typeof id !== "string") continue;
     const item = await knowledge.getItem(id);
-    const versionId = item?.publishedVersionId ?? item?.latestVersionId;
-    const version = versionId ? await knowledge.getVersion(versionId) : null;
+    const version = item?.publishedVersionId
+      ? await knowledge.getVersion(item.publishedVersionId)
+      : null;
     if (item && version) {
       hits.push({ id: item.id, title: version.title, body: version.body });
     }
@@ -111,7 +129,8 @@ export function registerAnswerDraftRunner(opts: {
     const ctx = hits
       .map(
         (h) =>
-          `- [${h.id}] ${h.title}\n  ${h.body.slice(0, 400)}`,
+          `- [${sanitizeInline(h.id, 120)}] ${sanitizeInline(h.title, 160)}\n` +
+          `  ${sanitizeUntrusted(h.body, 400)}`,
       )
       .join("\n");
     const user =
@@ -119,13 +138,26 @@ export function registerAnswerDraftRunner(opts: {
       (ctx
         ? `\n\nknowledge base excerpts (cite via usedKnowledgeIds):\n${ctx}`
         : "\n\n(no knowledge base excerpts matched this request)");
-    return promptFor(
+    const prompt = promptFor(
       ANSWER_DRAFT_SCENARIO,
       FALLBACK_DRAFT,
       user,
       ANSWER_DRAFT_SCHEMA,
       800,
     );
+    // H-3: usedKnowledgeIds may only cite excerpts the model saw.
+    const hydrated = new Set(hits.map((h) => h.id));
+    prompt.validateOutput = (output) => {
+      const ids = (output as { usedKnowledgeIds?: unknown })
+        ?.usedKnowledgeIds;
+      for (const id of Array.isArray(ids) ? ids : []) {
+        if (typeof id !== "string" || !hydrated.has(id)) {
+          return `uncited_knowledge_id: ${String(id).slice(0, 120)}`;
+        }
+      }
+      return null;
+    };
+    return prompt;
   };
 
   registerScenarioRunner(ANSWER_DRAFT_SCENARIO, runner);

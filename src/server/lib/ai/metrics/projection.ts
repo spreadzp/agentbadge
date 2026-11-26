@@ -16,7 +16,7 @@
 
 import type { InteractionStore } from "../../request-inbox/interaction-store";
 import type { ReviewStore } from "../../reviews/store";
-import { getComparator } from "../compare";
+import { getComparator, humanOutcomeFor } from "../comparators";
 import type { AiStore } from "../types";
 
 const CAP = 500;
@@ -68,8 +68,15 @@ export interface AiMetrics {
     falsePositiveRate: number | null;
     /** Human diverged from the AI suggestion — directional only. */
     interventions: number;
+    /** Denominator = linked + rejected suggestions on decided cases —
+     *  every case where an AI suggestion was in play, not just the
+     *  ones the human kept (232-12 H-9 survivorship fix). */
+    denominator: number;
     interventionRate: number | null;
   };
+  /** 232-12 H-9: true when the CAP bound cut the scan — numbers below
+   *  cover only the most recent CAP rows of each stream. */
+  truncated: { runs: boolean; cases: boolean };
 }
 
 const inWindow = (
@@ -122,31 +129,35 @@ export async function computeAiMetrics(
       a.modeAtTime.localeCompare(b.modeAtTime),
   );
 
-  // ─── shadow agreement join (agent_request subjects only) ──────
+  // ─── shadow agreement join (agent_request + review_case) ──────
+  // 232-12 H-9: (a) review_assist shadow runs now compare via the
+  // review.decided hook — the join covers both subject types;
+  // (b) one agreement event per runId counts — the FIRST outcome
+  // recorded is the blind one.
   let compared = 0;
   let agreed = 0;
   let disagreed = 0;
   let notComparable = 0;
+  const agreementEventsFor = async (r: (typeof windowed)[number]) =>
+    r.subjectType === "review_case"
+      ? reviews.listEvents(r.subjectId, { visibility: "INTERNAL" })
+      : interactions.listEvents(r.subjectId, { visibility: "INTERNAL" });
   for (const r of windowed) {
-    if (r.modeAtTime !== "shadow" || r.subjectType !== "agent_request") {
+    if (r.modeAtTime !== "shadow") continue;
+    if (r.subjectType !== "agent_request" && r.subjectType !== "review_case") {
       continue;
     }
-    const events = await interactions.listEvents(r.subjectId, {
-      visibility: "INTERNAL",
-    });
-    for (const ev of events) {
-      if (
-        ev.kind !== "ai.agreement.computed" ||
-        (ev.payload as { runId?: unknown })?.runId !== r.id
-      ) {
-        continue;
-      }
-      compared += 1;
-      const agree = (ev.payload as { agree?: unknown }).agree;
-      if (agree === true) agreed += 1;
-      else if (agree === false) disagreed += 1;
-      else notComparable += 1;
-    }
+    const first = (await agreementEventsFor(r)).find(
+      (ev) =>
+        ev.kind === "ai.agreement.computed" &&
+        (ev.payload as { runId?: unknown })?.runId === r.id,
+    );
+    if (!first) continue;
+    compared += 1;
+    const agree = (first.payload as { agree?: unknown }).agree;
+    if (agree === true) agreed += 1;
+    else if (agree === false) disagreed += 1;
+    else notComparable += 1;
   }
 
   // ─── review-side metrics (human entities + event joins) ───────
@@ -165,6 +176,7 @@ export async function computeAiMetrics(
   let linked = 0;
   let falsePositives = 0;
   let interventions = 0;
+  let suggestionInPlay = 0;
 
   for (const c of decided) {
     if (c.claimedAt && c.decidedAt) {
@@ -179,38 +191,59 @@ export async function computeAiMetrics(
     const rejectedRunIds = new Set(
       events
         .filter((e) => e.kind === "review.ai_suggestion_rejected")
-        .map((e) => (e.payload as { runId?: unknown })?.runId),
+        .map((e) => (e.payload as { runId?: unknown })?.runId)
+        .filter((id): id is string => typeof id === "string"),
     );
     rejectedSuggestions += rejectedRunIds.size;
 
     for (const d of decisions) {
       byOperator[d.decidedBy] = (byOperator[d.decidedBy] ?? 0) + 1;
-      if (!d.aiRunRef || !inWindow(d.decidedAt, filter)) continue;
+    }
+
+    // 232-12 H-9: the suggestion "in play" on this case is the
+    // UNION of rejected + linked run ids (deduped — the same run
+    // rejected and linked counts once). Every rejected suggestion is
+    // an intervention; a linked suggestion is an intervention only
+    // when the human diverged. Denominator covers both — previously
+    // rejections dropped out of both sides (survivorship bias).
+    const inPlay = new Set<string>(rejectedRunIds);
+    const intervened = new Set<string>(rejectedRunIds);
+
+    // Linkage reads the LATEST decision — a reopened case's earlier
+    // verdict is superseded, counting it again doubles `linked`.
+    const d = decisions.at(-1);
+    if (d?.aiRunRef && inWindow(d.decidedAt, filter)) {
       const run = runById.get(d.aiRunRef);
-      if (!run) continue;
-      linked += 1;
-      const human = {
-        outcome: d.outcome,
-        criteriaResults: Object.fromEntries(
-          (d.criteriaResults as { key: string; result: string }[]).map(
-            (cr) => [cr.key, cr.result],
+      if (run) {
+        linked += 1;
+        inPlay.add(run.id);
+        const human = {
+          outcome: d.outcome,
+          criteriaResults: Object.fromEntries(
+            (d.criteriaResults as { key: string; result: string }[]).map(
+              (cr) => [cr.key, cr.result],
+            ),
           ),
-        ),
-      };
-      const cmp = getComparator(run.scenario)?.(run.output, human);
-      const rec =
-        (run.output as { recommendation?: unknown })?.recommendation ?? "";
-      if (
-        typeof rec === "string" &&
-        rec.startsWith("APPROV") &&
-        (d.outcome === "REJECTED" || d.outcome === "CHANGES_REQUESTED")
-      ) {
-        falsePositives += 1;
-      }
-      if (rejectedRunIds.has(run.id) || cmp?.agree === false) {
-        interventions += 1;
+        };
+        const cmp = getComparator(run.scenario)?.(run.output, human);
+        const rec =
+          (run.output as { recommendation?: unknown })?.recommendation ?? "";
+        // AI vocab normalized to human outcome vocab (APPROVE→APPROVED)
+        // before the FP test — 232-12 H-9 vocab fix.
+        if (
+          typeof rec === "string" &&
+          humanOutcomeFor(rec).startsWith("APPROVED") &&
+          (d.outcome === "REJECTED" || d.outcome === "CHANGES_REQUESTED")
+        ) {
+          falsePositives += 1;
+        }
+        if (cmp?.agree === false) {
+          intervened.add(run.id);
+        }
       }
     }
+    suggestionInPlay += inPlay.size;
+    interventions += intervened.size;
   }
 
   return {
@@ -235,7 +268,10 @@ export async function computeAiMetrics(
       falsePositives,
       falsePositiveRate: linked > 0 ? falsePositives / linked : null,
       interventions,
-      interventionRate: linked > 0 ? interventions / linked : null,
+      denominator: suggestionInPlay,
+      interventionRate:
+        suggestionInPlay > 0 ? interventions / suggestionInPlay : null,
     },
+    truncated: { runs: runs.length >= CAP, cases: cases.length >= CAP },
   };
 }

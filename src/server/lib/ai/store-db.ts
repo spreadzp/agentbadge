@@ -56,6 +56,14 @@ export class DbAiStore implements AiStore {
     return this.repo.countRunsSince(sinceIso);
   }
 
+  countProviderCallsSince(sinceIso: string): Promise<number> {
+    return this.repo.countProviderCallsSince(sinceIso);
+  }
+
+  countJobsByStatus(status: string): Promise<number> {
+    return this.repo.countJobsByStatus(status);
+  }
+
   sumTokensSince(sinceIso: string): Promise<number> {
     return this.repo.sumTokensSince(sinceIso);
   }
@@ -75,6 +83,7 @@ export class DbAiStore implements AiStore {
     limit: number;
     reclaimBefore: string;
     now: string;
+    maxAttempts?: number;
   }): Promise<AiJobRecord[]> {
     const rows = await this.repo.claimJobs(opts);
     return rows as AiJobRecord[];
@@ -83,8 +92,13 @@ export class DbAiStore implements AiStore {
   async completeJob(
     id: string,
     patch: { status: string; lastError?: string | null; runId?: string | null },
+    opts?: { expectedLockedAt?: string | null },
   ): Promise<AiJobRecord | null> {
-    return (await this.repo.completeJob(id, patch)) as AiJobRecord | null;
+    return (await this.repo.completeJob(
+      id,
+      patch,
+      opts,
+    )) as AiJobRecord | null;
   }
 
   async getPolicy(scenario: string): Promise<AutomationPolicyRecord | null> {

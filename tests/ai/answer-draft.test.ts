@@ -43,6 +43,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const FP = { ip: null, ua: null, referer: null, src: null, headers: {} };
@@ -69,12 +70,15 @@ const seedRequest = async (id: string, text = "how do I pay with x402?") =>
     })
   ).record;
 
-const stubProvider = (capture: { user?: string } = {}): LlmProvider => ({
+const stubProvider = (
+  capture: { user?: string } = {},
+  out: Record<string, unknown> = DRAFT_OUT,
+): LlmProvider => ({
   id: "stub",
   complete: async (req) => {
     capture.user = req.user;
     return {
-      text: JSON.stringify(DRAFT_OUT),
+      text: JSON.stringify(out),
       usage: { total: 5 },
       model: "m",
     };
@@ -103,7 +107,9 @@ describe("answer_draft runner", () => {
     const res = await drainAiJobs({
       store: ai,
       config: CFG,
-      provider: stubProvider(cap),
+      // no excerpts hydrated → citations must be empty (H-3: the
+      // model may only cite ids it was actually shown).
+      provider: stubProvider(cap, { ...DRAFT_OUT, usedKnowledgeIds: [] }),
     });
     expect(res.errors).toEqual([]);
     const run = await ai.latestRunFor("agent_request", rec.id, "answer_draft");
@@ -128,6 +134,33 @@ describe("answer_draft runner", () => {
       },
       { id: "ki_1_ev", itemId: "ki_1", from: null, to: "DRAFT", actor: "t" },
     );
+    // 232-12 H-3: only PUBLISHED versions hydrate into the prompt —
+    // run the full publish chain (evidence is required for VERIFIED).
+    await knowledge.addEvidence({
+      id: "ki_1_evi",
+      versionId: "ki_1_v1",
+      type: "doc",
+      uri: "https://docs.example/ki_1",
+      addedBy: "t",
+    });
+    await knowledge.transitionItem(item.id, {
+      from: "DRAFT",
+      to: "PENDING",
+      actor: "t",
+    });
+    await knowledge.transitionItem(item.id, {
+      from: "PENDING",
+      to: "VERIFIED",
+      actor: "verifier",
+      expectedVersionId: "ki_1_v1",
+      expectedEvidence: "ki_1_evi",
+    });
+    await knowledge.transitionItem(item.id, {
+      from: "VERIFIED",
+      to: "PUBLISHED",
+      actor: "publisher",
+      expectedVersionId: "ki_1_v1",
+    });
     await ai.appendRun({
       scenario: "knowledge_search",
       subjectType: "agent_request",

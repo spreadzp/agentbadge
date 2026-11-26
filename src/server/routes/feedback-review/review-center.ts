@@ -32,6 +32,7 @@ import {
   reviewDraftInput,
 } from "../../lib/knowledge-draft/convert";
 import {
+  loadReviewAiSuggestions,
   readOffset,
   readQueue,
   readStatus,
@@ -39,6 +40,8 @@ import {
 import { registerReviewCenterMutations } from "./review-center-mutations";
 import { registerReviewCenterConversions } from "./review-center-convert";
 import { loadAiSuggestions } from "../../lib/ai/intake";
+import { getConfig } from "../../../config/env";
+import type { AiEnvConfig } from "../../../config/env/ai-types";
 import type { AiStore } from "../../lib/ai/types";
 import {
   feedbackQueuePage,
@@ -66,6 +69,9 @@ export function createReviewCenter(deps: {
   operatorStore?: OperatorStore;
   /** 232-6 E5: advisory AI extraction suggestions — absent → none shown. */
   aiStore?: AiStore;
+  /** 232-12 H-5: render-time effective mode needs the ai env (kill +
+   *  budget) — injected in tests; defaults to getConfig().ai. */
+  aiConfig?: () => AiEnvConfig | undefined;
 }): Hono {
   const app = new Hono();
   const { stores } = deps;
@@ -205,18 +211,15 @@ export function createReviewCenter(deps: {
     if (!rec) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such review");
     }
+    // 232-12 H-5: render-time effective mode — the frozen modeAtTime
+    // on the run ignores a kill flip / budget exhaustion since the
+    // run; the loader re-resolves it now (shared helper).
+    const aiCfg = (deps.aiConfig ?? (() => getConfig().ai))();
     const [evidence, decisions, events, aiSuggestions] = await Promise.all([
       stores.reviews.listEvidence(id.data),
       stores.reviews.listDecisions(id.data),
       stores.reviews.listEvents(id.data),
-      deps.aiStore
-        ? loadAiSuggestions(
-            deps.aiStore,
-            id.data,
-            ["feedback_extract", "review_assist"],
-            "review_case",
-          )
-        : Promise.resolve([]),
+      loadReviewAiSuggestions(deps.aiStore, aiCfg, id.data),
     ]);
     return page(
       c,
@@ -291,7 +294,7 @@ export function createReviewCenter(deps: {
     );
   });
 
-  registerReviewCenterMutations(app, stores);
+  registerReviewCenterMutations(app, stores, deps.aiStore);
   registerReviewCenterConversions(app, stores);
   return app;
 }

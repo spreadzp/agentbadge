@@ -26,7 +26,12 @@ import {
  *  confidence ≥ threshold; anything less is advisory/human-required. */
 export interface AssistSuggestion {
   runId: string;
+  /** modeAtTime the run was produced under (audit truth). */
   mode: string;
+  /** 232-12 H-5: effective mode re-resolved AT RENDER — a kill flip
+   *  or exhausted budget since the run means no prefill, even though
+   *  the historical run was made under supervised. */
+  effectiveNow: string;
   confidence: number | null;
   threshold: number | null;
   criteria: { name: string; passed: boolean; evidence?: string }[];
@@ -40,11 +45,17 @@ export function decideForm(
 ) {
   if (r.status !== "IN_REVIEW") return "";
   const criteria = criteriaForReview(r.reviewType);
+  // 232-12 H-5: fail CLOSED — prefill needs a calibrated threshold
+  // (null = never prefill), a numeric confidence that clears it, a
+  // run produced under supervised, and the CURRENT effective mode
+  // still supervised (kill/budget re-resolved at render).
   const prefillable =
     suggestion != null &&
     suggestion.mode === "supervised" &&
-    (suggestion.threshold == null ||
-      (suggestion.confidence ?? 0) >= suggestion.threshold);
+    suggestion.effectiveNow === "supervised" &&
+    suggestion.threshold != null &&
+    suggestion.confidence != null &&
+    suggestion.confidence >= suggestion.threshold;
   const byName = new Map(
     (suggestion?.criteria ?? []).map((c) => [c.name, c]),
   );

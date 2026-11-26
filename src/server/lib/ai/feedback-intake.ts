@@ -25,6 +25,10 @@ import { pickFeedbackStore } from "../feedback/db-stores";
 import { pickReviewStore } from "../reviews/db-stores";
 
 import { pickAiStores } from "./db-stores";
+import {
+  registerAiReviewComparisonHook,
+  resetAiReviewComparisonHook,
+} from "./compare-review";
 import { registerFeedbackExtractRunner } from "./feedback-runner";
 import { registerReviewAssistRunner } from "./review-runner";
 import { enqueueAiJob } from "./jobs";
@@ -58,17 +62,22 @@ async function enqueue(
   subjectType: string,
   subjectId: string,
   inputHash: string,
+  queueCap?: number,
 ): Promise<void> {
   for (const scenario of SUBJECT_SCENARIOS[subjectType] ?? []) {
     const policy = await aiStore.getPolicy(scenario);
     if ((policy?.mode ?? "off") === "off") continue;
-    await enqueueAiJob(aiStore, {
-      scenario,
-      subjectType,
-      subjectId,
-      inputRef: `${subjectType}:${subjectId}`,
-      inputHash,
-    });
+    await enqueueAiJob(
+      aiStore,
+      {
+        scenario,
+        subjectType,
+        subjectId,
+        inputRef: `${subjectType}:${subjectId}`,
+        inputHash,
+      },
+      { queueCap },
+    );
   }
 }
 
@@ -88,12 +97,18 @@ export function registerAiFeedbackHook(
     ) {
       return;
     }
-    if (!readCfg()?.enabled) return; // kill-switch — never even queue
+    const cfg = readCfg();
+    if (!cfg?.enabled) return; // kill-switch — never even queue
     const store = opts.aiStore ?? pickAiStores(getDatabase());
-    void enqueue(store, "feedback", feedbackId, hashPayload(event.payload))
-      .catch(() => {
-        /* fire-and-forget: enqueue failure must not surface at intake */
-      });
+    void enqueue(
+      store,
+      "feedback",
+      feedbackId,
+      hashPayload(event.payload),
+      cfg.jobQueueCap,
+    ).catch(() => {
+      /* fire-and-forget: enqueue failure must not surface at intake */
+    });
   });
   return _feedbackHook;
 }
@@ -111,12 +126,18 @@ export function registerAiReviewHook(
     ) {
       return;
     }
-    if (!readCfg()?.enabled) return;
+    const cfg = readCfg();
+    if (!cfg?.enabled) return;
     const store = opts.aiStore ?? pickAiStores(getDatabase());
-    void enqueue(store, "review_case", reviewId, hashPayload(event.payload))
-      .catch(() => {
-        /* fire-and-forget */
-      });
+    void enqueue(
+      store,
+      "review_case",
+      reviewId,
+      hashPayload(event.payload),
+      cfg.jobQueueCap,
+    ).catch(() => {
+      /* fire-and-forget */
+    });
   });
   return _reviewHook;
 }
@@ -127,6 +148,8 @@ export function resetAiFeedbackHooks(): void {
   _feedbackHook = null;
   _reviewHook?.();
   _reviewHook = null;
+  // The review-side comparison hook is wired alongside ours.
+  resetAiReviewComparisonHook();
 }
 
 /**
@@ -157,4 +180,9 @@ export function wireAiFeedback(
   registerReviewAssistRunner({ reviews });
   registerAiFeedbackHook({ aiStore: deps.aiStore, config: deps.config });
   registerAiReviewHook({ aiStore: deps.aiStore, config: deps.config });
+  // 232-12 E6/H-9: review_assist shadow agreement — lazy comparison
+  // on review.decided + run-completion coverage (dedupe-per-run).
+  if (reviews) {
+    registerAiReviewComparisonHook({ reviews, aiStore: deps.aiStore });
+  }
 }

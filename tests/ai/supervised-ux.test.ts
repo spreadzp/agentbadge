@@ -23,6 +23,24 @@ import {
 } from "../helpers/operators";
 
 const FORM = "application/x-www-form-urlencoded";
+
+const CFG = {
+  enabled: true,
+  baseUrl: "https://llm.test",
+  apiKey: "k",
+  model: "m-1",
+  dailyCallLimit: 0,
+  monthlyBudgetUsd: 0,
+  usdPer1MTokens: 1,
+  shadowReserveCalls: 0,
+  timeoutMs: 5_000,
+  retryOnce: false,
+  workerEnabled: true,
+  workerIntervalMs: 5_000,
+  jobLeaseMs: 60_000,
+  jobMaxAttempts: 1,
+  jobQueueCap: 500,
+};
 const ASSIST = {
   criteria: [
     { name: "accuracy", passed: true, evidence: "doc-link" },
@@ -109,12 +127,20 @@ beforeEach(async () => {
       },
       operatorStore: opStore,
       aiStore: ai,
+      aiConfig: () => CFG,
     }),
   );
 });
 
 describe("supervised prefill + confirm", () => {
   it("supervised run prefills criteria + outcome; confirm → human decision + aiRunRef", async () => {
+    // 232-12 H-5: supervised prefill needs a calibrated threshold —
+    // mode alone is no longer enough (fail-closed gate).
+    await ai.upsertPolicy("review_assist", {
+      mode: "supervised",
+      confidenceThreshold: 0.5,
+      updatedBy: "op",
+    });
     const rec = await seedCase("rv_s1");
     const run = await appendAssistRun(rec.id, "supervised");
     const { html } = await getHtml(`/admin/review-center/reviews/${rec.id}`);

@@ -4,7 +4,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getComparator, resetComparators } from "../../src/server/lib/ai/compare";
+import { getComparator, resetComparators } from "../../src/server/lib/ai/comparators";
 import { computeAiMetrics } from "../../src/server/lib/ai/metrics/projection";
 import { InMemoryAiStore } from "../../src/server/lib/ai/store-memory";
 import {
@@ -61,6 +61,7 @@ const seedDecidedCase = async (id: string, opts: {
       aiRunRef: opts.aiRunRef ?? null,
     },
     "op-1",
+    { aiStore: ai },
   );
   expect(d.ok).toBe(true);
   return record;
@@ -174,6 +175,7 @@ describe("computeAiMetrics projection", () => {
       id: "run_link",
       scenario: "review_assist",
       subjectType: "review_case",
+      subjectId: "rv_d1",
       modeAtTime: "supervised",
       output: {
         criteria: [{ name: "accuracy", passed: true }],

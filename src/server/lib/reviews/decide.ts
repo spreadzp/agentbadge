@@ -15,6 +15,8 @@
 
 import { criteriaForReview, type CriterionTemplate } from "./criteria";
 import { buildReviewEvent, emitReviewHooks } from "./events";
+import { validateAiRunRef } from "../ai/run-ref";
+import type { AiStore } from "../ai/types";
 import type { ReviewResult } from "./evidence";
 import type { ReviewStore } from "./store";
 import type {
@@ -62,6 +64,10 @@ export async function decideReview(
   id: string,
   raw: unknown,
   operatorRef: string,
+  /** 232-12 C-1: when `aiRunRef` is asserted the caller MUST pass the
+   *  ai store — the link is validated server-side; absent the store
+   *  the reference is refused, never silently trusted. */
+  deps?: { aiStore?: Pick<AiStore, "listRuns"> | null },
 ): Promise<
   ReviewResult<{
     record: ReviewCaseRecord;
@@ -104,6 +110,23 @@ export async function decideReview(
     );
     if (badRequired) {
       return { ok: false, error: "inconsistent_outcome", field: "outcome" };
+    }
+  }
+
+  // 232-12 C-1: the advisory-run link is operator-asserted input —
+  // verify it against the run log before it lands on the decision
+  // (wrong-subject/shadow/failed refs refuse; store absent refuses).
+  if (input.aiRunRef) {
+    if (!deps?.aiStore) {
+      return { ok: false, error: "invalid_ai_run_ref", field: "aiRunRef" };
+    }
+    const v = await validateAiRunRef(deps.aiStore, input.aiRunRef, {
+      subjectType: "review_case",
+      subjectId: id,
+      scenario: "review_assist",
+    });
+    if (!v.ok) {
+      return { ok: false, error: v.error, field: "aiRunRef" };
     }
   }
 

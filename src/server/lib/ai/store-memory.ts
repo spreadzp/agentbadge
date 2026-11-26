@@ -9,6 +9,7 @@
 
 import { randomUUID } from "node:crypto";
 
+import { InMemoryAiPolicyStore } from "./store-memory-policies";
 import type {
   AiJobInsert,
   AiJobRecord,
@@ -16,22 +17,36 @@ import type {
   AiRunRecord,
   AiStore,
   AutomationPolicyPatch,
-  AutomationPolicyRecord,
   PolicyChangeInsert,
-  PolicyChangeRecord,
 } from "./types";
 
 const nowIso = () => new Date().toISOString();
 
+/** 232-12 H-8: pre-provider fault prefixes never burned a call. */
+const NO_CALL_PREFIXES = [
+  "no_provider",
+  "no_runner",
+  "runner_fault",
+  "seam_unavailable",
+];
+export function reachedProvider(error: string | null): boolean {
+  if (error === null) return true;
+  return !NO_CALL_PREFIXES.some((p) => error.startsWith(p));
+}
+
 export class InMemoryAiStore implements AiStore {
   private readonly runs = new Map<string, AiRunRecord>();
   private readonly jobs = new Map<string, AiJobRecord>();
-  private readonly policies = new Map<string, AutomationPolicyRecord>();
-  private readonly policyChanges = new Map<string, PolicyChangeRecord>();
+  private readonly policyStore = new InMemoryAiPolicyStore();
 
   // ─── AiRun ──────────────────────────────────────────────────
 
   async appendRun(input: AiRunInsert): Promise<AiRunRecord> {
+    // Append-only: a caller-supplied id that already exists is a
+    // contract violation, not an overwrite (arc 232-11 nit).
+    if (input.id !== undefined && this.runs.has(input.id)) {
+      throw new Error(`ai_run_conflict: run ${input.id} already exists`);
+    }
     const run: AiRunRecord = {
       id: input.id ?? randomUUID(),
       scenario: input.scenario,
@@ -104,6 +119,19 @@ export class InMemoryAiStore implements AiStore {
     ).length;
   }
 
+  async countProviderCallsSince(sinceIso: string): Promise<number> {
+    return [...this.runs.values()].filter(
+      (r) =>
+        r.createdAt >= sinceIso &&
+        r.status !== "skipped" &&
+        reachedProvider(r.error),
+    ).length;
+  }
+
+  async countJobsByStatus(status: string): Promise<number> {
+    return [...this.jobs.values()].filter((j) => j.status === status).length;
+  }
+
   async sumTokensSince(sinceIso: string): Promise<number> {
     return [...this.runs.values()]
       .filter((r) => r.createdAt >= sinceIso && r.status !== "skipped")
@@ -150,14 +178,16 @@ export class InMemoryAiStore implements AiStore {
     limit: number;
     reclaimBefore: string;
     now: string;
+    maxAttempts?: number;
   }): Promise<AiJobRecord[]> {
     const claimable = [...this.jobs.values()]
       .filter(
         (j) =>
-          j.status === "queued" ||
-          (j.status === "working" &&
-            j.lockedAt !== null &&
-            j.lockedAt < opts.reclaimBefore),
+          (j.status === "queued" ||
+            (j.status === "working" &&
+              j.lockedAt !== null &&
+              j.lockedAt < opts.reclaimBefore)) &&
+          (opts.maxAttempts === undefined || j.attempts < opts.maxAttempts),
       )
       .sort((a, b) =>
         a.createdAt === b.createdAt
@@ -177,9 +207,17 @@ export class InMemoryAiStore implements AiStore {
   async completeJob(
     id: string,
     patch: { status: string; lastError?: string | null; runId?: string | null },
+    opts?: { expectedLockedAt?: string | null },
   ): Promise<AiJobRecord | null> {
     const job = this.jobs.get(id);
     if (!job) return null;
+    // CAS on the claimed lease — a stale claim loses to a re-claim.
+    if (
+      opts?.expectedLockedAt !== undefined &&
+      job.lockedAt !== opts.expectedLockedAt
+    ) {
+      return null;
+    }
     job.status = patch.status;
     if (patch.lastError !== undefined) job.lastError = patch.lastError;
     if (patch.runId !== undefined) job.runId = patch.runId;
@@ -187,83 +225,20 @@ export class InMemoryAiStore implements AiStore {
     return job;
   }
 
-  // ─── AutomationPolicy + PolicyChange ────────────────────────
+  // ─── AutomationPolicy + PolicyChange (delegate) ─────────────
 
-  async getPolicy(scenario: string): Promise<AutomationPolicyRecord | null> {
-    return (
-      [...this.policies.values()].find((p) => p.scenario === scenario) ?? null
-    );
-  }
-
-  async listPolicies(): Promise<AutomationPolicyRecord[]> {
-    return [...this.policies.values()].sort((a, b) =>
-      a.scenario.localeCompare(b.scenario),
-    );
-  }
-
-  async upsertPolicy(
+  getPolicy = (scenario: string) => this.policyStore.getPolicy(scenario);
+  listPolicies = () => this.policyStore.listPolicies();
+  upsertPolicy = (
     scenario: string,
     patch: AutomationPolicyPatch,
     change?: PolicyChangeInsert,
-  ): Promise<{ policy: AutomationPolicyRecord; change: PolicyChangeRecord | null }> {
-    const now = nowIso();
-    let policy = await this.getPolicy(scenario);
-    if (!policy) {
-      policy = {
-        id: randomUUID(),
-        scenario,
-        mode: "off",
-        confidenceThreshold: null,
-        model: null,
-        updatedBy: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-      this.policies.set(policy.id, policy);
-    }
-    if (patch.mode !== undefined) policy.mode = patch.mode;
-    if (patch.confidenceThreshold !== undefined) {
-      policy.confidenceThreshold = patch.confidenceThreshold;
-    }
-    if (patch.model !== undefined) policy.model = patch.model;
-    if (patch.updatedBy !== undefined) policy.updatedBy = patch.updatedBy;
-    policy.updatedAt = now;
-
-    let row: PolicyChangeRecord | null = null;
-    if (change) row = await this.appendPolicyChange(change);
-    return { policy, change: row };
-  }
-
-  async appendPolicyChange(
-    input: PolicyChangeInsert,
-  ): Promise<PolicyChangeRecord> {
-    const row: PolicyChangeRecord = {
-      id: input.id ?? randomUUID(),
-      scenario: input.scenario,
-      field: input.field,
-      oldValue: input.oldValue ?? null,
-      newValue: input.newValue ?? null,
-      actor: input.actor,
-      reason: input.reason ?? null,
-      createdAt: nowIso(),
-    };
-    this.policyChanges.set(row.id, row);
-    return row;
-  }
-
-  async listPolicyChanges(opts?: {
+  ) => this.policyStore.upsertPolicy(scenario, patch, change);
+  appendPolicyChange = (input: PolicyChangeInsert) =>
+    this.policyStore.appendPolicyChange(input);
+  listPolicyChanges = (opts?: {
     scenario?: string;
     limit?: number;
     offset?: number;
-  }): Promise<PolicyChangeRecord[]> {
-    let all = [...this.policyChanges.values()]
-      .reverse()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    if (opts?.scenario !== undefined) {
-      all = all.filter((c) => c.scenario === opts.scenario);
-    }
-    const offset = opts?.offset ?? 0;
-    const limit = opts?.limit ?? all.length;
-    return all.slice(offset, offset + limit);
-  }
+  }) => this.policyStore.listPolicyChanges(opts);
 }

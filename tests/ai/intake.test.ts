@@ -27,7 +27,11 @@ import {
 } from "../../src/server/lib/ai/intake";
 import { registerIntakeRunners } from "../../src/server/lib/ai/intake-runners";
 import { enqueueAiJob } from "../../src/server/lib/ai/jobs";
-import { loadPrompt, resetPromptCache } from "../../src/server/lib/ai/prompts";
+import {
+  loadPrompt,
+  promptVersionFor,
+  resetPromptCache,
+} from "../../src/server/lib/ai/prompts";
 import type { LlmProvider, LlmCompleteResult } from "../../src/server/lib/ai/provider";
 import {
   getScenarioRunner,
@@ -52,6 +56,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const INBOX_ENV = {
@@ -72,10 +77,12 @@ const setMode = (scenario: string, mode: string, threshold?: number) =>
     updatedBy: "op",
   });
 
-function stubProvider(result: () => LlmCompleteResult): LlmProvider {
+function stubProvider(
+  result: (req: { jsonSchema?: { name?: string } }) => LlmCompleteResult,
+): LlmProvider {
   return {
     id: "stub",
-    complete: async () => result(),
+    complete: async (req) => result(req),
   };
 }
 
@@ -128,7 +135,7 @@ describe("enqueueAiIntakeJobs", () => {
     });
     expect(res).toHaveLength(1);
     expect(res[0]).toMatchObject({ scenario: "classification" });
-    const job = await ai.getJob(res[0]!.jobId);
+    const job = await ai.getJob(res[0]!.jobId!);
     expect(job).toMatchObject({
       scenario: "classification",
       subjectType: "agent_request",
@@ -213,7 +220,7 @@ describe("intake runners", () => {
       subjectId: record.id,
     });
     const runner = getScenarioRunner("classification")!;
-    const prompt = await runner({ job, store: ai });
+    const prompt = await runner({ job: job!, store: ai });
     if (isNotAvailable(prompt)) throw new Error("unexpected notAvailable");
     expect(prompt.user).toContain("how do I verify a signature?");
     expect(prompt.user).toContain("declared kind: question");
@@ -222,7 +229,13 @@ describe("intake runners", () => {
     };
     expect(schema.properties.intent.enum).toContain("INTEGRATION_HELP");
     expect(schema.properties.category.enum).toContain("bug");
-    expect(prompt.promptVersion).toBe(loadPrompt("classification")!.version);
+    // 232-12 M-5: version = hash(system + output schema), not the
+    // bare prompt text — recompute the combined value.
+    expect(prompt.promptVersion).toBe(
+      promptVersionFor(
+        `${loadPrompt("classification")!.text}\n##schema##\n${JSON.stringify(prompt.jsonSchema!.schema)}`,
+      ),
+    );
     expect(loadPrompt("classification")!.text).toContain("CAPABILITY_DISCOVERY");
   });
 
@@ -234,7 +247,7 @@ describe("intake runners", () => {
       subjectId: "ireq_gone",
     });
     const runner = getScenarioRunner("summary")!;
-    await expect(runner({ job, store: ai })).rejects.toThrow(
+    await expect(runner({ job: job!, store: ai })).rejects.toThrow(
       "subject_not_found",
     );
   });
@@ -252,13 +265,15 @@ describe("e2e intake → job → run", () => {
     const requestId = await submitInteraction(app);
     await new Promise((r) => setTimeout(r, 10)); // hook settle
 
-    const provider = stubProvider(() => ({
-      text: JSON.stringify(CLS_OUT),
+    // summary also enqueued — 232-12 H-4: each output is validated
+    // against its own scenario schema, so the stub answers per-name.
+    const provider = stubProvider((req) => ({
+      text: JSON.stringify(
+        req.jsonSchema?.name === "ai_summary" ? SUM_OUT : CLS_OUT,
+      ),
       usage: { total: 12 },
       model: "m",
     }));
-    // summary also enqueued — provider returns cls shape for both;
-    // summary schema parse still succeeds (JSON.parse only).
     const res = await drainAiJobs({ store: ai, config: CFG, provider });
     expect(res.succeeded).toBe(2);
 

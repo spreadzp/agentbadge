@@ -22,39 +22,19 @@ import type { Context } from "hono";
 import type { AiEnvConfig } from "../../config/env/ai-types";
 import { getConfig } from "../../config/env";
 import { capabilityGate } from "../middleware/operator-gate";
-import {
-  operatorBrowserAuth,
-  requirePrincipal,
-} from "../middleware/operatorAuth";
+import { operatorBrowserAuth } from "../middleware/operatorAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import type { OperatorStore } from "../lib/operators";
-import {
-  consumeFormToken,
-  mintFormToken,
-} from "../lib/knowledge/form-tokens";
+import { mintFormToken } from "../lib/knowledge/form-tokens";
 import { wrapFragment } from "./ui/helpers";
-import { rejectCtrl } from "./admin-operator-guard";
-
 import {
   resolveEffectiveMode,
   checkBudget,
   type BudgetState,
 } from "../lib/ai/budget";
-import { FEEDBACK_EXTRACT_SCENARIO } from "../lib/ai/feedback-runner";
-import { INTAKE_AI_SCENARIOS } from "../lib/ai/intake";
-import {
-  setPolicyMode,
-  setPolicyModel,
-  setPolicyThreshold,
-} from "../lib/ai/policies";
-import { REVIEW_ASSIST_SCENARIO } from "../lib/ai/review-runner";
 import { AI_MODES } from "../lib/ai/types";
-import type {
-  AiMode,
-  AiStore,
-  AutomationPolicyRecord,
-} from "../lib/ai/types";
+import type { AiMode, AiStore } from "../lib/ai/types";
 
 import type { InteractionStore } from "../lib/request-inbox/interaction-store";
 import type { ReviewStore } from "../lib/reviews/store";
@@ -65,10 +45,10 @@ import {
   type AiPolicyRow,
 } from "../../views/admin-ai/policies";
 import { aiMetricsPage } from "../../views/admin-ai/metrics";
-
-const FORM_TOKEN_ERR = "form_expired_or_duplicate";
-const str = (b: Record<string, unknown>, k: string): string =>
-  typeof b[k] === "string" ? (b[k] as string).trim() : "";
+import {
+  registerAdminAiMutations,
+  scenarioIds,
+} from "./admin-ai-mutations";
 
 const page = (c: Context, frag: string | Promise<string>): Response =>
   c.html(
@@ -80,25 +60,6 @@ const page = (c: Context, frag: string | Promise<string>): Response =>
     200,
     { "Cache-Control": "no-store" },
   );
-
-const backWith = (flash: { ok?: string; err?: string }): string => {
-  const q = new URLSearchParams();
-  if (flash.err) q.set("err", flash.err.slice(0, 120));
-  else if (flash.ok) q.set("ok", flash.ok.slice(0, 120));
-  const qs = q.toString();
-  return `/admin/ai${qs ? `?${qs}` : ""}`;
-};
-
-/** All known scenario ids = registered sets ∪ rows that exist. */
-const scenarioIds = (rows: AutomationPolicyRecord[]): string[] =>
-  [
-    ...new Set([
-      ...INTAKE_AI_SCENARIOS,
-      FEEDBACK_EXTRACT_SCENARIO,
-      REVIEW_ASSIST_SCENARIO,
-      ...rows.map((r) => r.scenario),
-    ]),
-  ].sort();
 
 async function policyRows(
   aiStore: AiStore,
@@ -224,66 +185,7 @@ export function createAdminAiUi(deps: {
     );
   });
 
-  app.post("/admin/ai/policies/:scenario", async (c) => {
-    const actor = requirePrincipal(c);
-    if (actor instanceof Response) return actor;
-    const scenario = c.req.param("scenario") ?? "";
-    const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, scenario, str(b, "mode"), str(b, "reason"));
-    if (bad) return bad;
-    if (!consumeFormToken(str(b, "formToken"))) {
-      return c.redirect(backWith({ err: FORM_TOKEN_ERR }), 303);
-    }
-    const reason = str(b, "reason").slice(0, 200) || undefined;
-    const before = await aiStore.getPolicy(scenario);
-
-    const mode = str(b, "mode");
-    if (mode && mode !== before?.mode) {
-      if (!(AI_MODES as readonly string[]).includes(mode)) {
-        return c.redirect(backWith({ err: "bad_mode" }), 303);
-      }
-      await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
-    }
-    const thRaw = str(b, "confidenceThreshold");
-    if (thRaw !== "") {
-      const th =
-        thRaw === "clear" ? null : Number.parseFloat(thRaw);
-      if (th !== null && (!Number.isFinite(th) || th < 0 || th > 1)) {
-        return c.redirect(backWith({ err: "bad_threshold" }), 303);
-      }
-      if (th !== (before?.confidenceThreshold ?? null)) {
-        await setPolicyThreshold(aiStore, scenario, th, actor.id, reason);
-      }
-    }
-    const modelRaw = str(b, "model");
-    if (modelRaw !== "") {
-      const model = modelRaw === "clear" ? null : modelRaw.slice(0, 64);
-      if (model !== (before?.model ?? null)) {
-        await setPolicyModel(aiStore, scenario, model, actor.id, reason);
-      }
-    }
-    return c.redirect(backWith({ ok: `updated_${scenario}` }), 303);
-  });
-
-  app.post("/admin/ai/policies/:scenario/kill", async (c) => {
-    const actor = requirePrincipal(c);
-    if (actor instanceof Response) return actor;
-    const scenario = c.req.param("scenario") ?? "";
-    const b = await c.req.parseBody();
-    const bad = rejectCtrl(c, scenario, str(b, "reason"));
-    if (bad) return bad;
-    if (!consumeFormToken(str(b, "formToken"))) {
-      return c.redirect(backWith({ err: FORM_TOKEN_ERR }), 303);
-    }
-    await setPolicyMode(
-      aiStore,
-      scenario,
-      "off",
-      actor.id,
-      str(b, "reason").slice(0, 200) || "kill-switch",
-    );
-    return c.redirect(backWith({ ok: `killed_${scenario}` }), 303);
-  });
+  registerAdminAiMutations(app, aiStore);
 
   return app;
 }

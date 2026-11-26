@@ -19,11 +19,12 @@ import {
 import {
   claimReview,
   declineReview,
+  rejectAiSuggestion,
   reopenReview,
   returnToTriage,
 } from "../../lib/reviews/workflow";
 import { decideReview } from "../../lib/reviews/decide";
-import { buildReviewEvent } from "../../lib/reviews/events";
+import type { AiStore } from "../../lib/ai/types";
 import { addReviewEvidence } from "../../lib/reviews/evidence";
 import { criteriaForReview } from "../../lib/reviews/criteria";
 import { feedbackIdSchema } from "../../lib/feedback/validate";
@@ -40,6 +41,9 @@ import {
 export function registerReviewCenterMutations(
   app: Hono,
   stores: FeedbackReviewStores,
+  /** 232-12 C-1: run-ref validation needs the ai store — absent,
+   *  aiRunRef/reject-suggestion inputs are refused, never trusted. */
+  aiStore?: AiStore,
 ): void {
   // ── feedback ────────────────────────────────────────────────
 
@@ -109,9 +113,10 @@ export function registerReviewCenterMutations(
     );
   });
 
-  // 232-9 E9: operator dismisses the supervised suggestion — the
-  // rejection lands as an INTERNAL event (rejected-AI-decisions
-  // metric input, D-232-6); the human decides normally afterwards.
+  // 232-9 E9 / 232-12 C-1: operator dismisses the suggestion —
+  // the rejection lands as ONE deduped INTERNAL event through the
+  // workflow facade (claimed case, assignee, verified run ref —
+  // junk rejections can't corrupt the metrics).
   app.post(
     "/admin/review-center/reviews/:id/reject-suggestion",
     async (c) => {
@@ -123,19 +128,30 @@ export function registerReviewCenterMutations(
       );
       if (!g.ok) return g.res;
       const runRef = formStr(g.body, "aiRunRef");
-      if (!runRef) {
-        return c.redirect(backTo("reviews", g.id, { err: "missing_run_ref" }), 303);
+      if (!runRef || !aiStore) {
+        return c.redirect(
+          backTo("reviews", g.id, {
+            err: !aiStore ? "ai_unavailable" : "missing_run_ref",
+          }),
+          303,
+        );
       }
-      await stores.reviews.appendEvents(g.id, [
-        buildReviewEvent("review.ai_suggestion_rejected", "INTERNAL", {
+      const r = await rejectAiSuggestion(
+        stores.reviews,
+        aiStore,
+        g.id,
+        g.operator,
+        {
           runId: runRef.slice(0, 128),
-          scenario: "review_assist",
-          actor: g.operator,
           reason: clipCp(formStr(g.body, "reason"), 200) || null,
-        }),
-      ]);
+        },
+      );
       return c.redirect(
-        backTo("reviews", g.id, { ok: "suggestion_rejected" }),
+        backTo(
+          "reviews",
+          g.id,
+          r.ok ? { ok: "suggestion_rejected" } : { err: r.error },
+        ),
         303,
       );
     },
@@ -193,10 +209,12 @@ export function registerReviewCenterMutations(
         criteriaResults,
         // 232-7 E6: hidden field carries the advisory run id the page
         // rendered — human submit records it (D-232-4 boundary intact:
-        // decidedBy is still the operator).
+        // decidedBy is still the operator). 232-12 C-1: the facade
+        // server-validates the ref against the run log.
         aiRunRef: formStr(g.body, "aiRunRef") || undefined,
       },
       g.operator,
+      { aiStore },
     );
     return c.redirect(
       backTo("reviews", g.id, r.ok ? { ok: "decided" } : { err: r.error }),

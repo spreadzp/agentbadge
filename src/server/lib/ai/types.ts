@@ -180,8 +180,14 @@ export interface AiStore {
     subjectId: string,
     scenario?: string,
   ): Promise<AiRunRecord | null>;
-  /** Non-skipped runs since ISO ts — daily call meter (D-232-7). */
+  /** Non-skipped runs since ISO ts — all-attempts meter. */
   countRunsSince(sinceIso: string): Promise<number>;
+  /**
+   * 232-12 H-8: runs that actually reached the provider — non-skipped
+   * minus pre-provider faults (no_provider/no_runner/runner_fault/
+   * seam_unavailable). The daily budget meter counts THESE.
+   */
+  countProviderCallsSince(sinceIso: string): Promise<number>;
   /** Sum of tokensTotal since ISO ts — monthly USD meter. */
   sumTokensSince(sinceIso: string): Promise<number>;
 
@@ -193,16 +199,27 @@ export interface AiStore {
   /**
    * Atomic claim: queued rows + `working` rows locked before
    * `reclaimBefore`; sets status=working, lockedAt=now, attempts++.
+   * `maxAttempts` (232-12 H-7): jobs that already burned their
+   * attempts are never reclaimed — poison jobs cannot loop forever.
    */
   claimJobs(opts: {
     limit: number;
     reclaimBefore: string;
     now: string;
+    maxAttempts?: number;
   }): Promise<AiJobRecord[]>;
+  /**
+   * `expectedLockedAt` (232-12 H-7): CAS on the claimed lease — a
+   * stale claim that lost its lease to a re-claim returns null
+   * instead of overwriting the newer outcome.
+   */
   completeJob(
     id: string,
     patch: { status: string; lastError?: string | null; runId?: string | null },
+    opts?: { expectedLockedAt?: string | null },
   ): Promise<AiJobRecord | null>;
+  /** Jobs in a given status — queue-depth guard input (H-8). */
+  countJobsByStatus(status: string): Promise<number>;
 
   // AutomationPolicy + PolicyChange
   getPolicy(scenario: string): Promise<AutomationPolicyRecord | null>;

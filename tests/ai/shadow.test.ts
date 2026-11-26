@@ -22,8 +22,8 @@ import {
   compareShadowRun,
   registerAiComparisonHook,
   resetAiComparisonHook,
-  resetComparators,
 } from "../../src/server/lib/ai/compare";
+import { resetComparators } from "../../src/server/lib/ai/comparators";
 import {
   loadAiSuggestions,
   registerAiIntakeHook,
@@ -51,6 +51,7 @@ const CFG: AiEnvConfig = {
   workerIntervalMs: 5_000,
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
+  jobQueueCap: 500,
 };
 
 const FP = { ip: null, ua: null, referer: null, src: null, headers: {} };

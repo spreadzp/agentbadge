@@ -48,20 +48,25 @@ export const AI_SUBJECT_AGENT_REQUEST = "agent_request";
 
 export interface EnqueueIntakeResult {
   scenario: string;
-  jobId: string;
+  /** null when the queue-cap refused the write (232-12 H-8). */
+  jobId: string | null;
   duplicate: boolean;
+  refused?: "queue_full";
 }
 
 /**
  * Queue one job per non-off scenario for a committed intake request.
  * `inputRef` points at the subject row; `inputHash` pins the payload
  * snapshot (events carry sha256 — cheap join, no re-hash).
+ * `queueCap` (AI_JOB_QUEUE_CAP) refuses once the queued backlog hits
+ * the cap — flood input can't mint unbounded provider-call liability.
  */
 export async function enqueueAiIntakeJobs(
   aiStore: AiStore,
   input: {
     requestId: string;
     inputHash?: string | null;
+    queueCap?: number;
   },
   scenarios: readonly string[] = INTAKE_AI_SCENARIOS,
 ): Promise<EnqueueIntakeResult[]> {
@@ -69,14 +74,23 @@ export async function enqueueAiIntakeJobs(
   for (const scenario of scenarios) {
     const policy = await aiStore.getPolicy(scenario);
     if ((policy?.mode ?? "off") === "off") continue;
-    const { job, duplicate } = await enqueueAiJob(aiStore, {
+    const { job, duplicate, refused } = await enqueueAiJob(
+      aiStore,
+      {
+        scenario,
+        subjectType: AI_SUBJECT_AGENT_REQUEST,
+        subjectId: input.requestId,
+        inputRef: `interaction:${input.requestId}`,
+        inputHash: input.inputHash ?? null,
+      },
+      { queueCap: input.queueCap },
+    );
+    out.push({
       scenario,
-      subjectType: AI_SUBJECT_AGENT_REQUEST,
-      subjectId: input.requestId,
-      inputRef: `interaction:${input.requestId}`,
-      inputHash: input.inputHash ?? null,
+      jobId: job?.id ?? null,
+      duplicate,
+      ...(refused ? { refused } : {}),
     });
-    out.push({ scenario, jobId: job.id, duplicate });
   }
   return out;
 }
@@ -117,7 +131,7 @@ export function registerAiIntakeHook(opts: IntakeHookOpts = {}): () => void {
     const store = opts.aiStore ?? pickAiStores(getDatabase());
     void enqueueAiIntakeJobs(
       store,
-      { requestId, inputHash },
+      { requestId, inputHash, queueCap: cfg.jobQueueCap },
       opts.scenarios,
     ).catch(() => {
       /* fire-and-forget: enqueue failure must not surface at intake */
@@ -173,6 +187,10 @@ export interface AiSuggestionView {
   status: string;
   /** modeAtTime on the run (declared policy when no run). */
   mode: string;
+  /** 232-12 H-5: effective mode resolved at render (env kill +
+   *  budget) — frozen modeAtTime alone would prefill even after a
+   *  kill flip or exhaustion. */
+  effectiveNow: string;
   output: unknown;
   confidence: number | null;
   /** Declared policy threshold (O2 — null until calibrated). */
@@ -203,6 +221,10 @@ export async function loadAiSuggestions(
   /** 232-9: polymorphic subject join — agent_request default;
    *  review-center pages pass "feedback" / "review_case". */
   subjectType: string = AI_SUBJECT_AGENT_REQUEST,
+  /** 232-12 H-5: resolve the CURRENT effective mode per scenario
+   *  (env kill + budget at render time) — absent → the declared
+   *  policy mode stands in (tests, no-config callers). */
+  effectiveNow?: (scenario: string, declared: string) => string,
 ): Promise<AiSuggestionView[]> {
   const out: AiSuggestionView[] = [];
   for (const scenario of scenarios) {
@@ -218,13 +240,15 @@ export async function loadAiSuggestions(
     const run: AiRunRecord | undefined = runs.find(
       (r) => r.modeAtTime !== "shadow",
     );
+    const declared = policy?.mode ?? "off";
     const threshold = policy?.confidenceThreshold ?? null;
     const confidence = run?.confidence ?? null;
     out.push({
       scenario,
       runId: run?.id ?? null,
       status: run?.status ?? "none",
-      mode: run?.modeAtTime ?? policy?.mode ?? "off",
+      mode: run?.modeAtTime ?? declared,
+      effectiveNow: effectiveNow?.(scenario, declared) ?? declared,
       output: run?.output ?? null,
       confidence,
       threshold,
