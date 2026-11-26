@@ -2,7 +2,11 @@
 //   POST /api/wallets/:addr/delegate        — register delegate intent
 //     (wallet-sig proof of :addr owner). Onchain addDelegate still
 //     needs the owner's kit signature — response carries verbatim
-//     params for the handoff.
+//     params for the handoff. EPIC-263-2: body `clamp` is an
+//     owner-declared boolean (non-bool → 400). Re-register semantics:
+//     `put` REPLACES the whole record — a new registration writes its
+//     own `clamp` (absent → off); it never silently mutates an
+//     existing record's flag (D-263-Q2).
 //   GET  /api/wallets/:addr/delegate        — owner views own records.
 //   POST /api/wallets/:addr/delegate/revoke — mark revoked server-side
 //     (stops spendAsDelegate immediately) + verbatim removeDelegate
@@ -63,7 +67,7 @@ export function createAgentWalletDelegateRoutes(
       if (deps.requireRegistered && !ownerRec) {
         return c.json({ error: "wallet not registered" }, 403);
       }
-      let body: { chain?: string; spendCapUsd?: number };
+      let body: { chain?: string; spendCapUsd?: number; clamp?: boolean };
       try {
         body = await c.req.json();
       } catch {
@@ -80,6 +84,9 @@ export function createAgentWalletDelegateRoutes(
           // a delegate can never register wider than the owner allows
           // (widening → 400; caller re-tries with cap ≤ perTxUsd).
           ownerPerTxUsd: ownerRec?.envelope?.perTxUsd,
+          // 263-2: owner-declared clamp — wallet-sig of the same owner
+          // mirrors bounds.sign in the draft; non-bool → throw → 400.
+          clamp: body.clamp,
         });
       } catch (e) {
         return c.json(

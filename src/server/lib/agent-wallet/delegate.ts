@@ -28,6 +28,10 @@ export interface DelegateRecord {
   chain: string;
   /** Per-tx cap — mirrors the owner's envelope perTxUsd. */
   spendCapUsd: number;
+  /** EPIC-263-2: owner-declared clamp — valid over-cap spends
+   *  authorize at the effective cap instead of denying (MMF v0.5
+   *  KD01–KD05). Absent → off (D4, byte-identical behaviour). */
+  clamp?: boolean;
   authorizedAt: number;
   revokedAt?: number;
 }
@@ -77,6 +81,9 @@ export function validateDelegateInput(input: {
   spendCapUsd: number;
   /** Owner's current envelope.perTxUsd — bounds the delegate cap. */
   ownerPerTxUsd?: number;
+  /** EPIC-263-2: owner-declared clamp flag (draft §2.2 parity —
+   *  MUST be boolean else validation error; absent = off, D4). */
+  clamp?: boolean;
 }): DelegateRecord {
   if (!isAddress(input.ownerWallet)) throw new Error("invalid owner wallet");
   if (!isAddress(input.delegate)) throw new Error("invalid delegate address");
@@ -95,11 +102,14 @@ export function validateDelegateInput(input: {
     throw new Error(
       `spendCapUsd exceeds owner perTx cap (max ${input.ownerPerTxUsd})`,
     );
+  if (input.clamp !== undefined && typeof input.clamp !== "boolean")
+    throw new Error("clamp must be a boolean");
   return {
     ownerWallet: getAddress(input.ownerWallet),
     delegate: getAddress(input.delegate),
     chain: input.chain,
     spendCapUsd: input.spendCapUsd,
+    ...(input.clamp !== undefined ? { clamp: input.clamp } : {}),
     authorizedAt: Date.now(),
   };
 }
@@ -126,7 +136,17 @@ export interface DelegateSpendKit {
 }
 
 export type DelegateSpendResult =
-  | { ok: true; transferId?: string; tx?: string }
+  | {
+      ok: true;
+      transferId?: string;
+      tx?: string;
+      /** EPIC-263-2: caller-visible clamp fields — present ONLY when
+       *  the spend was actually clamped (draft §5 parity). */
+      clamped?: boolean;
+      requestedAmountUsd?: number;
+      effectiveAmountUsd?: number;
+      effectiveCapUsd?: number;
+    }
   | { ok: false; reason: string };
 
 /**
@@ -169,7 +189,19 @@ export async function spendAsDelegate(
     rec.spendCapUsd,
     owner.envelope?.perTxUsd ?? rec.spendCapUsd,
   );
-  if (!Number.isFinite(amount) || amount <= 0 || amount > effectiveCap) {
+  // EPIC-263-2: validity first (draft NON_POSITIVE before caps) —
+  // non-finite/non-positive denies identically with or without clamp.
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, reason: "cap-exceeded" };
+  }
+  // Owner-declared clamp: a VALID over-cap spend authorizes at the
+  // effective cap (kit.spend gets STRICTLY effective — requested→
+  // effective→downstream consistency chain). Without the flag the
+  // deny is byte-identical (D4). effectiveCap already reflects owner
+  // tightening — clamp binds to the NEW cap (D5: live resolution
+  // unchanged, we only read it).
+  const clamped = amount > effectiveCap && rec.clamp === true;
+  if (amount > effectiveCap && !clamped) {
     return { ok: false, reason: "cap-exceeded" };
   }
   const status = await kit.getDelegateStatus({
@@ -183,8 +215,19 @@ export async function spendAsDelegate(
   const out = await kit.spend({
     sourceAccount: rec.ownerWallet,
     chain: rec.chain,
-    amountUsd: args.amountUsd,
+    amountUsd: clamped ? String(effectiveCap) : args.amountUsd,
     to: args.to,
   });
-  return { ok: true, ...out };
+  return {
+    ok: true,
+    ...(clamped
+      ? {
+          clamped: true,
+          requestedAmountUsd: amount,
+          effectiveAmountUsd: effectiveCap,
+          effectiveCapUsd: effectiveCap,
+        }
+      : {}),
+    ...out,
+  };
 }
