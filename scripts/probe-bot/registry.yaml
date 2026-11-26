@@ -187,3 +187,18 @@ endpoints:
         jsonrpc: "2.0"
         id: "pb-{case_key}"
         method: tools/list
+
+  # ── EPIC-232: AI review automation ────────────────────────────────
+  # Публичной поверхности у эпика НЕТ: сценарии E1–E9 живут за
+  # существующими intake-контрактами (228 interaction / 230 feedback
+  # + reviews выше) — их POST'ы и ставят AI-джобы в очередь, когда
+  # AI_AUTOMATION_ENABLED=true. Вся эпик-специфичная поверхность —
+  # operatorAuth'd SSR + JSON (/admin/ai*, kill/policies POST'ы).
+  # Ниже — safe GET'ы консоли: без cred'а 401 (валидный auth-guard
+  # сигнал), method-fuzz/headers/no-store покрытие на них работает.
+  # Authed-проверки SSR-форм + мутаций — ручной прогон по
+  # break-glass (X-Admin-Key), см. SLICE-232-13 §4.
+  - path: /admin/ai
+    method: GET
+  - path: /admin/ai/metrics
+    method: GET
