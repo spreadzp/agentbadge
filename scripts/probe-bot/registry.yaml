@@ -165,3 +165,25 @@ endpoints:
         - fingerprint
         - normalized
       lifecycleAdmin: /api/admin/demand
+
+  # ── EPIC-233: agent-interaction protocol ─────────────────────────
+  # Manifest — keyless protocol descriptor (D-233-1). Safe GET.
+  - path: /.well-known/agent-interaction.json
+    method: GET
+  # WebMCP carrier page (233-6): 5 keyless browser tools injected.
+  - path: /for-agents
+    method: GET
+  # MCP JSON-RPC endpoint. bodyTemplate = tools/list — read-only
+  # envelope, zero side-effects (contract-submit is mutating-gated
+  # anyway). NOTE — JSON-RPC semantics: typed errors return HTTP 200
+  # with {error:{code}} in-envelope → generic negative-contract /
+  # ssrf-guard / malformed-body / ignored-auth scenarios expecting
+  # 4xx will misfire BY DESIGN on this path. Envelope-aware coverage:
+  # scenarios/agent-interaction-mcp-read.ts + -write.ts.
+  - path: /mcp/agent-interaction
+    method: POST
+    contract:
+      bodyTemplate:
+        jsonrpc: "2.0"
+        id: "pb-{case_key}"
+        method: tools/list
