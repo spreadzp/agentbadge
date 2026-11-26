@@ -35,7 +35,12 @@ describe("GET /.well-known/webmcp.json", () => {
   it("includes all 16 imperative tools (EPIC-256 registry)", async () => {
     const res = await app.request("/.well-known/webmcp.json");
     const body = await res.json();
-    expect(body.tools.length).toBe(16);
+    // Served surface = webmcp-exposed package tools + server-side shelf
+    // mirrors (233-6) — count tracks the live manifest, not a literal.
+    const { PUBLIC_STATS } = await import(
+      "../../src/server/lib/public-stats"
+    );
+    expect(body.tools.length).toBe(PUBLIC_STATS.webmcpTools);
     const names = body.tools.map((t: { name: string }) => t.name);
     expect(names).toContain("agent-readiness-scan");
     expect(names).toContain("badge-generate");

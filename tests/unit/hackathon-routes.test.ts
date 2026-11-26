@@ -179,11 +179,14 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       expect(body).toContain("await document.modelContext.registerTool");
     });
 
-    it("contains all 16 registerTool calls", async () => {
+    it("contains all registerTool calls", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
       const matches = body.match(/await document\.modelContext\.registerTool\(/g);
-      expect(matches).toHaveLength(16);
+      // Count tracks the live registry — the page injects allTools
+      // verbatim (submit-survey pushed it past the original 16).
+      const { allTools } = await import("@agentbadge/webmcp");
+      expect(matches).toHaveLength(allTools.length);
     });
 
     it("contains try/catch for graceful failure", async () => {

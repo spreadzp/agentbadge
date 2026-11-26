@@ -14,7 +14,9 @@
  *   pillars    — PILLAR_DESCRIPTIONS keys
  *   mcpTools   — live MCP tool registry (count reflects registered tools
  *                at call time; 0 before registerDefaultMcpTools runs)
- *   webmcpTools— WebMCP browser-tool registry (@agentbadge/webmcp)
+ *   webmcpTools— served WebMCP surface: toolsFor(webmcp-exposure) plus
+ *                server-side shelf mirrors until the package republishes
+ *                them (== /.well-known/webmcp.json tool count)
  *   lastUpdated— build date injected at deploy
  */
 
@@ -24,7 +26,8 @@ import {
   PILLAR_DESCRIPTIONS,
 } from "../../agent-readiness/rule-descriptions";
 import { listTools } from "@agentbadge/mcp";
-import { allTools } from "@agentbadge/webmcp";
+import { toolsFor } from "@agentbadge/webmcp";
+import { serverMirrorTools } from "./agent-interaction/webmcp-page-tools";
 import { BUILD_DATE } from "./build-info";
 
 export const PUBLIC_STATS = {
@@ -34,7 +37,13 @@ export const PUBLIC_STATS = {
   get mcpTools(): number {
     return listTools().length;
   },
-  webmcpTools: allTools.length,
+  get webmcpTools(): number {
+    const names = new Set(
+      toolsFor({ exposure: "webmcp" }).map((t) => t.name),
+    );
+    for (const t of serverMirrorTools()) names.add(t.name);
+    return names.size;
+  },
   lastUpdated: BUILD_DATE,
 } as const;
 

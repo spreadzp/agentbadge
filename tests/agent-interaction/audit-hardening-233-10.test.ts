@@ -424,8 +424,8 @@ describe("re-verify H3/M4 — guard body handling", () => {
     const res = await app.request("/mcp/agent-interaction", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      // @ts-expect-error — duplex required for streaming bodies
       body: stream,
+      // @ts-expect-error — duplex required for streaming bodies
       duplex: "half",
     });
     expect(res.status).toBe(413);

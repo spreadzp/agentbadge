@@ -22,7 +22,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "9 min",
   shortAnswer:
-    "WebMCP is a W3C community-group draft - already documented by OpenAI as Site tools and in Chrome preview behind a testing flag (Chromium 146+, Origin Trial from Chrome 149) - that lets a page register typed tools into document.modelContext: the page itself hands an agent a menu, so it stops scraping. We put it on production: agentbadge.xyz exposes 16 tools (17 after post-review hardening added submit-survey) from one shared registry driving the WebMCP in-tab shelf and the discovery files - with /mcp/public kept as a deliberately separate, minimal 4-tool read whitelist rather than a second facade - page-scoped so a scanner-page agent sees scanner tools only. One write action - submit-request - posts into the ops inbox; poll-request returns honest async states; consented answers materialize into a public QA corpus that search-agent-qa can hit instantly, with a janitor retry leg so consent implies eventual publication. Live Chrome-flag verification found two shipped bugs - a publicly cacheable submitted poll body and a pg/json codec that 500'd on top-level string writes - both fixed and regression-tested.",
+    "WebMCP is a W3C community-group draft - already documented by OpenAI as Site tools and in Chrome preview behind a testing flag (Chromium 146+, Origin Trial from Chrome 149) - that lets a page register typed tools into document.modelContext: the page itself hands an agent a menu, so it stops scraping. We put it on production: agentbadge.xyz exposes the shared tool registry — 17 entries today after post-review hardening added submit-survey from one shared registry driving the WebMCP in-tab shelf and the discovery files - with /mcp/public kept as a deliberately separate, minimal 4-tool read whitelist rather than a second facade - page-scoped so a scanner-page agent sees scanner tools only. One write action - submit-request - posts into the ops inbox; poll-request returns honest async states; consented answers materialize into a public QA corpus that search-agent-qa can hit instantly, with a janitor retry leg so consent implies eventual publication. Live Chrome-flag verification found two shipped bugs - a publicly cacheable submitted poll body and a pg/json codec that 500'd on top-level string writes - both fixed and regression-tested.",
   heroImage: "/images/blog/arc-c54-webmcp-site-tools-hero.webp",
   ogImage: "/images/blog/arc-c54-webmcp-site-tools-og.jpeg",
   status: "LIVE",
@@ -128,7 +128,7 @@ export const article: BlogArticle = {
     {
       id: "c54-webmcp-tools-live",
       status: "VERIFIED",
-      text: "agentbadge.xyz exposes 17 tools from one shared registry - WebMCP via document.modelContext (testing flag / Chrome OT) plus the discovery files .well-known/webmcp.json, llms.txt, agent-card - verified live: webmcp.json lists the full inventory. POST /mcp/public is a deliberately separate read-only whitelist of four marketplace tools (open_tasks, get_task, task_status, start_here), not a second facade over the registry.",
+      text: "agentbadge.xyz exposes a 17-tool shared registry - WebMCP via document.modelContext (testing flag / Chrome OT) plus the discovery files .well-known/webmcp.json, llms.txt, agent-card - verified live: webmcp.json lists the full inventory. POST /mcp/public is a deliberately separate read-only whitelist of four marketplace tools (open_tasks, get_task, task_status, start_here), not a second facade over the registry.",
       evidence: [
         {
           type: "demo",

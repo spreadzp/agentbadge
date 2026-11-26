@@ -198,3 +198,11 @@ export function agentsPageTools(): ToolDefinition[] {
     published("submit-request"),
   ];
 }
+
+/** Server-side shelf tools NOT yet published in @agentbadge/webmcp —
+ *  republish-safe: once the package ships them canonically they drop
+ *  out of this list by name (no double-counting downstream). */
+export function serverMirrorTools(): ToolDefinition[] {
+  const names = new Set(allTools.map((t) => t.name));
+  return agentsPageTools().filter((t) => !names.has(t.name));
+}

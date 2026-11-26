@@ -88,7 +88,7 @@ describe("SLICE-259-22: cross-surface consistency", () => {
   it("anon tools/list count == llms.txt curated claim", () => {
     expect(anonToolCount).toBeGreaterThan(0);
     const llms = texts.get("/llms.txt")!;
-    const m = llms.match(/(\d+)\s+curated tools/);
+    const m = llms.match(/(\d+)\s+(?:unique\s+)?curated tools/);
     expect(m, "llms.txt must declare '<N> curated tools'").toBeTruthy();
     expect(Number(m![1])).toBe(anonToolCount);
   });

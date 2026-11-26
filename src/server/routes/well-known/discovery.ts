@@ -3,7 +3,7 @@ import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { BASE_URL } from "../../lib/page-meta";
 import { buildDiscoveryJson, toolsFor } from "@agentbadge/webmcp";
-import { agentsPageTools } from "../../lib/agent-interaction/webmcp-page-tools";
+import { serverMirrorTools } from "../../lib/agent-interaction/webmcp-page-tools";
 import { MCP_NAMESPACES } from "./agent-card";
 import { MARKETPLACE_LISTINGS } from "../../lib/agent-discovery/marketplace-listings";
 import { aauthDiscoveryRoutes } from "./discovery-aauth";
@@ -66,9 +66,7 @@ discoveryRoutes.get(
     // server-side until the @agentbadge/webmcp package republishes
     // them — expose them in the discovery manifest + cross-link the
     // agent-interaction descriptor (single discovery entry point).
-    const extra = buildDiscoveryJson(agentsPageTools()).tools.filter(
-      (t) => t.name === "discover" || t.name === "search-knowledge",
-    );
+    const extra = buildDiscoveryJson(serverMirrorTools()).tools;
     return c.json(
       {
         ...discovery,
