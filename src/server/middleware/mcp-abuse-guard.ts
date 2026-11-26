@@ -70,6 +70,13 @@ export const DEFAULT_HEAVY_OPS: readonly string[] = [
   "search_agents",
   "find_agents",
   "search_knowledge",
+  // EPIC-233 keyless agent-protocol tools — mirror of the registry's
+  // rateClass:"heavy" (D-233-7, parity pinned by tests in 233-5/8).
+  "agentbadge_create_task_request",
+  "agentbadge_search_knowledge",
+  "agentbadge_submit_feedback",
+  "agentbadge_request_review",
+  "agentbadge_report_problem",
 ];
 
 // ─── Config ──────────────────────────────────────────────

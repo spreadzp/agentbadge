@@ -38,7 +38,7 @@ import {
   createPreDidGuard,
   optionalDidSignature,
 } from "../agent-interaction/agent-interaction-ingress";
-import { createTieredReviewsLimiter } from "./rate-limits";
+import { getSharedReviewsLimiter } from "./rate-limits";
 import { readJsonBody } from "./body";
 import { notFound, tenantDeny } from "./tenant";
 
@@ -91,7 +91,7 @@ export function createAgentReviewsRoutes(
 ): Hono {
   const app = new Hono();
   const { store } = deps;
-  const limiter = deps.limiter ?? createTieredReviewsLimiter();
+  const limiter = deps.limiter ?? getSharedReviewsLimiter();
 
   const charge = (c: Context): Response | null => {
     const actor = resolveActor(c);

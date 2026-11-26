@@ -233,10 +233,14 @@ describe("POST /api/v1/agent/reviews", () => {
 });
 
 describe("POST /api/v1/agent/reviews/:id/evidence", () => {
+  // SLICE-233-5: the reviews limiter is a process-wide shared bucket
+  // now (REST+MCP one budget) — a fixed seed IP would burn the 3/min
+  // anon lane across the whole file. Distinct IP per seed call.
+  let seedIp = 0;
   const seed = async (app: Hono<{ Variables: Record<string, unknown> }>) => {
     const r = await post(app, "/api/v1/agent/reviews",
       { reviewType: "API_SURFACE", workRef: "https://api.example.com" },
-      { ...KEY("rv-ev-seed"), ...IP("10.3.3.1") });
+      { ...KEY("rv-ev-seed"), ...IP(`10.3.${++seedIp}.1`) });
     return (await r.json()).id as string;
   };
 

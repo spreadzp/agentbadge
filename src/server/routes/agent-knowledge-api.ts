@@ -18,7 +18,6 @@ import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { resolveClientIp } from "../middleware/rate-limit";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_KINDS,
@@ -29,36 +28,17 @@ import {
   type KnowledgeGapRecorder,
 } from "../lib/knowledge";
 import {
-  createTieredLimiter,
-  type TieredLimiter,
-} from "./agent-interaction/rate-limits";
+  getSharedKnowledgeSearchLimiter,
+  knowledgeSearchLimiterKey,
+  knowledgeSearchTier,
+  SEARCH_TIER_LIMITS,
+} from "../lib/knowledge/search-limits";
+import type { TieredLimiter } from "./agent-interaction/rate-limits";
 
 const Q_MIN = 2;
 const Q_MAX = 200;
 const LIMIT_MAX = 20;
 const LIMIT_DEFAULT = 10;
-
-/** Read-tier limits — search is cheap + agents poll it repeatedly. */
-const SEARCH_TIER_LIMITS = { ANON: 10, API_KEY: 60, DID: 120 } as const;
-const SEARCH_GLOBAL_MAX = SEARCH_TIER_LIMITS.DID * 10;
-
-function tierOf(c: Context): keyof typeof SEARCH_TIER_LIMITS {
-  if (c.get("verifiedDid")) return "DID";
-  return c.get("agentId") ? "API_KEY" : "ANON";
-}
-
-function searchLimiterKey(c: Context): string {
-  const did = c.get("verifiedDid");
-  if (typeof did === "string" && did.length > 0) return `did:${did}`;
-  const agentId = c.get("agentId");
-  if (typeof agentId === "string" && agentId.length > 0) {
-    return `key:${agentId}`;
-  }
-  // Arc R1 M13: one shared anon bucket for search+ask — path-suffixed
-  // keys gave an anonymous caller 2x the intended budget (10/min on
-  // EACH surface). Identity-keyed tiers stay per-actor anyway.
-  return `ip:${resolveClientIp(c)}:knowledge`;
-}
 
 function tooMany(c: Context, surface: string) {
   return errorResponse(
@@ -92,23 +72,12 @@ export function createAgentKnowledgeRoutes(
 ): Hono {
   const app = new Hono();
   const { store } = deps;
-  const limiter =
-    deps.limiter ??
-    createTieredLimiter({
-      limits: SEARCH_TIER_LIMITS,
-      globalKey: "g:knowledge-search",
-      globalMax: SEARCH_GLOBAL_MAX,
-      // Arc R1 M13: anon rotation-flood can't starve DID/API_KEY
-      // tiers out of the shared global bucket (228 H1 class).
-      tierGroups: {
-        ANON: { key: "g:knowledge-search:anon", max: SEARCH_GLOBAL_MAX / 10 },
-      },
-    });
+  const limiter = deps.limiter ?? getSharedKnowledgeSearchLimiter();
 
   const rateLimit = (surface: string): MiddlewareHandler => {
     return async (c, next: Next) => {
-      const tier = tierOf(c);
-      if (!limiter.allow(tier, searchLimiterKey(c))) {
+      const tier = knowledgeSearchTier(c);
+      if (!limiter.allow(tier, knowledgeSearchLimiterKey(c))) {
         // SLICE-259-19: agent-readable 429 — Retry-After + RateLimit-*
         // alongside the retryable:true body.
         const retryAfter = limiter.retryAfterSec();

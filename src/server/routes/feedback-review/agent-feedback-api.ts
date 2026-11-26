@@ -30,7 +30,7 @@ import {
   createPreDidGuard,
   optionalDidSignature,
 } from "../agent-interaction/agent-interaction-ingress";
-import { createTieredFeedbackLimiter } from "./rate-limits";
+import { getSharedFeedbackLimiter } from "./rate-limits";
 import { readJsonBody } from "./body";
 import { notFound, tenantDeny } from "./tenant";
 
@@ -44,7 +44,7 @@ export function createAgentFeedbackRoutes(
 ): Hono {
   const app = new Hono();
   const { store } = deps;
-  const limiter = deps.limiter ?? createTieredFeedbackLimiter();
+  const limiter = deps.limiter ?? getSharedFeedbackLimiter();
 
   app.post(
     "/api/v1/agent/feedback",

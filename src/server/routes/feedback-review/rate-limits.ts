@@ -27,6 +27,19 @@ export function createTieredFeedbackLimiter(
   });
 }
 
+let sharedFeedback: TieredLimiter | undefined;
+let sharedReviews: TieredLimiter | undefined;
+
+/** SLICE-233-5: single process-wide buckets — REST route and MCP
+ *  tool adapter share one budget (transport switch = double-dip). */
+export function getSharedFeedbackLimiter(): TieredLimiter {
+  return (sharedFeedback ??= createTieredFeedbackLimiter());
+}
+
+export function getSharedReviewsLimiter(): TieredLimiter {
+  return (sharedReviews ??= createTieredReviewsLimiter());
+}
+
 export function createTieredReviewsLimiter(
   opts: { now?: () => number } = {},
 ): TieredLimiter {

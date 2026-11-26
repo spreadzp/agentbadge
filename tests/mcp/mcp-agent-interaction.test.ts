@@ -102,7 +102,10 @@ describe("POST /mcp/agent-interaction JSON-RPC", () => {
     );
   });
 
-  it("unwired tools answer NOT_IMPLEMENTED stubs (wiring lands 233-5)", async () => {
+  it("233-5: all roster tools are live (no NOT_IMPLEMENTED seams left)", async () => {
+    // The 229/230 backends shipped before this slice landed — the
+    // planned NOT_AVAILABLE seam never wired; live-behavior coverage
+    // is in mcp-agent-interaction-epic230-tools.test.ts.
     const res = await rpc("tools/call", {
       name: "agentbadge_submit_feedback",
       arguments: { subject: "s", message: "m" },
@@ -111,11 +114,13 @@ describe("POST /mcp/agent-interaction JSON-RPC", () => {
     const body = (await res.json()) as {
       result: {
         isError: boolean;
-        structuredContent: { error: { code: string } };
+        structuredContent: { id?: string; error?: { code: string } };
       };
     };
-    expect(body.result.isError).toBe(true);
-    expect(body.result.structuredContent.error.code).toBe("NOT_IMPLEMENTED");
+    expect(body.result.structuredContent.error?.code).not.toBe(
+      "NOT_IMPLEMENTED",
+    );
+    expect(body.result.structuredContent.id).toMatch(/^fb_/);
   });
 
   it("schema validation at dispatch: bad args → -32602", async () => {

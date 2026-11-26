@@ -15,8 +15,9 @@
  * Thin-adapter rule (D-233-1): handlers validate input then call the
  * SAME route-level services REST uses — business rules (fingerprint,
  * submit-limit, idempotency, spam-flag) are inherited, never copied.
- * Handlers in this slice are NOT_IMPLEMENTED stubs; real wiring lands
- * in 233-2 (read tools), 233-3 (create_task_request), 233-5 (seams).
+ * All 8 tools are live adapters (233-2 read, 233-3 create, 233-5
+ * 229/230 write surfaces — those epics shipped before this slice
+ * landed, so the NOT_AVAILABLE seam never wired).
  */
 
 import type { Context } from "hono";
@@ -29,8 +30,18 @@ import {
   handleGetRequestStatus,
 } from "./tools/read";
 import { handleCreateTaskRequest } from "./tools/write";
+import { handleSearchKnowledge } from "./tools/knowledge";
+import {
+  handleReportProblem,
+  handleRequestReview,
+  handleSubmitFeedback,
+} from "./tools/feedback-review";
 import { REQUEST_KINDS } from "../request-inbox/intake";
 import { REQUEST_ID_RE } from "../request-inbox/types";
+import { KNOWLEDGE_KINDS } from "../knowledge/types";
+import { FEEDBACK_KINDS, FEEDBACK_TARGETS } from "../feedback/types";
+import { REVIEW_TYPES } from "../reviews/types";
+import { reviewEvidenceSchema } from "../reviews/validate";
 
 export const AGENT_INTERACTION_PROTOCOL_VERSION = "2025-03-26";
 export const AGENT_INTERACTION_MCP_PATH = "/mcp/agent-interaction";
@@ -76,20 +87,6 @@ export interface AgentInteractionTool {
   inputSchema: z.ZodType;
   handler: (args: unknown, ctx: AgentToolContext) => Promise<AgentToolResult>;
 }
-
-/** 233-1 stub — real adapters land per-slice (233-2/3/5). Tool-level
- *  error (isError result), not a JSON-RPC protocol error: the tool IS
- *  registered, it is honestly unwired yet. */
-const notImplemented =
-  (name: string, slice: string): AgentInteractionTool["handler"] =>
-  async () => ({
-    ok: false,
-    error: {
-      code: "NOT_IMPLEMENTED",
-      message: `${name} is registered but not wired yet — lands in ${slice}`,
-      data: { planned_slice: slice },
-    },
-  });
 
 const str = (max: number) => z.string().min(1).max(max);
 const strList = (maxItems: number, maxLen: number) =>
@@ -171,27 +168,27 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
     description:
       "Search the public knowledge base (published entries only) — " +
       "229 public search backend.",
-    status: "planned",
+    status: "live",
     auth: "none",
     rateClass: "heavy",
     rest_equivalent: "GET /api/v1/agent/knowledge/search?q={query}",
     channel: ["mcp", "webmcp"],
     inputSchema: z
       .object({
-        query: str(500),
-        limit: z.number().int().min(1).max(25).optional(),
-        kind: str(64).optional(),
-        capability: str(128).optional(),
+        query: str(200).min(2),
+        limit: z.number().int().min(1).max(20).optional(),
+        kind: z.enum(KNOWLEDGE_KINDS).optional(),
+        capability: str(200).optional(),
       })
       .strict(),
-    handler: notImplemented("agentbadge_search_knowledge", "SLICE-233-5"),
+    handler: handleSearchKnowledge,
   },
   {
     name: "agentbadge_submit_feedback",
     description:
       "Submit structured feedback/suggestion for human triage " +
       "(230 feedback channel; advisory, no SLA).",
-    status: "planned",
+    status: "live",
     auth: "agb_optional",
     rateClass: "heavy",
     rest_equivalent: "POST /api/v1/agent/feedback",
@@ -200,40 +197,40 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
       .object({
         subject: str(200),
         message: str(4000),
-        target: str(128).optional(),
-        kind: str(64).optional(),
+        target: z.enum(FEEDBACK_TARGETS).optional(),
+        kind: z.enum(FEEDBACK_KINDS).optional(),
         idempotency_key: idempotencyKey(),
       })
       .strict(),
-    handler: notImplemented("agentbadge_submit_feedback", "SLICE-233-5"),
+    handler: handleSubmitFeedback,
   },
   {
     name: "agentbadge_request_review",
     description:
       "Request an advisory human review of referenced work (230 review " +
       "channel — NOT an EaaS verdict, attestation or trust artifact).",
-    status: "planned",
+    status: "live",
     auth: "agb_optional",
     rateClass: "heavy",
     rest_equivalent: "POST /api/v1/agent/reviews",
     channel: ["mcp"],
     inputSchema: z
       .object({
-        review_type: str(64),
+        review_type: z.enum(REVIEW_TYPES),
         work_ref: str(500),
         agent_criteria: strList(10, 500),
-        evidence: strList(10, 2048),
+        evidence: z.array(reviewEvidenceSchema).max(10).optional(),
         idempotency_key: idempotencyKey(),
       })
       .strict(),
-    handler: notImplemented("agentbadge_request_review", "SLICE-233-5"),
+    handler: handleRequestReview,
   },
   {
     name: "agentbadge_report_problem",
     description:
       "Report a bug/problem for human triage (230 feedback channel, " +
       "kind=PROBLEM projection).",
-    status: "planned",
+    status: "live",
     auth: "agb_optional",
     rateClass: "heavy",
     rest_equivalent: "POST /api/v1/agent/feedback",
@@ -243,11 +240,11 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
         subject: str(200),
         message: str(4000),
         severity: z.enum(["low", "medium", "high"]).optional(),
-        target: str(128).optional(),
+        target: z.enum(FEEDBACK_TARGETS).optional(),
         idempotency_key: idempotencyKey(),
       })
       .strict(),
-    handler: notImplemented("agentbadge_report_problem", "SLICE-233-5"),
+    handler: handleReportProblem,
   },
 ];
 
