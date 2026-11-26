@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { injectWebMCP, toolsFor } from "@agentbadge/webmcp";
+import { agentsPageTools } from "../lib/agent-interaction/webmcp-page-tools";
 
 /**
  * SLICE-256-5: page-scoped WebMCP tool injection (D-256-Q5).
@@ -16,6 +17,9 @@ import { injectWebMCP, toolsFor } from "@agentbadge/webmcp";
  *   /services/marketplace, /market/*, /work-requests/:id → market (marketplace + submit/poll)
  *   /verify                               → trust (trust + submit/poll)
  *   /agent-guide*, /guides/*, /rules*     → docs (qa + surveys + onboarding)
+ *   /for-agents                           → agents (233-6: exactly the 5
+ *     keyless agent-interaction tools — resolved server-side, not via
+ *     PAGE_TOOLSETS, until the package republishes the shelf)
  */
 const SCOPE_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/?$/, "landing"],
@@ -28,6 +32,7 @@ const SCOPE_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/(agent-guide|marketplace-guide|market-guide)/, "docs"],
   [/^\/guides\//, "docs"],
   [/^\/rules(\/|$)/, "docs"],
+  [/^\/for-agents\/?$/, "agents"],
 ];
 
 export function webmcpPageScopeForPath(pathname: string): string | null {
@@ -48,7 +53,9 @@ export function webmcpPageScope(): MiddlewareHandler {
     }
     let script = scripts.get(page);
     if (!script) {
-      script = injectWebMCP(toolsFor({ page }));
+      script = injectWebMCP(
+        page === "agents" ? agentsPageTools() : toolsFor({ page }),
+      );
       scripts.set(page, script);
     }
     const body = await res.text();

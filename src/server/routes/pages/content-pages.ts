@@ -19,6 +19,7 @@ import { COMPARISON_PAGES, getComparisonPage } from "../../lib/comparison-data";
 import { CLUSTER_PAGES, getClusterPage } from "../../lib/cluster-data";
 import { ClusterPage } from "../../../views/pages/cluster-page";
 import { NotesPage } from "../../../views/pages/notes-page";
+import { AgentsPage } from "../../../views/pages/agents-page";
 import { getAuditRuns, getAuditSummary } from "../../lib/notes-data";
 import { marked } from "marked";
 import { applyChainTemplates } from "../../lib/chain-templates.js";
@@ -311,6 +312,22 @@ contentPageRoutes.get(
   }),
   (c) => {
     return c.html(NotesPage());
+  },
+);
+
+// SLICE-233-6: browser-agent carrier page — webmcpPageScope injects the
+// 5 keyless agent-interaction tools (agents toolset) into the HTML.
+contentPageRoutes.get(
+  "/for-agents",
+  describeRoute({
+    tags: ["Content"],
+    summary: "AgentBadge for Agents",
+    description:
+      "Keyless WebMCP tool surface for browser agents: discover, search knowledge, ask, poll, and file requests via document.modelContext — no API key.",
+    responses: { 200: { description: "HTML agent tools page" } },
+  }),
+  (c) => {
+    return c.html(AgentsPage());
   },
 );
 

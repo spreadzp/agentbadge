@@ -8169,6 +8169,18 @@ paths:
       responses:
         "200":
           description: HTML self-audit notes page
+  /for-agents:
+    get:
+      operationId: getForAgents
+      tags:
+        - Content
+      summary: AgentBadge for Agents
+      description: "Keyless WebMCP tool surface for browser agents: discover, search
+        knowledge, ask, poll, and file requests via document.modelContext — no
+        API key."
+      responses:
+        "200":
+          description: HTML agent tools page
   /comparisons:
     get:
       operationId: getComparisons
