@@ -64,8 +64,12 @@ describe("search_knowledge", () => {
   });
 
   it("tag query finds articles by tag", async () => {
+    // Corpus drift: newer x402 articles (arc-c50/c47/x402-payments/c63…)
+    // legitimately outscore c15 — assert tag-hit presence under a wider
+    // limit, not a top-5 rank.
     const r = await handleHttpToolCall("search_knowledge", {
       query: "x402",
+      limit: 10,
     });
     const body = toolJson(r);
     const ids = body.results.map((x: { id: string }) => x.id);
