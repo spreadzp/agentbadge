@@ -1,0 +1,164 @@
+[
+  {
+    "id": "table.webhookOutbox",
+    "label": "Create table \"webhookOutbox\"",
+    "summary": "Creates table \"webhookOutbox\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "webhookOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"webhookOutbox\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"webhookOutbox\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"webhookOutbox\"",
+        "sql": "CREATE TABLE \"public\".\"webhookOutbox\" (\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"callbackUrl\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastError\" text,\n  \"lockedAtMs\" int8,\n  \"nextAttemptAtMs\" int8 NOT NULL,\n  \"payload\" json NOT NULL,\n  \"requestId\" text NOT NULL,\n  \"status\" text DEFAULT 'queued' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"webhookOutbox\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"webhookOutbox\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.callbackUrl",
+    "label": "Add column \"callbackUrl\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "callbackUrl",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"callbackUrl\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "callbackUrl"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"callbackUrl\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"callbackUrl\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"callbackUrl\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "callbackUrl"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.webhookOutbox.webhookOutbox_requestId_key",
+    "label": "Add unique constraint on \"webhookOutbox\" (requestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "webhookOutbox_requestId_key",
+        "table": "webhookOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"webhookOutbox_requestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "webhookOutbox_requestId_key",
+          "public",
+          "\"public\".\"webhookOutbox\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"webhookOutbox_requestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"webhookOutbox\" ADD CONSTRAINT \"webhookOutbox_requestId_key\" UNIQUE (\"requestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"webhookOutbox_requestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "webhookOutbox_requestId_key",
+          "public",
+          "\"public\".\"webhookOutbox\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.webhookOutbox.webhookOutbox_status_nextAttemptAtMs_idx_73aed880",
+    "label": "Create index \"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\" on \"webhookOutbox\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "webhookOutbox_status_nextAttemptAtMs_idx_73aed880",
+        "table": "webhookOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\"",
+        "sql": "CREATE INDEX \"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\" ON \"public\".\"webhookOutbox\" (\"status\", \"nextAttemptAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"webhookOutbox_status_nextAttemptAtMs_idx_73aed880\""
+        ]
+      }
+    ]
+  }
+]

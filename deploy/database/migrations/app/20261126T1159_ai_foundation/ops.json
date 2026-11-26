@@ -1,0 +1,476 @@
+[
+  {
+    "id": "table.aiJob",
+    "label": "Create table \"aiJob\"",
+    "summary": "Creates table \"aiJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "aiJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"aiJob\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"aiJob\"",
+        "sql": "CREATE TABLE \"public\".\"aiJob\" (\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"inputHash\" text,\n  \"inputRef\" text,\n  \"lastError\" text,\n  \"lockedAt\" timestamptz,\n  \"runId\" text,\n  \"scenario\" text NOT NULL,\n  \"status\" text DEFAULT 'queued' NOT NULL,\n  \"subjectId\" text NOT NULL,\n  \"subjectType\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"aiJob\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.aiRun",
+    "label": "Create table \"aiRun\"",
+    "summary": "Creates table \"aiRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "aiRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"aiRun\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"aiRun\"",
+        "sql": "CREATE TABLE \"public\".\"aiRun\" (\n  \"confidence\" float8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"error\" text,\n  \"id\" text NOT NULL,\n  \"inputHash\" text,\n  \"inputRef\" text,\n  \"jobId\" text,\n  \"latencyMs\" int4,\n  \"modeAtTime\" text NOT NULL,\n  \"model\" text,\n  \"output\" json,\n  \"promptVersion\" text,\n  \"provider\" text,\n  \"scenario\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"subjectId\" text NOT NULL,\n  \"subjectType\" text NOT NULL,\n  \"tokensTotal\" int4,\n  \"usage\" json,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"aiRun\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.automationPolicy",
+    "label": "Create table \"automationPolicy\"",
+    "summary": "Creates table \"automationPolicy\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "automationPolicy"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"automationPolicy\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"automationPolicy\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"automationPolicy\"",
+        "sql": "CREATE TABLE \"public\".\"automationPolicy\" (\n  \"confidenceThreshold\" float8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"mode\" text DEFAULT 'off' NOT NULL,\n  \"model\" text,\n  \"scenario\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"updatedBy\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"automationPolicy\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"automationPolicy\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.policyChange",
+    "label": "Create table \"policyChange\"",
+    "summary": "Creates table \"policyChange\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "policyChange"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"policyChange\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"policyChange\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"policyChange\"",
+        "sql": "CREATE TABLE \"public\".\"policyChange\" (\n  \"actor\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"field\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"newValue\" text,\n  \"oldValue\" text,\n  \"reason\" text,\n  \"scenario\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"policyChange\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"policyChange\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.aiJob.aiJob_idempotencyKey_key",
+    "label": "Add unique constraint on \"aiJob\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "aiJob_idempotencyKey_key",
+        "table": "aiJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"aiJob_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "aiJob_idempotencyKey_key",
+          "public",
+          "\"public\".\"aiJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"aiJob_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"aiJob\" ADD CONSTRAINT \"aiJob_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"aiJob_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "aiJob_idempotencyKey_key",
+          "public",
+          "\"public\".\"aiJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.automationPolicy.automationPolicy_scenario_key",
+    "label": "Add unique constraint on \"automationPolicy\" (scenario)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "automationPolicy_scenario_key",
+        "table": "automationPolicy"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"automationPolicy_scenario_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "automationPolicy_scenario_key",
+          "public",
+          "\"public\".\"automationPolicy\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"automationPolicy_scenario_key\"",
+        "sql": "ALTER TABLE \"public\".\"automationPolicy\" ADD CONSTRAINT \"automationPolicy_scenario_key\" UNIQUE (\"scenario\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"automationPolicy_scenario_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "automationPolicy_scenario_key",
+          "public",
+          "\"public\".\"automationPolicy\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.aiJob.aiJob_status_createdAt_idx_58610442",
+    "label": "Create index \"aiJob_status_createdAt_idx_58610442\" on \"aiJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "aiJob_status_createdAt_idx_58610442",
+        "table": "aiJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"aiJob_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"aiJob_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"aiJob_status_createdAt_idx_58610442\" ON \"public\".\"aiJob\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"aiJob_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.aiJob.aiJob_subjectType_subjectId_idx_34976a96",
+    "label": "Create index \"aiJob_subjectType_subjectId_idx_34976a96\" on \"aiJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "aiJob_subjectType_subjectId_idx_34976a96",
+        "table": "aiJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"aiJob_subjectType_subjectId_idx_34976a96\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob_subjectType_subjectId_idx_34976a96\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"aiJob_subjectType_subjectId_idx_34976a96\"",
+        "sql": "CREATE INDEX \"aiJob_subjectType_subjectId_idx_34976a96\" ON \"public\".\"aiJob\" (\"subjectType\", \"subjectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"aiJob_subjectType_subjectId_idx_34976a96\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiJob_subjectType_subjectId_idx_34976a96\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.aiRun.aiRun_scenario_createdAt_idx_3cc554d6",
+    "label": "Create index \"aiRun_scenario_createdAt_idx_3cc554d6\" on \"aiRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "aiRun_scenario_createdAt_idx_3cc554d6",
+        "table": "aiRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"aiRun_scenario_createdAt_idx_3cc554d6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_scenario_createdAt_idx_3cc554d6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"aiRun_scenario_createdAt_idx_3cc554d6\"",
+        "sql": "CREATE INDEX \"aiRun_scenario_createdAt_idx_3cc554d6\" ON \"public\".\"aiRun\" (\"scenario\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"aiRun_scenario_createdAt_idx_3cc554d6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_scenario_createdAt_idx_3cc554d6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.aiRun.aiRun_status_createdAt_idx_58610442",
+    "label": "Create index \"aiRun_status_createdAt_idx_58610442\" on \"aiRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "aiRun_status_createdAt_idx_58610442",
+        "table": "aiRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"aiRun_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"aiRun_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"aiRun_status_createdAt_idx_58610442\" ON \"public\".\"aiRun\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"aiRun_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.aiRun.aiRun_subjectType_subjectId_createdAt_idx_9ad5362a",
+    "label": "Create index \"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\" on \"aiRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "aiRun_subjectType_subjectId_createdAt_idx_9ad5362a",
+        "table": "aiRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\"",
+        "sql": "CREATE INDEX \"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\" ON \"public\".\"aiRun\" (\"subjectType\", \"subjectId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"aiRun_subjectType_subjectId_createdAt_idx_9ad5362a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.policyChange.policyChange_scenario_createdAt_idx_3cc554d6",
+    "label": "Create index \"policyChange_scenario_createdAt_idx_3cc554d6\" on \"policyChange\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "policyChange_scenario_createdAt_idx_3cc554d6",
+        "table": "policyChange"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"policyChange_scenario_createdAt_idx_3cc554d6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"policyChange_scenario_createdAt_idx_3cc554d6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"policyChange_scenario_createdAt_idx_3cc554d6\"",
+        "sql": "CREATE INDEX \"policyChange_scenario_createdAt_idx_3cc554d6\" ON \"public\".\"policyChange\" (\"scenario\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"policyChange_scenario_createdAt_idx_3cc554d6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"policyChange_scenario_createdAt_idx_3cc554d6\""
+        ]
+      }
+    ]
+  }
+]

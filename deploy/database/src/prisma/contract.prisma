@@ -846,6 +846,10 @@ model AgentRequest {
   // public corpus. Default false — in-flight rows stay unlisted.
   publishToQa    Boolean           @default(false)
   idempotencyKey String?
+  // EPIC-233 (D-233-5): pre-validated https callback target (SSRF-
+  // checked at intake — lib/request-inbox/callback-url.ts). Until this
+  // column ships the value rides inside `fingerprint.callback_url`.
+  callbackUrl    String?
   expiresAtMs    BigInt
   createdAtMs    BigInt
   respondedAtMs  BigInt?
@@ -876,6 +880,32 @@ model AgentRequest {
   @@index([sessionId])
   @@index([actorRef])
   @@index([actorResolution])
+}
+
+// ─── EPIC-233 (D-233-5): WebhookOutbox — persisted callback deliveries.
+// One row per AgentRequest (requestId unique): enqueued at the terminal
+// transition commit point, claimed by the in-process worker with a lease
+// (delivering + lockedAtMs), retried on a persisted backoff
+// (nextAttemptAtMs), dead-lettered at WEBHOOK_MAX_ATTEMPTS. `payload`
+// is the frozen PUBLIC poll projection only (D-228-8) — callbackUrl
+// lives on the outbox row, never inside payload. No FK (project
+// convention) — deliveries intentionally survive request-row purge.
+model WebhookOutbox {
+  id             String            @id @default(uuid())
+  requestId      String
+  callbackUrl    String
+  payload        Json // {event:"request.terminal", request_id, state, response, created_at, expires_at}
+  status         String            @default("queued") // queued|delivering|done|failed
+  attempts       Int               @default(0)
+  nextAttemptAtMs BigInt
+  lockedAtMs     BigInt? // claim lease timestamp; null = not in-flight
+  lastError      String?
+  createdAtMs    BigInt
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@unique([requestId])
+  @@index([status, nextAttemptAtMs])
 }
 
 // ─── EPIC-228: Agent Interaction Core (D-228-2/4/5, D-228-10) ──────
@@ -1727,7 +1757,11 @@ model ReviewDecision {
   outcome         String // APPROVED|APPROVED_WITH_NOTES|CHANGES_REQUESTED|REJECTED
   criteriaResults Json // [{key,result:PASS|FAIL|NA,note?}]
   summary         String
-  decidedBy       String // operatorRef
+  decidedBy       String // operatorRef — human-stream only (D-232-4)
+  // EPIC-232 E6: optional link to the advisory review_assist AiRun
+  // the human operator referenced. NULL = no AI suggestion was
+  // consulted/confirmed — AI never writes decisions itself.
+  aiRunRef        String?
   decidedAt       TimestamptzString @default(now())
 
   @@unique([reviewId, seq])
@@ -2277,4 +2311,101 @@ model IntelSecurityEvent {
   createdAt       TimestamptzString @default(now())
 
   @@index([siteId, createdAt])
+}
+
+// ─── EPIC-232 (SLICE-232-1, D-232-2) AiRun — append-only audit trail,
+// one row per LLM call attempt INCLUDING failed/skipped (landmine: full
+// audit). Polymorphic subject (subjectType+subjectId) has NO FK — the
+// predecessor domains (228/229/230) are still unshipped; convention
+// follows InteractionEvent refs. modeAtTime freezes the effective
+// automation mode at call time for later per-mode comparison (D-232-6).
+// O5: inputRef is a POINTER (+inputHash integrity digest) — input
+// snapshots live in the source entities and inherit their retention
+// (228 intake retention), no duplicated payload bodies here.
+// AI never writes verdicts/decisions — AiRun is advisory-only (§16.5).
+model AiRun {
+  id            String            @id @default(uuid())
+  scenario      String // classification|summary|knowledge_search|
+  //                    // answer_draft|feedback_extract|review_assist
+  subjectType   String // interaction|review_case|feedback|...
+  subjectId     String
+  modeAtTime    String // off|shadow|assist|supervised (effective mode)
+  inputRef      String? // pointer to input source (entity/event id)
+  inputHash     String? // sha256 digest of the canonical input snapshot
+  output        Json? // parsed model output (advisory payload)
+  confidence    Float? // 0..1 self-reported when the schema provides it
+  provider      String? // openai|openrouter|local — provider id
+  model         String? // resolved model (policy.model ?? AI_MODEL)
+  promptVersion String? // prompts/<scenario>.md content hash (O1)
+  usage         Json? // {prompt,completion,total} token usage
+  tokensTotal   Int? // usage.total denormalized for cheap aggregation
+  latencyMs     Int?
+  status        String // success|invalid_json|timeout|error|skipped
+  error         String? // machine reason (timeout|http_5xx|budget_*|mode_off|...)
+  jobId         String? // → AiJob.id that produced this run
+  createdAt     TimestamptzString @default(now())
+
+  @@index([subjectType, subjectId, createdAt])
+  @@index([scenario, createdAt])
+  @@index([status, createdAt])
+}
+
+// ─── EPIC-232 (SLICE-232-1, D-232-8) AiJob — transactional outbox for
+// LLM calls (ChainTxOutbox pattern). Enqueued same-tx with the intake
+// write (232-3 wiring); the worker claims queued rows with a lockedAt
+// lease so a crashed drain leaves jobs reclaimable. idempotencyKey
+// backstops enqueue replays (contract-guards D-206-5).
+model AiJob {
+  id             String            @id @default(uuid())
+  scenario       String
+  subjectType    String
+  subjectId      String
+  inputRef       String?
+  inputHash      String?
+  idempotencyKey String?           @unique // "{source}:{subjectId}:{scenario}"
+  status         String            @default("queued") // queued|working|done|failed|skipped
+  attempts       Int               @default(0)
+  lockedAt       TimestamptzString? // claim lease timestamp (ms epoch? no — ts)
+  lastError      String?
+  runId          String? // → AiRun.id of the terminal attempt
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([status, createdAt])
+  @@index([subjectType, subjectId])
+}
+
+// ─── EPIC-232 (SLICE-232-1, D-232-3) AutomationPolicy — per-scenario
+// automation mode. `off` = LLM never called; `shadow` = call+AiRun,
+// hidden from operators; `assist` = hint next to the human form;
+// `supervised` = pre-filled form, human confirms. `auto` is NOT in v1.
+// confidence < confidenceThreshold → always escalate to a human.
+// model = O4 per-scenario provider model override (null → AI_MODEL).
+model AutomationPolicy {
+  id                  String            @id @default(uuid())
+  scenario            String            @unique
+  mode                String            @default("off") // off|shadow|assist|supervised
+  confidenceThreshold Float? // 0..1; null = TBD (O2, calibrated on shadow data)
+  model               String? // per-scenario model override (O4)
+  updatedBy           String? // operator ref | budget-guard | system
+  createdAt           TimestamptzString @default(now())
+  updatedAt           temporal.updatedAtString()
+}
+
+// ─── EPIC-232 (SLICE-232-1, D-232-3) PolicyChange — append-only audit
+// of mode/threshold edits AND automatic budget-guard degradations
+// (actor=budget-guard, D-232-7). The stored policy row is never
+// rewritten by the budget guard — degradation is an effective-mode
+// overlay, so operator intent survives a budget window reset.
+model PolicyChange {
+  id        String            @id @default(uuid())
+  scenario  String
+  field     String // mode|confidenceThreshold|model
+  oldValue  String?
+  newValue  String?
+  actor     String // operator ref | budget-guard | system
+  reason    String?
+  createdAt TimestamptzString @default(now())
+
+  @@index([scenario, createdAt])
 }
