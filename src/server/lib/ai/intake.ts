@@ -25,14 +25,22 @@ import { getDatabase } from "../database";
 import { pickRequestInboxStores } from "../request-inbox/db-stores";
 import type { RequestInboxStores } from "../request-inbox/store";
 
+import type { KnowledgeStore } from "../knowledge/store";
+import { pickKnowledgeStores } from "../knowledge/db-stores";
+
 import { registerAiComparisonHook } from "./compare";
 import { pickAiStores } from "./db-stores";
 import { registerIntakeRunners } from "./intake-runners";
+import { registerKnowledgeSearchRunner } from "./knowledge-runner";
 import { enqueueAiJob } from "./jobs";
 import type { AiRunRecord, AiStore } from "./types";
 
-/** Scenarios enqueued on every new intake request (E1+E2). */
-export const INTAKE_AI_SCENARIOS = ["classification", "summary"] as const;
+/** Scenarios enqueued on every new intake request (E1+E2+E3). */
+export const INTAKE_AI_SCENARIOS = [
+  "classification",
+  "summary",
+  "knowledge_search",
+] as const;
 
 export const AI_SUBJECT_AGENT_REQUEST = "agent_request";
 
@@ -131,12 +139,21 @@ export function wireAiIntake(
   deps: {
     stores?: RequestInboxStores;
     aiStore?: AiStore;
+    /** 232-4 E3 seam — undefined → pick from db; null → NOT_AVAILABLE. */
+    knowledge?: KnowledgeStore | null;
     config?: () => AiEnvConfig | undefined;
   } = {},
 ): void {
   const stores = deps.stores ?? pickRequestInboxStores(getDatabase());
   const aiStore = deps.aiStore ?? pickAiStores(getDatabase());
   registerIntakeRunners({ stores });
+  registerKnowledgeSearchRunner({
+    stores,
+    knowledge:
+      deps.knowledge === undefined
+        ? pickKnowledgeStores(getDatabase())
+        : deps.knowledge,
+  });
   registerAiIntakeHook({ aiStore, config: deps.config });
   // 232-3 E7: lazy shadow comparison — classified events →
   // ai.agreement.computed audit rows (never surfaces shadow output).

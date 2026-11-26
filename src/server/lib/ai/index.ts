@@ -34,10 +34,12 @@ export type {
 } from "./provider";
 export {
   getScenarioRunner,
+  isNotAvailable,
   registerScenarioRunner,
   resetScenarioRunners,
 } from "./scenarios";
 export type {
+  AiNotAvailable,
   AiScenarioInput,
   AiScenarioPrompt,
   AiScenarioRunner,
@@ -63,6 +65,10 @@ export {
   INTAKE_RUNNER_SCENARIOS,
   registerIntakeRunners,
 } from "./intake-runners";
+export {
+  KNOWLEDGE_SEARCH_SCENARIO,
+  registerKnowledgeSearchRunner,
+} from "./knowledge-runner";
 export {
   compareShadowRun,
   getComparator,

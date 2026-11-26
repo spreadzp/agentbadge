@@ -33,9 +33,25 @@ export interface AiScenarioInput {
   store: AiStore;
 }
 
+/**
+ * 232-4: a runner may degrade instead of producing a prompt — when
+ * its soft-dep seam (e.g. the 229 knowledge store) is absent it
+ * returns `{ notAvailable: <seam> }`; the worker audits the job as
+ * `skipped` with reason `seam_unavailable` and spends zero calls.
+ */
+export interface AiNotAvailable {
+  notAvailable: string;
+}
+
 export type AiScenarioRunner = (
   input: AiScenarioInput,
-) => Promise<AiScenarioPrompt>;
+) => Promise<AiScenarioPrompt | AiNotAvailable>;
+
+export function isNotAvailable(
+  r: AiScenarioPrompt | AiNotAvailable,
+): r is AiNotAvailable {
+  return typeof (r as AiNotAvailable).notAvailable === "string";
+}
 
 const runners = new Map<string, AiScenarioRunner>();
 

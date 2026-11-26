@@ -25,7 +25,7 @@ import { createAiAlertSender, type AiAlertSender } from "./alerts";
 import { applyBudgetDegradation, checkBudget, resolveEffectiveMode } from "./budget";
 import { pickAiStores } from "./db-stores";
 import { LlmError, createOpenAiProvider, type LlmProvider } from "./provider";
-import { getScenarioRunner } from "./scenarios";
+import { getScenarioRunner, isNotAvailable } from "./scenarios";
 import type { AiStore } from "./types";
 import { recordError, recordSkip, skipReason } from "./worker-record";
 
@@ -147,6 +147,15 @@ export async function drainAiJobs(deps: DrainAiDeps = {}): Promise<AiDrainResult
       }
 
       const prompt = await runner({ job, store });
+      // Soft-dep degrade (232-4): the runner's seam is absent —
+      // audit a skipped run, spend zero provider calls.
+      if (isNotAvailable(prompt)) {
+        const reason = `seam_unavailable: ${prompt.notAvailable}`;
+        await recordSkip(store, job, effective, reason);
+        res.skipped++;
+        res.errors.push(`${job.id} ${job.scenario}: ${reason}`);
+        continue;
+      }
       const t0 = Date.now();
       try {
         const out = await provider.complete({

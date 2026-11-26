@@ -42,10 +42,19 @@ function runBody(s: AiSuggestionView) {
     </div>`;
   }
   const out = (s.output ?? {}) as Record<string, unknown>;
+  // E3 (232-4): render matched knowledge entries "id (0.9)"-style —
+  // suggestion only, never an auto-attach affordance.
+  const scores = (out.relevanceScores ?? {}) as Record<string, number>;
+  const matched = Array.isArray(out.matchedEntryIds)
+    ? (out.matchedEntryIds as string[]).map((id) =>
+        scores[id] !== undefined ? `${id} (${scores[id]})` : id,
+      )
+    : null;
   return html`<div class="mt-1 space-y-1">
     ${field("category", out.category)} ${field("intent", out.intent)}
     ${field("capabilities", out.capabilities)}
     ${field("summary", out.summary)} ${field("key facts", out.keyFacts)}
+    ${field("query", out.query)} ${field("matched", matched)}
     ${field("confidence", s.confidence)}
   </div>`;
 }

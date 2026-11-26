@@ -31,6 +31,7 @@ import { loadPrompt, resetPromptCache } from "../../src/server/lib/ai/prompts";
 import type { LlmProvider, LlmCompleteResult } from "../../src/server/lib/ai/provider";
 import {
   getScenarioRunner,
+  isNotAvailable,
   resetScenarioRunners,
 } from "../../src/server/lib/ai/scenarios";
 import { InMemoryAiStore } from "../../src/server/lib/ai/store-memory";
@@ -213,6 +214,7 @@ describe("intake runners", () => {
     });
     const runner = getScenarioRunner("classification")!;
     const prompt = await runner({ job, store: ai });
+    if (isNotAvailable(prompt)) throw new Error("unexpected notAvailable");
     expect(prompt.user).toContain("how do I verify a signature?");
     expect(prompt.user).toContain("declared kind: question");
     const schema = prompt.jsonSchema!.schema as {

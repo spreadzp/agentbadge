@@ -53,7 +53,7 @@ const SUMMARY_SCHEMA: Record<string, unknown> = {
 };
 
 /** Extract the agent-supplied text from a stored request payload. */
-function extractText(payload: unknown): string {
+export function extractText(payload: unknown): string {
   if (payload && typeof payload === "object") {
     const t = (payload as Record<string, unknown>).text;
     if (typeof t === "string") return t;
@@ -62,7 +62,7 @@ function extractText(payload: unknown): string {
   return JSON.stringify(payload);
 }
 
-async function loadSubject(
+export async function loadSubject(
   stores: RequestInboxStores,
   subjectId: string,
 ): Promise<{ text: string; kind: string | null }> {
@@ -72,7 +72,7 @@ async function loadSubject(
   return { text: extractText(record.payload), kind: record.kind ?? null };
 }
 
-function promptFor(
+export function promptFor(
   scenario: string,
   fallback: string,
   user: string,
@@ -99,7 +99,10 @@ const FALLBACK_CLASSIFICATION =
 const FALLBACK_SUMMARY =
   "Summarize the agent request: {summary 1-2 sentences, keyFacts[], confidence 0..1}. JSON only.";
 
-function userBlock(subject: { text: string; kind: string | null }): string {
+export function userBlock(subject: {
+  text: string;
+  kind: string | null;
+}): string {
   const kind = subject.kind ? `declared kind: ${subject.kind}\n` : "";
   return `${kind}request text:\n${subject.text}`;
 }
