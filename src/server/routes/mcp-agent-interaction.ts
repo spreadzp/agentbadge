@@ -93,12 +93,13 @@ mcpAgentInteractionRoutes.get(
 
 // POST /mcp/agent-interaction — JSON-RPC: initialize / ping /
 // tools/list / tools/call.
-// Arc-audit M4 (233-10): bound the body before JSON.parse. Not hono's
-// bodyLimit — it getReader()s the raw stream, which the abuse-guard
-// already consumed via c.req.json() (Hono caches it under the "text"
-// bodyCache key). Reading the same cached text is free and bounds
-// the parser input; 512KB matches the REST intake cap (payload ≤256KB
-// + envelope).
+// Arc-audit M4 (233-10): bound the body before JSON.parse. The guard's
+// checkBodyCap is the first line (declared content-length + clone probe,
+// mcp-abuse-guard-body.ts); this route-level read is the second line for
+// mounts without the guard. Not hono's bodyLimit — it getReader()s the
+// raw stream, which may already be consumed; Hono caches the text under
+// the bodyCache so re-reading is free and bounds the parser input.
+// 512KB matches the REST intake cap (payload ≤256KB + envelope).
 const MCP_BODY_MAX = 512 * 1024;
 
 mcpAgentInteractionRoutes.post(

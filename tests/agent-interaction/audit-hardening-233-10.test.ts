@@ -294,7 +294,7 @@ describe("re-verify N1 — callback_url refused when signing unavailable", () =>
 
 describe("re-verify N2 — kill-switches are dev-only", () => {
   it("AGENTBADGE_ALLOW_PRIVATE_IPS ignored under NODE_ENV=production", async () => {
-    const { isPrivateIp } = await import(
+    const { isPrivateIp, assertSafeIp } = await import(
       "../../src/agent-readiness/scanner/ssrf/ip-guard"
     );
     const env = { ...process.env };
@@ -302,8 +302,11 @@ describe("re-verify N2 — kill-switches are dev-only", () => {
       process.env.AGENTBADGE_ALLOW_PRIVATE_IPS = "1";
       process.env.NODE_ENV = "test";
       expect(isPrivateIp("127.0.0.1")).toBe(false);
+      expect(() => assertSafeIp("127.0.0.1")).not.toThrow();
       process.env.NODE_ENV = "production";
       expect(isPrivateIp("127.0.0.1")).toBe(true);
+      expect(() => assertSafeIp("127.0.0.1")).toThrow();
+      expect(() => assertSafeIp("[::1]")).toThrow();
     } finally {
       for (const k of Object.keys(process.env)) delete process.env[k];
       Object.assign(process.env, env);
@@ -386,6 +389,7 @@ describe("re-verify H3/M4 — guard body handling", () => {
     const app = new Hono();
     app.use("/mcp/*", mcpAbuseGuard({ bodyMaxBytes: 1024 }));
     app.route("/", mcpAgentInteractionRoutes);
+    // String body ≥ cap: undici sets content-length → declared branch.
     const res = await app.request("/mcp/agent-interaction", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -395,6 +399,34 @@ describe("re-verify H3/M4 — guard body handling", () => {
         method: "tools/list",
         pad: "x".repeat(4096),
       }),
+    });
+    expect(res.status).toBe(413);
+  });
+
+  it("chunked oversize body → 413 via clone probe (no content-length)", async () => {
+    const { Hono } = await import("hono");
+    const { mcpAbuseGuard } = await import(
+      "../../src/server/middleware/mcp-abuse-guard"
+    );
+    const { mcpAgentInteractionRoutes } = await import(
+      "../../src/server/routes/mcp-agent-interaction"
+    );
+    const app = new Hono();
+    app.use("/mcp/*", mcpAbuseGuard({ bodyMaxBytes: 1024 }));
+    app.route("/", mcpAgentInteractionRoutes);
+    // ReadableStream body → chunked encoding, no content-length header.
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("x".repeat(4096)));
+        controller.close();
+      },
+    });
+    const res = await app.request("/mcp/agent-interaction", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      // @ts-expect-error — duplex required for streaming bodies
+      body: stream,
+      duplex: "half",
     });
     expect(res.status).toBe(413);
   });

@@ -244,7 +244,10 @@ export function assertSafeTarget(hostname: string): void {
 }
 
 export function assertSafeIp(ip: string): void {
-  if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true")
+  ) {
     return;
   }
   const normalized = unbracketV6(ip);
