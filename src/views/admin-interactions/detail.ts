@@ -168,15 +168,36 @@ function classifySection(d: DetailData) {
     </section>`;
 }
 
+/** 232-5 E4: the latest successful answer_draft run prefills the
+ *  respond textarea — editable suggestion labeled "AI draft";
+ *  sending stays a human submit (D-232-3, no auto path exists). */
+function draftPrefill(d: DetailData): { text: string; runId: string } | null {
+  const s = (d.aiSuggestions ?? []).find(
+    (x) => x.scenario === "answer_draft" && x.status === "success",
+  );
+  const out = s?.output as { draftText?: unknown } | null | undefined;
+  return typeof out?.draftText === "string" && s?.runId
+    ? { text: out.draftText, runId: s.runId }
+    : null;
+}
+
 function respondRejectSection(d: DetailData) {
   const id = d.request.id;
+  const draft = draftPrefill(d);
   return html`<section class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
     <form method="post" action="/admin/interactions/${id}/respond"
       class="rounded-lg border border-slate-800 bg-slate-900 p-3">
-      <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">Respond</h3>
+      <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">Respond
+        ${draft
+          ? html`<span
+              class="ml-2 rounded border border-amber-700/60 bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-normal text-amber-300"
+              title="advisory draft — edit before sending"
+              >AI draft</span
+            >`
+          : ""}</h3>
       <textarea name="body" required rows="4" maxlength="16384"
         class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
-        placeholder="Answer visible to the agent via the public poll"></textarea>
+        placeholder="Answer visible to the agent via the public poll">${draft?.text ?? ""}</textarea>
       <div class="mt-2 flex items-end gap-2">
         <button type="submit"
           class="rounded bg-emerald-700 px-3 py-1 text-xs font-medium text-emerald-50 hover:bg-emerald-600">Send answer</button>

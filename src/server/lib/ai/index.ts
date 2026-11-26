@@ -70,6 +70,10 @@ export {
   registerKnowledgeSearchRunner,
 } from "./knowledge-runner";
 export {
+  ANSWER_DRAFT_SCENARIO,
+  registerAnswerDraftRunner,
+} from "./draft-runner";
+export {
   FEEDBACK_EXTRACT_SCENARIO,
   FEEDBACK_ITEM_TYPES,
   FEEDBACK_SENTIMENTS,

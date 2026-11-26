@@ -30,6 +30,7 @@ import { pickKnowledgeStores } from "../knowledge/db-stores";
 
 import { registerAiComparisonHook } from "./compare";
 import { pickAiStores } from "./db-stores";
+import { registerAnswerDraftRunner } from "./draft-runner";
 import { registerIntakeRunners } from "./intake-runners";
 import { registerKnowledgeSearchRunner } from "./knowledge-runner";
 import { enqueueAiJob } from "./jobs";
@@ -40,6 +41,7 @@ export const INTAKE_AI_SCENARIOS = [
   "classification",
   "summary",
   "knowledge_search",
+  "answer_draft",
 ] as const;
 
 export const AI_SUBJECT_AGENT_REQUEST = "agent_request";
@@ -147,13 +149,14 @@ export function wireAiIntake(
   const stores = deps.stores ?? pickRequestInboxStores(getDatabase());
   const aiStore = deps.aiStore ?? pickAiStores(getDatabase());
   registerIntakeRunners({ stores });
-  registerKnowledgeSearchRunner({
-    stores,
-    knowledge:
-      deps.knowledge === undefined
-        ? pickKnowledgeStores(getDatabase())
-        : deps.knowledge,
-  });
+  const knowledge =
+    deps.knowledge === undefined
+      ? pickKnowledgeStores(getDatabase())
+      : deps.knowledge;
+  registerKnowledgeSearchRunner({ stores, knowledge });
+  // 232-5 E4: draft runner consumes E3 output when a knowledge_search
+  // run exists; knowledge:null only means no excerpts in the prompt.
+  registerAnswerDraftRunner({ inbox: stores, knowledge });
   registerAiIntakeHook({ aiStore, config: deps.config });
   // 232-3 E7: lazy shadow comparison — classified events →
   // ai.agreement.computed audit rows (never surfaces shadow output).
