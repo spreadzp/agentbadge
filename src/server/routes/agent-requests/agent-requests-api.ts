@@ -137,6 +137,17 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       if (callback_url != null) {
         const check = await validateCallbackUrl(callback_url);
         if (!check.ok) {
+          // Re-verify N1 (233-10): signing unavailable → 503, not a
+          // caller error — the URL itself may be fine.
+          if (check.reason === "unavailable") {
+            return errorResponse(
+              c,
+              503,
+              ErrorCodes.INTERNAL_ERROR,
+              "webhooks unavailable",
+              { retryable: true },
+            );
+          }
           return errorResponse(
             c,
             400,

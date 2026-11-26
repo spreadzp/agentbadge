@@ -58,6 +58,13 @@ export async function handleCreateTaskRequest(
   if (input.callback_url != null) {
     const check = await validateCallbackUrl(input.callback_url);
     if (!check.ok) {
+      // Re-verify N1 (233-10): signing unavailable → retryable 503.
+      if (check.reason === "unavailable") {
+        return fail("INTERNAL", "webhooks unavailable", {
+          retryable: true,
+          http_status: 503,
+        });
+      }
       // Arc-audit M1 (233-10): generic rejection — the distinct
       // reason codes (unresolvable vs private) leaked an internal
       // DNS-existence oracle to untrusted callers.

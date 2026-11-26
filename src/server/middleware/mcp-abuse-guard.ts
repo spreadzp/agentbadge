@@ -37,6 +37,7 @@ import {
   type RateLimitStore,
 } from "./rate-limit";
 import {
+  checkBodyCap,
   normalizeToolName,
   toolNameFromBody,
   toolNameFromPath,
@@ -101,6 +102,10 @@ export interface McpAbuseGuardOptions {
   tierMax?: Record<string, number>;
   /** backing store (default MemoryStore) */
   store?: RateLimitStore;
+  /** Arc-audit M4 (233-10): hard byte cap on POST bodies — enforced
+   *  BEFORE the guard parses the JSON-RPC envelope (default 1MB;
+   *  image-upload tools may raise via env/options). */
+  bodyMaxBytes?: number;
   /** resolve caller tier (default: c.get("agentTier") ?? "anon") */
   resolveTier?: (c: Context) => string;
 }
@@ -111,6 +116,7 @@ export const DEFAULT_ANON_MAX = 60;
 export const DEFAULT_KEYED_MAX = 120;
 export const DEFAULT_HEAVY_MAX = 10;
 export const DEFAULT_WINDOW_MS = 60_000;
+export const DEFAULT_BODY_MAX_BYTES = 1_048_576;
 const DEFAULT_MAX_ENTRIES = 10_000;
 const MCP_ABUSE_HIT_FLAG = "mcpAbuseHit";
 let _guardInstanceSeq = 0;
@@ -158,6 +164,7 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
   const keyedMax = options.keyedMax ?? DEFAULT_KEYED_MAX;
   const heavyMax = options.heavyMax ?? DEFAULT_HEAVY_MAX;
   const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
+  const bodyMaxBytes = options.bodyMaxBytes ?? DEFAULT_BODY_MAX_BYTES;
   const tierMax = options.tierMax ?? {};
   // Lower-cased entries — lookup normalises the same way (arc-audit M-6).
   const heavySet = new Set(
@@ -223,6 +230,10 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
     if (base.count > max) {
       return limited(c, base, max, now);
     }
+
+    // Arc-audit M4 (233-10): bound the body before the JSON-RPC parse.
+    const capped = await checkBodyCap(c, bodyMaxBytes);
+    if (capped) return capped;
 
     // Layer 3: heavy-op bucket + optional x402 gate.
     const fromPath = toolNameFromPath(c.req.path);

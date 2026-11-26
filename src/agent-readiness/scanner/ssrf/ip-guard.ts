@@ -1,4 +1,9 @@
 import { SsrfBlockedError } from "./ssrf-error";
+import {
+  expandIpv6ToHextets,
+  hextetsToV4,
+  unbracketV6,
+} from "./ip-guard-v6";
 
 const BLOCKED_RANGES_V4: readonly { cidr: string; label: string }[] = [
   { cidr: "0.0.0.0/8", label: "current-network" },
@@ -81,54 +86,14 @@ function isIPv4InBlockedRange(ip: string): { blocked: boolean; range?: string } 
   return { blocked: false };
 }
 
-/** Expand any IPv6 textual form (compressed `::`, dotted-quad tail,
- *  mixed case) into 8 hextets; null on malformed input. Needed for
- *  prefix checks — literal-regex matching misses compressed forms
- *  (`fd::1` vs `fd00::`, `0:0:0:0:0:ffff:7f00:1` vs `::ffff:127.0.0.1`). */
-function expandIpv6ToHextets(ip: string): number[] | null {
-  const normalized = unbracketV6(ip).toLowerCase();
-  let head = normalized;
-  const v4Tail: number[] = [];
-  const dotMatch = normalized.match(/(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotMatch) {
-    const octs = dotMatch[1].split(".").map(Number);
-    if (octs.some((o) => o > 255)) return null;
-    v4Tail.push((octs[0] << 8) | octs[1], (octs[2] << 8) | octs[3]);
-    head = normalized.slice(0, dotMatch.index);
-    if (head.endsWith(":") && !head.endsWith("::")) head = head.slice(0, -1);
-  }
-  const halves = head.split("::");
-  if (halves.length > 2) return null;
-  const left = halves[0] ? halves[0].split(":").filter((s) => s.length) : [];
-  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter((s) => s.length) : [];
-  const hexRe = /^[0-9a-f]{1,4}$/;
-  if (![...left, ...right].every((h) => hexRe.test(h))) return null;
-  if (halves.length === 1) {
-    if (left.length + v4Tail.length !== 8) return null;
-    return [...left.map((h) => parseInt(h, 16)), ...v4Tail];
-  }
-  const missing = 8 - left.length - right.length - v4Tail.length;
-  if (missing < 0) return null;
-  return [
-    ...left.map((h) => parseInt(h, 16)),
-    ...new Array<number>(missing).fill(0),
-    ...right.map((h) => parseInt(h, 16)),
-    ...v4Tail,
-  ];
-}
-
-function hextetsToV4(hi: number, lo: number): string {
-  return `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
-}
-
 function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
   const hx = expandIpv6ToHextets(ip);
   if (!hx) {
-    // Malformed literal — URL parsing rejects most of these upstream;
-    // keep the legacy mapped-v4 fast path as a last-resort check.
+    // Re-verify N6 (233-10): fail CLOSED on malformed v6 (zone ids,
+    // truncated literals) — upstream parsers may not always reject.
     const mapped = parseIPv4MappedV6(ip);
     if (mapped) return isIPv4InBlockedRange(mapped);
-    return { blocked: false };
+    return { blocked: true, range: "malformed-v6" };
   }
   const [h0, h1] = hx;
 
@@ -150,10 +115,20 @@ function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
       ? inner
       : { blocked: true, range: "v4-compatible" };
   }
-  // NAT64 well-known prefix 64:ff9b::/96 — synthesized v4 target.
-  if (h0 === 0x0064 && h1 === 0xff9b && hx[2] === 0 && hx[3] === 0 && hx[4] === 0) {
+  // IPv4-translated ::ffff:0:0/96 (SIIT) — same extraction as mapped.
+  if (hx.slice(0, 4).every((h) => h === 0) && hx[4] === 0xffff) {
+    const inner = isIPv4InBlockedRange(hextetsToV4(hx[6], hx[7]));
+    return inner.blocked ? inner : { blocked: true, range: "v4-translated" };
+  }
+  // NAT64 well-known 64:ff9b::/96 + local-use 64:ff9b:1::/48 — v4 target.
+  if (h0 === 0x0064 && h1 === 0xff9b && (hx[2] === 0 || hx[2] === 0x0001)) {
     const inner = isIPv4InBlockedRange(hextetsToV4(hx[6], hx[7]));
     return inner.blocked ? inner : { blocked: true, range: "nat64" };
+  }
+  // Re-verify N6 (233-10): Teredo 2001::/32 tunnels to v4; doc range
+  // 2001:db8::/32 is non-routable.
+  if (h0 === 0x2001 && (h1 === 0x0000 || h1 === 0x0db8)) {
+    return { blocked: true, range: h1 === 0 ? "teredo" : "documentation-v6" };
   }
   // 6to4 2002::/16 — embedded v4 lives in hextets 1-2.
   if (h0 === 0x2002) {
@@ -169,15 +144,17 @@ function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
   return { blocked: false };
 }
 
-// SLICE-259-37: WHATWG URL keeps brackets on IPv6 hostnames
-// (new URL("http://[::1]/").hostname === "[::1]") — normalize before
-// range checks or every bracketed literal bypasses the guard.
-function unbracketV6(ip: string): string {
-  return ip.startsWith("[") && ip.endsWith("]") ? ip.slice(1, -1) : ip;
-}
+// SLICE-259-37 / 233-10 split: v6 expansion helpers live in
+// ip-guard-v6.ts (expandIpv6ToHextets, hextetsToV4, unbracketV6).
 
 export function isPrivateIp(ip: string): boolean {
-  if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
+  // Re-verify N2 (233-10): the kill-switch is dev-only — in production
+  // a stray AGENTBADGE_ALLOW_PRIVATE_IPS must not silently disable the
+  // whole SSRF guard.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true")
+  ) {
     return false;
   }
   const normalized = unbracketV6(ip);
@@ -211,7 +188,9 @@ const LOCAL_NAME_SUFFIXES = [
 ];
 
 export function assertSafeTarget(hostname: string): void {
-  const lower = hostname.toLowerCase();
+  // Re-verify N7 (233-10): strip a trailing dot — `localhost.` used to
+  // slip past the suffix check; DNS treats it as equivalent.
+  const lower = hostname.toLowerCase().replace(/\.+$/, "");
   for (const suffix of LOCAL_NAME_SUFFIXES) {
     if (suffix === "localhost" ? lower === suffix : lower.endsWith(suffix)) {
       throw new Error(`Blocked local hostname: ${hostname}`);
@@ -228,17 +207,21 @@ export function assertSafeTarget(hostname: string): void {
   // This function is a synchronous pre-check for obvious cases.
   // Hex/octal encoded IPs are caught by isIPv4 if they match the pattern,
   // but decimal-encoded (e.g. 2130706433) need special handling.
-  const decimal = parseInt(hostname, 10);
-  if (!Number.isNaN(decimal) && decimal > 0) {
-    // Convert decimal IP to dotted notation
-    const a = (decimal >>> 24) & 0xff;
-    const b = (decimal >>> 16) & 0xff;
-    const c = (decimal >>> 8) & 0xff;
-    const d = decimal & 0xff;
-    const dotted = `${a}.${b}.${c}.${d}`;
-    if (dotted !== hostname) {
-      assertSafeIp(dotted);
-      return;
+  // N7: only ALL-DIGIT strings are decimal IPs — parseInt("1password.com")
+  // is 1, which used to false-positive-block legit digit-leading hosts.
+  if (/^\d+$/.test(hostname)) {
+    const decimal = parseInt(hostname, 10);
+    if (!Number.isNaN(decimal) && decimal > 0) {
+      // Convert decimal IP to dotted notation
+      const a = (decimal >>> 24) & 0xff;
+      const b = (decimal >>> 16) & 0xff;
+      const c = (decimal >>> 8) & 0xff;
+      const d = decimal & 0xff;
+      const dotted = `${a}.${b}.${c}.${d}`;
+      if (dotted !== hostname) {
+        assertSafeIp(dotted);
+        return;
+      }
     }
   }
 

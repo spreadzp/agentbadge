@@ -37,12 +37,29 @@ export type CallbackUrlCheck =
         | "invalid_url"
         | "scheme" // not https
         | "unsafe_target" // private/reserved host or literal
-        | "unresolvable"; // no public A/AAAA
+        | "unresolvable" // no public A/AAAA
+        | "unavailable"; // delivery cannot sign — intake must refuse
     };
+
+/** Re-verify N1/N2 (233-10): accepting callback_url while production
+ *  cannot sign = silent webhook loss (delivery dead-letters fatally).
+ *  Intake refuses instead. Unsigned delivery is dev-only via the
+ *  explicit WEBHOOK_ALLOW_UNSIGNED=1 opt-in — never NODE_ENV-derived. */
+export function webhookSigningAvailable(): boolean {
+  return (
+    Boolean(process.env.WEBHOOK_SIGNING_SECRET) ||
+    process.env.WEBHOOK_ALLOW_UNSIGNED === "1" ||
+    process.env.NODE_ENV === "test" ||
+    process.env.NODE_ENV === "development"
+  );
+}
 
 export async function validateCallbackUrl(
   raw: string,
 ): Promise<CallbackUrlCheck> {
+  if (!webhookSigningAvailable()) {
+    return { ok: false, reason: "unavailable" };
+  }
   if (raw.length > CALLBACK_URL_MAX) return { ok: false, reason: "too_long" };
   let u: URL;
   try {

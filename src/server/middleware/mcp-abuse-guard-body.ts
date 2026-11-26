@@ -7,6 +7,8 @@
  */
 
 import type { Context } from "hono";
+import { ErrorCodes } from "../lib/error-codes";
+import { errorResponse } from "../lib/error-response";
 
 const REST_TOOL_RE = /^\/mcp(?:\/[^/?]+)?\/tools\/([^/?]+)/;
 
@@ -68,4 +70,49 @@ export async function toolNameFromBody(
     /* body already consumed upstream or not JSON — nothing readable */
   }
   return false;
+}
+
+/** Arc-audit M4 (233-10, re-verify fix): bound the body BEFORE the
+ *  guard parses it — a giant body used to be fully buffered+parsed
+ *  before any cap ran. Declared content-length is checked directly;
+ *  a chunked body is probed through raw.clone() (the clone's stream
+ *  is expendable — the original stays intact for the route).
+ *  Returns a 413 Response when over cap, else null. */
+export async function checkBodyCap(
+  c: Context,
+  maxBytes: number,
+): Promise<Response | null> {
+  if (c.req.method !== "POST") return null;
+  const lenHeader = c.req.header("content-length");
+  if (lenHeader !== undefined && Number(lenHeader) > maxBytes) {
+    return errorResponse(
+      c,
+      413,
+      ErrorCodes.PAYLOAD_TOO_LARGE,
+      `body over ${maxBytes} bytes`,
+    );
+  }
+  if (lenHeader !== undefined) return null;
+  try {
+    const reader = c.req.raw.clone().body?.getReader();
+    if (!reader) return null;
+    let seen = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return null;
+      seen += value?.length ?? 0;
+      if (seen > maxBytes) {
+        void reader.cancel().catch(() => {});
+        return errorResponse(
+          c,
+          413,
+          ErrorCodes.PAYLOAD_TOO_LARGE,
+          `body over ${maxBytes} bytes`,
+        );
+      }
+    }
+  } catch {
+    /* body already consumed — the H3 fail-closed path covers it */
+    return null;
+  }
 }

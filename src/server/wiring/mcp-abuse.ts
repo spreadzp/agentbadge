@@ -47,6 +47,19 @@ export function resolveMcpAbuseTier(c: Context): string {
   return (c.get("agentTier") as string | undefined) ?? "anon";
 }
 
+/** Arc-audit M8 (233-10): the heavy set is DERIVED — a hand-mirrored
+ *  copy (or an env override) that forgets an agentbadge_* heavy tool
+ *  silently un-meters it. Union the registry's rateClass=heavy names
+ *  into whatever list is configured. */
+export function effectiveHeavyOps(
+  envOps: readonly string[] | undefined,
+): string[] {
+  const registryHeavy = AGENT_INTERACTION_TOOLS.filter(
+    (t) => t.rateClass === "heavy",
+  ).map((t) => t.name);
+  return [...(envOps ?? DEFAULT_HEAVY_OPS), ...registryHeavy];
+}
+
 /** Mounts the abuse-guard on /mcp + /mcp/* when enabled (default ON).
  *  The guard is idempotent per request, so the double-mount is cheap.
  *  EPIC-259 (SLICE-259-4): optional DID-signature enrichment mounts
@@ -60,21 +73,11 @@ export function wireMcpAbuseGuard(app: Hono): void {
   app.use("/mcp/*", didAuthEnrich());
   const mcpAbuse = getConfig().mcpAbuse;
   if (!mcpAbuse) return;
-  // Arc-audit M8 (233-10): the heavy set is DERIVED — a hand-mirrored
-  // copy (or an env override) that forgets an agentbadge_* heavy tool
-  // silently un-meters it. Union the registry's rateClass=heavy names
-  // into whatever list is configured.
-  const registryHeavy = AGENT_INTERACTION_TOOLS.filter(
-    (t) => t.rateClass === "heavy",
-  ).map((t) => t.name);
   const guard = mcpAbuseGuard({
     anonMax: mcpAbuse.anonRpm,
     keyedMax: mcpAbuse.keyedRpm,
     heavyMax: mcpAbuse.heavyRpm,
-    heavyOps: [
-      ...(mcpAbuse.heavyOps ?? DEFAULT_HEAVY_OPS),
-      ...registryHeavy,
-    ],
+    heavyOps: effectiveHeavyOps(mcpAbuse.heavyOps),
     tierMax: MCP_TIER_RPM,
     resolveTier: resolveMcpAbuseTier,
     store: getConfig().cache?.enabled

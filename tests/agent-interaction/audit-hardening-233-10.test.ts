@@ -49,6 +49,12 @@ describe("arc-audit H2 — IPv6 transition prefixes blocked", () => {
     "fc99::1", // ULA fc00::/7 compressed
     "0:0:0:0:0:ffff:7f00:1", // uncompressed mapped v4
     "[::ffff:10.0.0.1]", // bracketed literal
+    // re-verify N6 residuals
+    "::ffff:0:7f00:1", // SIIT v4-translated → 127.0.0.1
+    "64:ff9b:1::a9fe:a9fe", // local-use NAT64 → 169.254.169.254
+    "2001::1", // Teredo
+    "2001:db8::1", // documentation v6
+    "fe80::1%25eth0", // zone-id literal — fail closed
   ];
   it.each(blocked)("blocks %s", (ip) => {
     expect(isBlockedIp(ip)).toBe(true);
@@ -257,5 +263,209 @@ describe("arc-audit M12 — JSON-RPC malformed bodies stay in-envelope", () => {
     );
     const j2 = await res2.json();
     expect(j2.error?.code).toBe(-32602); // missing name — clean param error
+  });
+});
+
+// ─── Re-verify round-2 additions (N1–N4, N6, N7) ─────────
+
+describe("re-verify N1 — callback_url refused when signing unavailable", () => {
+  it("prod + no secret + no opt-in → unavailable", async () => {
+    const { validateCallbackUrl } = await import(
+      "../../src/server/lib/request-inbox/callback-url"
+    );
+    const env = { ...process.env };
+    try {
+      delete process.env.WEBHOOK_SIGNING_SECRET;
+      delete process.env.WEBHOOK_ALLOW_UNSIGNED;
+      process.env.NODE_ENV = "production";
+      const r = await validateCallbackUrl("https://93.184.216.34/cb");
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).toBe("unavailable");
+      // explicit dev opt-in re-enables even under NODE_ENV=production
+      process.env.WEBHOOK_ALLOW_UNSIGNED = "1";
+      const r2 = await validateCallbackUrl("https://93.184.216.34/cb");
+      expect(r2.ok).toBe(true);
+    } finally {
+      for (const k of Object.keys(process.env)) delete process.env[k];
+      Object.assign(process.env, env);
+    }
+  });
+});
+
+describe("re-verify N2 — kill-switches are dev-only", () => {
+  it("AGENTBADGE_ALLOW_PRIVATE_IPS ignored under NODE_ENV=production", async () => {
+    const { isPrivateIp } = await import(
+      "../../src/agent-readiness/scanner/ssrf/ip-guard"
+    );
+    const env = { ...process.env };
+    try {
+      process.env.AGENTBADGE_ALLOW_PRIVATE_IPS = "1";
+      process.env.NODE_ENV = "test";
+      expect(isPrivateIp("127.0.0.1")).toBe(false);
+      process.env.NODE_ENV = "production";
+      expect(isPrivateIp("127.0.0.1")).toBe(true);
+    } finally {
+      for (const k of Object.keys(process.env)) delete process.env[k];
+      Object.assign(process.env, env);
+    }
+  });
+});
+
+describe("re-verify N3 — pinned v6 address is bracketed in the URL", () => {
+  it("swapped-fetch path builds https://[v6]/…", async () => {
+    const { fetchPinned } = await import(
+      "../../src/agent-readiness/scanner/ssrf/pinned-fetch"
+    );
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return new Response("ok", { status: 200 });
+    });
+    try {
+      await fetchPinned("https://cb.example.net/x", "2606:4700:4700::1111", {
+        method: "POST",
+        body: "{}",
+      });
+      expect(seen[0]).toContain("[2606:4700:4700::1111]");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("re-verify N7 — assertSafeTarget hostname edge cases", () => {
+  it("digit-leading hostnames are NOT decimal-IP false positives", async () => {
+    const { assertSafeTarget } = await import(
+      "../../src/agent-readiness/scanner/ssrf/ip-guard"
+    );
+    expect(() => assertSafeTarget("1password.com")).not.toThrow();
+    expect(() => assertSafeTarget("3m.com")).not.toThrow();
+    expect(() => assertSafeTarget("2130706433")).toThrow(); // 127.0.0.1
+    expect(() => assertSafeTarget("localhost.")).toThrow(); // trailing dot
+  });
+});
+
+describe("re-verify H3/M4 — guard body handling", () => {
+  it("upstream-consumed body is charged HEAVY (fail-closed)", async () => {
+    const { Hono } = await import("hono");
+    const { mcpAbuseGuard } = await import(
+      "../../src/server/middleware/mcp-abuse-guard"
+    );
+    const { mcpAgentInteractionRoutes } = await import(
+      "../../src/server/routes/mcp-agent-interaction"
+    );
+    const app = new Hono();
+    // Simulate an earlier middleware that drains the raw stream
+    // WITHOUT Hono's bodyCache — the old clone() path failed open.
+    app.use("/mcp/*", async (c, next) => {
+      await c.req.raw.text();
+      return next();
+    });
+    app.use("/mcp/*", mcpAbuseGuard({ anonMax: 1000, heavyMax: 1 }));
+    app.route("/", mcpAgentInteractionRoutes);
+    const post = () =>
+      app.request("/mcp/agent-interaction", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      });
+    const r1 = await post();
+    expect(r1.status).toBe(200); // first request consumes heavy slot 1/1
+    const r2 = await post();
+    expect(r2.status).toBe(429); // second is over the heavy cap
+  });
+
+  it("declared oversize body → 413 before parse", async () => {
+    const { Hono } = await import("hono");
+    const { mcpAbuseGuard } = await import(
+      "../../src/server/middleware/mcp-abuse-guard"
+    );
+    const { mcpAgentInteractionRoutes } = await import(
+      "../../src/server/routes/mcp-agent-interaction"
+    );
+    const app = new Hono();
+    app.use("/mcp/*", mcpAbuseGuard({ bodyMaxBytes: 1024 }));
+    app.route("/", mcpAgentInteractionRoutes);
+    const res = await app.request("/mcp/agent-interaction", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/list",
+        pad: "x".repeat(4096),
+      }),
+    });
+    expect(res.status).toBe(413);
+  });
+
+  it("route-level 512KB cap also holds with no guard mounted", async () => {
+    const { mcpAgentInteractionRoutes } = await import(
+      "../../src/server/routes/mcp-agent-interaction"
+    );
+    const res = await mcpAgentInteractionRoutes.request(
+      "/mcp/agent-interaction",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          pad: "x".repeat(600 * 1024),
+        }),
+      },
+    );
+    const j = await res.json();
+    expect(j.error?.code).toBe(-32600);
+  });
+});
+
+describe("re-verify M8 — heavy set derived from registry", () => {
+  it("env override cannot un-meter registry-heavy tools", async () => {
+    const { effectiveHeavyOps } = await import(
+      "../../src/server/wiring/mcp-abuse"
+    );
+    const { AGENT_INTERACTION_TOOLS } = await import(
+      "../../src/server/lib/agent-interaction/registry"
+    );
+    const registryHeavy = AGENT_INTERACTION_TOOLS.filter(
+      (t) => t.rateClass === "heavy",
+    ).map((t) => t.name);
+    expect(registryHeavy.length).toBeGreaterThan(0);
+    const ops = effectiveHeavyOps([]); // env overrides everything
+    for (const name of registryHeavy) expect(ops).toContain(name);
+  });
+});
+
+describe("re-verify N4 — pinned node transport delivers the body", () => {
+  it("POST body + Host header reach the pinned IP", async () => {
+    const { createServer } = await import("node:http");
+    const seen: { host?: string; body: string } = { body: "" };
+    const server = createServer((req, res) => {
+      seen.host = req.headers.host;
+      req.on("data", (c) => (seen.body += c));
+      req.on("end", () => {
+        res.writeHead(200);
+        res.end("ok");
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const { fetchPinned } = await import(
+        "../../src/agent-readiness/scanner/ssrf/pinned-fetch"
+      );
+      const res = await fetchPinned(
+        `http://hook.example.net:${port}/cb`,
+        "127.0.0.1",
+        { method: "POST", body: '{"a":1}', headers: { "x-t": "1" } },
+      );
+      expect(res.status).toBe(200);
+      expect(seen.body).toBe('{"a":1}');
+      expect(seen.host).toBe("hook.example.net");
+    } finally {
+      server.close();
+    }
   });
 });

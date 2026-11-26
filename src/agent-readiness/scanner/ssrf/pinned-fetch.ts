@@ -44,7 +44,9 @@ export async function fetchPinned(
   if (globalThis.fetch !== nativeFetch) {
     const parsed = new URL(url);
     const portPart = parsed.port ? `:${parsed.port}` : "";
-    const pinnedUrl = `${parsed.protocol}//${ip}${portPart}${parsed.pathname}${parsed.search}`;
+    // Re-verify N3 (233-10): v6 literals need brackets in a URL.
+    const hostPart = ip.includes(":") ? `[${ip}]` : ip;
+    const pinnedUrl = `${parsed.protocol}//${hostPart}${portPart}${parsed.pathname}${parsed.search}`;
     return globalThis.fetch(pinnedUrl, {
       method: opts?.method ?? "GET",
       headers: {
@@ -78,8 +80,11 @@ async function fetchPinnedBun(
   const hostname = parsed.hostname;
 
   // Build the pinned URL: scheme://ip:port/path?query
+  // Re-verify N3 (233-10): v6 literals need brackets in a URL —
+  // `https://2606:4700::/x` throws, `https://[2606:4700::]/x` works.
   const portPart = port ? `:${port}` : "";
-  const pinnedUrl = `${parsed.protocol}//${ip}${portPart}${parsed.pathname}${parsed.search}`;
+  const hostPart = ip.includes(":") ? `[${ip}]` : ip;
+  const pinnedUrl = `${parsed.protocol}//${hostPart}${portPart}${parsed.pathname}${parsed.search}`;
 
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,

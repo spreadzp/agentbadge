@@ -12,6 +12,7 @@
 
 import {
   validateCallbackUrl,
+  webhookSigningAvailable,
   type CallbackUrlCheck,
 } from "../request-inbox/callback-url";
 import { resolveAndPin } from "../../../agent-readiness/scanner/ssrf/dns-pin";
@@ -55,11 +56,12 @@ export async function deliverWebhook(args: {
   deps?: WebhookDeliverDeps;
 }): Promise<WebhookDeliveryOutcome> {
   const deps = args.deps ?? {};
-  // Arc-audit M15 (233-10): unsigned delivery is a dev convenience —
-  // in production a missing signing secret means receivers get
-  // unverifiable webhooks; refuse instead of sending attacker-
-  // forgeable payloads.
-  if (!deps.secret && process.env.NODE_ENV === "production") {
+  // Arc-audit M15+N2 (233-10): unsigned delivery is dev-only and
+  // requires the explicit WEBHOOK_ALLOW_UNSIGNED=1 opt-in (or a
+  // test/development NODE_ENV) — an unset NODE_ENV in a prod deploy
+  // must fail closed, and intake refuses callback_url under the same
+  // rule (no silent dead-letter).
+  if (!deps.secret && !webhookSigningAvailable()) {
     return {
       ok: false,
       error: "webhook signing secret not configured",
