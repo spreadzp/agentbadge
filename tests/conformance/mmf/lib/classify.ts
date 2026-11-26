@@ -29,8 +29,9 @@ export interface ActualVerdict {
   unsafeAmount?: boolean;
 }
 
-/** MMF check-ids a spend-decision on our side can plausibly emit. */
-const OUR_CHECKS = new Set([
+/** MMF check-ids a spend-decision on our side can plausibly emit.
+ *  Exported for the EPIC-263 clamp runner's NOT_MAPPABLE rule. */
+export const OUR_CHECKS = new Set([
   "WITHIN",
   "CAP_EXCEEDED",
   "BUDGET",
@@ -85,18 +86,45 @@ export function classifyCore(
 
 /** Step-level verdict compare for delegation steps. When the
  *  expectation carries a `check`, the emitted checkId must match it —
- *  a deny for the wrong reason is not a match. */
+ *  a deny for the wrong reason is not a match.
+ *  EPIC-263: clamp expect-keys (`clamped`, `requested_amount`,
+ *  `effective_amount`, `effective_cap`) compare strictly when present;
+ *  absent keys skip (v0.4 vectors carry none → byte-identical). */
 export function classifyStep(
   expect: string | Record<string, unknown> | undefined,
-  actual: { ok: boolean; checkId?: string | null },
+  actual: {
+    ok: boolean;
+    checkId?: string | null;
+    clamped?: boolean;
+    requested_amount?: number;
+    effective_amount?: number;
+    effective_cap?: number;
+  },
 ): "match" | "mismatch" | "unmapped" {
   if (expect === "valid") return actual.ok ? "match" : "mismatch";
   if (expect === "invalid") return actual.ok ? "mismatch" : "match";
   if (expect && typeof expect === "object") {
-    const e = expect as { allowed?: boolean; check?: string };
+    const e = expect as {
+      allowed?: boolean;
+      check?: string;
+      clamped?: boolean;
+      requested_amount?: number;
+      effective_amount?: number;
+      effective_cap?: number;
+    };
     if (e.allowed !== undefined) {
       const checkOk = e.check === undefined || e.check === actual.checkId;
-      return e.allowed === actual.ok && checkOk ? "match" : "mismatch";
+      const clampOk =
+        (e.clamped === undefined || e.clamped === actual.clamped) &&
+        (e.requested_amount === undefined ||
+          e.requested_amount === actual.requested_amount) &&
+        (e.effective_amount === undefined ||
+          e.effective_amount === actual.effective_amount) &&
+        (e.effective_cap === undefined ||
+          e.effective_cap === actual.effective_cap);
+      return e.allowed === actual.ok && checkOk && clampOk
+        ? "match"
+        : "mismatch";
     }
     if (e.check !== undefined) {
       return e.check === actual.checkId ? "match" : "mismatch";

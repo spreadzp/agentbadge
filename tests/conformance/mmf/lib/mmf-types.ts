@@ -21,6 +21,8 @@ export interface MmfBounds {
   velocity_limit?: number;
   total_budget?: number;
   budget_window_days?: number;
+  /** EPIC-263: draft v0.5-clamp bound (boolean; absent = off). */
+  clamp?: boolean;
   [k: string]: unknown;
 }
 
@@ -136,6 +138,39 @@ export interface LifecycleVector {
   /** Expected evidence events: DECISION/REPLAY/REJECTED/CLAIM/SETTLE/VOID. */
   events: string[];
   [k: string]: unknown;
+}
+
+/* ------------------------- draft v0.5-clamp ------------------------ */
+
+/** Draft §5 expect-extension: present on every decision; the other
+ *  three only when `clamped`. `record` compares ledger bookkeeping
+ *  (effective amount on allow, requested on deny). */
+export interface ClampExpect extends MmfExpect {
+  clamped?: boolean;
+  requested_amount?: number;
+  effective_amount?: number;
+  effective_cap?: number;
+  record?: {
+    amount?: number;
+    allowed?: boolean;
+    check?: string;
+    [k: string]: unknown;
+  };
+}
+
+export interface ClampStep extends Omit<LifecycleStep, "expect"> {
+  expect?: ClampExpect;
+  [k: string]: unknown;
+}
+
+/** clamp-core.json — lifecycle step-grammar + clamp expect-keys
+ *  (draft-versioned corpus, NOT v0.4.24 — pin a91b7f4).
+ *  `mandate`/`id` are re-declared: Omit on an index-signature type
+ *  would otherwise collapse them to `unknown`. */
+export interface ClampCoreVector extends Omit<LifecycleVector, "steps"> {
+  id: string;
+  mandate: MmfMandate;
+  steps: ClampStep[];
 }
 
 export interface CredentialVector {

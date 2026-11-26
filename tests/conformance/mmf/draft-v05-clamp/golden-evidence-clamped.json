@@ -1,0 +1,148 @@
+{
+  "version": "mmf-v0.5-draft",
+  "generated_by": "AgentBadge mmf-canon §6 (EPIC-263) — produced by an implementation, not written by hand",
+  "pin": "a91b7f4",
+  "vectors": [
+    {
+      "id": "KE01",
+      "desc": "single clamped decision (draft v0.5-clamp §6): amount is the effective amount; record carries requested_amount + effective_cap",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 50000,
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "timestamp": 1000,
+          "currency": "GBP",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_cap": 50000
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|5:50000|3:GBP|4:true|12:CAP_EXCEEDED|10:AUTHORIZED|0:|7:1000000|4:true|5:60000|5:50000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "c5b5d2c62070562b2d785285d6e4655b50b860362fb367e00266024240be0441"
+        }
+      ],
+      "head": "c5b5d2c62070562b2d785285d6e4655b50b860362fb367e00266024240be0441"
+    },
+    {
+      "id": "KE02",
+      "desc": "chain: clamped DECISION + REPLAY carrying the same stored clamp fields + SETTLE (unclamped record serializes exactly as v0.3.24)",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "café.example",
+          "amount": 50000,
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "timestamp": 1730000000.25,
+          "currency": "GBP",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_cap": 50000
+        },
+        {
+          "event": "REPLAY",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "café.example",
+          "amount": 50000,
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "timestamp": 1730000001,
+          "currency": "GBP",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_cap": 50000
+        },
+        {
+          "event": "SETTLE",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "café.example",
+          "amount": 50000,
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "timestamp": 1730000002.5,
+          "currency": "GBP",
+          "status": "SETTLED"
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|9:a:shopbot|13:café.example|5:50000|3:GBP|4:true|12:CAP_EXCEEDED|10:AUTHORIZED|0:|13:1730000000250|4:true|5:60000|5:50000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "3dcbc5d8fae4459ee318e21bfebe508e5e0d8cdde03f015d6c243ad557740b0f"
+        },
+        {
+          "payload": "6:REPLAY|2:t1|2:m1|9:a:shopbot|13:café.example|5:50000|3:GBP|4:true|12:CAP_EXCEEDED|10:AUTHORIZED|0:|13:1730000001000|4:true|5:60000|5:50000|64:3dcbc5d8fae4459ee318e21bfebe508e5e0d8cdde03f015d6c243ad557740b0f",
+          "hash": "b153e686c574edb13edba9a114d8eba11cbec63658a0b75b8e0868844689ecac"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|9:a:shopbot|13:café.example|5:50000|3:GBP|4:true|12:CAP_EXCEEDED|7:SETTLED|0:|13:1730000002500|64:b153e686c574edb13edba9a114d8eba11cbec63658a0b75b8e0868844689ecac",
+          "hash": "109c478b2a42ec4e41fd8e10b8bd5636a3a892aabf9399a5e3853c16ee590bc5"
+        }
+      ],
+      "head": "109c478b2a42ec4e41fd8e10b8bd5636a3a892aabf9399a5e3853c16ee590bc5"
+    },
+    {
+      "id": "KE03",
+      "desc": "mixed chain: clamped allow then a denial — the deny carries the REQUESTED amount and no clamp fields (draft §6)",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 50000,
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "timestamp": 2000,
+          "currency": "GBP",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_cap": 50000
+        },
+        {
+          "event": "DECISION",
+          "tx_id": "t2",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 70000,
+          "allowed": false,
+          "check": "BUDGET",
+          "timestamp": 2001,
+          "currency": "GBP",
+          "status": "DENIED"
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|5:50000|3:GBP|4:true|12:CAP_EXCEEDED|10:AUTHORIZED|0:|7:2000000|4:true|5:60000|5:50000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "150c2cb3c607250f5b8f73e53cb6402d1da0fad65b1e04452563569bb9732b96"
+        },
+        {
+          "payload": "8:DECISION|2:t2|2:m1|1:a|9:tesco.com|5:70000|3:GBP|5:false|6:BUDGET|6:DENIED|0:|7:2001000|64:150c2cb3c607250f5b8f73e53cb6402d1da0fad65b1e04452563569bb9732b96",
+          "hash": "7f0eb26a14e39dd594c7487346f40839d35115bceac8b07019f0c9cfb7abe7de"
+        }
+      ],
+      "head": "7f0eb26a14e39dd594c7487346f40839d35115bceac8b07019f0c9cfb7abe7de"
+    }
+  ]
+}

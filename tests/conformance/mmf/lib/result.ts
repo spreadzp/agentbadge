@@ -14,6 +14,10 @@ import { dirname } from "node:path";
 
 export const RESULT_SCHEMA_VERSION = 1;
 export const CORPUS_VERSION = "v0.4.24";
+/** EPIC-263: draft-corpus identity (per-file `version` field) — pin
+ *  a91b7f4. Kept separate from CORPUS_VERSION so the two corpora can
+ *  never be conflated in one metric. */
+export const DRAFT_CORPUS_VERSION = "mmf-v0.5-draft";
 
 export type ResultStatus =
   | "PASS"
@@ -47,9 +51,11 @@ export interface DimensionNote {
 
 export interface VectorResult {
   schema_version: typeof RESULT_SCHEMA_VERSION;
-  corpus_version: typeof CORPUS_VERSION;
+  /** Corpus identity: "v0.4.24" for the pinned release corpus,
+   *  "mmf-v0.5-draft" for the EPIC-263 draft corpus. */
+  corpus_version: string;
   corpus_sha256: string;
-  track: "spend" | "lifecycle" | "crypto" | "delegation";
+  track: "spend" | "lifecycle" | "crypto" | "delegation" | "clamp";
   vector_id: string;
   result: ResultStatus;
   equivalence: Equivalence;

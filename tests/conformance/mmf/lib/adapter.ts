@@ -37,6 +37,7 @@ const MAPPED_BOUNDS = new Set([
   "total_budget",
   "budget_window_days",
   "velocity_limit",
+  "clamp",
 ]);
 
 export function boundsToCaps(bounds: MmfBounds): {
@@ -58,6 +59,11 @@ export function boundsToCaps(bounds: MmfBounds): {
   if (bounds.velocity_limit !== undefined && bounds.velocity_limit > 0) {
     caps.maxTxPerHour = bounds.velocity_limit;
   }
+  // EPIC-263: draft bounds.clamp — boolean only reaches SpendCaps
+  // (draft §2.2: non-bool is a validation error; scalar projection
+  // reports it unmapped rather than coercing).
+  if (typeof bounds.clamp === "boolean") caps.clamp = bounds.clamp;
+  else if (bounds.clamp !== undefined) unmapped.push("clamp:non-boolean");
   for (const k of Object.keys(bounds)) {
     if (!MAPPED_BOUNDS.has(k)) unmapped.push(k);
   }

@@ -91,14 +91,25 @@ export async function runLifecycleVector(
         : typeof out.denyBody?.error === "string"
           ? out.denyBody.error
           : undefined;
-    let checkId = rawDeny ? checkIdForDeny(rawDeny) : out.allowed ? "WITHIN" : null;
-    // REVOKED_REGISTRY applies only when THIS wallet's mandate is
-    // revoked — not merely because the scenario lists any revocation.
+    // EPIC-263 Shape 2: an allowed+clamped decision carries the check
+    // id of the bound that adjusted the amount (CAP_EXCEEDED), not
+    // WITHIN (draft §5.1). v0.4 corpus has no clamp bounds → unchanged.
+    const clamped = out.begun?.clamped === true;
+    let checkId = rawDeny
+      ? checkIdForDeny(rawDeny)
+      : out.allowed
+        ? clamped
+          ? "CAP_EXCEEDED"
+          : "WITHIN"
+        : null;
+    // REVOKED_REGISTRY applies only when the mandate is listed in
+    // registry.revoked — a locally-revoked mandate (mandate.revoked)
+    // stays plain REVOKED (K10). v0.4 lifecycle uses registry.revoked
+    // only → byte-identical there.
     const mandate = tx.as === "m2" ? v.mandate2 : v.mandate;
-    const walletRevoked =
-      (v.registry?.revoked?.includes(mandate?.mandate_id ?? " ") ?? false) ||
-      mandate?.revoked === true;
-    if (walletRevoked && rawDeny === "spend_suspended") {
+    const registryRevoked =
+      v.registry?.revoked?.includes(mandate?.mandate_id ?? " ") ?? false;
+    if (registryRevoked && rawDeny === "spend_suspended") {
       checkId = "REVOKED_REGISTRY";
     }
     const statusMatch =
@@ -107,11 +118,35 @@ export async function runLifecycleVector(
         : exp.status === "DENIED"
           ? read.latest === "denied"
           : read.latest === STATE_EQ[String(exp.status)];
+    // EPIC-263: draft expect-keys compare only when present (v0.4
+    // vectors carry none → same verdicts). record.amount = ledger row:
+    // effective on a clamped reserve, requested on a deny (draft §6).
+    const clampOk =
+      (exp.clamped === undefined || clamped === exp.clamped) &&
+      (exp.requested_amount === undefined ||
+        out.begun?.requestedAmountUsd === exp.requested_amount) &&
+      (exp.effective_amount === undefined ||
+        out.begun?.entry?.amountUsd === exp.effective_amount) &&
+      (exp.effective_cap === undefined ||
+        out.begun?.effectiveCapUsd === exp.effective_cap);
+    const expRecord = exp.record as
+      | { amount?: number; allowed?: boolean; check?: string }
+      | undefined;
+    const recordOk =
+      expRecord === undefined ||
+      (read.latestEntry !== undefined &&
+        (expRecord.amount === undefined ||
+          read.latestEntry.amountUsd === expRecord.amount) &&
+        (expRecord.allowed === undefined ||
+          (read.latestEntry.state !== "denied") === expRecord.allowed) &&
+        (expRecord.check === undefined || checkId === expRecord.check));
     const verdictOk =
       out.allowed === exp.allowed &&
       (exp.check === undefined || checkId === exp.check) &&
       (exp.replayed === undefined || exp.replayed === false) &&
-      statusMatch;
+      statusMatch &&
+      clampOk &&
+      recordOk;
     // Velocity-void evasion AT THIS MOMENT: expected a VELOCITY deny
     // but we allowed — and a released entry exists, i.e. the void
     // freed the windowCount slot the limiter was counting on (L05).
@@ -129,6 +164,16 @@ export async function runLifecycleVector(
         checkId,
         rawDeny,
         replayed: false, // always re-decided — no stored decision
+        // draft §5: clamped present on every decision; the three
+        // amount fields only when clamped (mirror of the draft rule).
+        clamped,
+        ...(clamped
+          ? {
+              requested_amount: out.begun?.requestedAmountUsd,
+              effective_amount: out.begun?.entry?.amountUsd,
+              effective_cap: out.begun?.effectiveCapUsd,
+            }
+          : {}),
         state: read.latest,
         reservationsForTxId: read.count,
         ...(velocityEvasion ? { velocityEvasion: true } : {}),

@@ -7,8 +7,14 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { vi } from "vitest";
 
-import { createSpendEnforcer } from "../../../../src/server/lib/agent-wallet/enforcer";
-import type { SpendLedger } from "../../../../src/server/lib/agent-wallet/ledger";
+import {
+  createSpendEnforcer,
+  type EnforceBegin,
+} from "../../../../src/server/lib/agent-wallet/enforcer";
+import type {
+  SpendEntry,
+  SpendLedger,
+} from "../../../../src/server/lib/agent-wallet/ledger";
 import type { LifecycleVector, MmfTx } from "./mmf-types";
 import { mmfAtToMs, boundsToCaps } from "./adapter";
 import type { DimensionNote } from "./result";
@@ -32,11 +38,11 @@ export async function authorizeTx(
   allowed?: boolean;
   denyBody?: Record<string, unknown>;
   threw?: string;
-  begun?: { entry?: { id: string } };
+  begun?: EnforceBegin;
 }> {
   const app = new Hono();
   const refId = tx.tx_id ?? "tx";
-  let held: { entry?: { id: string } } | undefined;
+  let held: EnforceBegin | undefined;
   app.post("/enforce", async (c: Context) => {
     const begun = await enforcer.begin(c, amount as number, "x402", refId);
     if (begun instanceof Response) return begun;
@@ -65,7 +71,12 @@ export async function stateOf(
   ledger: SpendLedger,
   txId: string,
   wallet: `0x${string}`,
-): Promise<{ count: number; states: string[]; latest?: string }> {
+): Promise<{
+  count: number;
+  states: string[];
+  latest?: string;
+  latestEntry?: SpendEntry;
+}> {
   const rows = (await ledger.listByWallet(wallet)).filter(
     (e) => e.refId === txId,
   );
@@ -77,6 +88,7 @@ export async function stateOf(
     count: rows.length,
     states: rows.map((r) => r.state),
     latest: latestRow?.state,
+    latestEntry: latestRow,
   };
 }
 

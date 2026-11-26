@@ -74,10 +74,20 @@ export interface CanonEvidenceRecord {
   status?: string;
   reference?: string;
   timestamp?: number;
+  /** EPIC-263 §6: clamped DECISION carries the three extra fields. */
+  clamped?: boolean;
+  requested_amount?: number | null;
+  effective_cap?: number | null;
   [k: string]: unknown;
 }
 
-/** §5.6 payload for one evidence record. */
+/** §5.6 payload for one evidence record.
+ *
+ *  EPIC-263 §6 (draft v0.5-clamp, frozen pin a91b7f4): when
+ *  `clamped === true`, three length-prefixed fields — `true`,
+ *  `requested_amount`, `effective_cap` — insert immediately BEFORE
+ *  `prev_hash`. Records with clamped absent/false serialize exactly
+ *  as in v0.3.24 (every existing hash stays byte-identical). */
 export function evidencePayload(
   r: CanonEvidenceRecord,
   prevHash: string,
@@ -86,7 +96,7 @@ export function evidencePayload(
     r.timestamp === undefined
       ? ""
       : String(Math.floor(r.timestamp * 1000 + 0.5));
-  return [
+  const base = [
     field(r.event),
     field(r.tx_id),
     field(r.mandate_id),
@@ -99,8 +109,16 @@ export function evidencePayload(
     field(r.status),
     field(r.reference),
     field(tsMs),
-    field(prevHash),
-  ].join("|");
+  ];
+  if (r.clamped === true) {
+    base.push(
+      field("true"),
+      field(canonAmount(r.requested_amount)),
+      field(canonAmount(r.effective_cap)),
+    );
+  }
+  base.push(field(prevHash));
+  return base.join("|");
 }
 
 /** Chain: recompute payloads + hashes, return head + per-record rows. */

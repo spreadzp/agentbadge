@@ -117,6 +117,9 @@ async function execStep(
     wallets: AgentWalletStore;
     ownerCaps: ReturnType<typeof boundsToCaps>;
     calls: Array<Record<string, unknown>>;
+    /** EPIC-263: clamp-corpus mode — BUDGET-on-delegate-path reports
+     *  unmapped (no ancestor-budget mechanism), draft fields compare. */
+    clampTrack?: boolean;
   },
 ): Promise<StepOutcome> {
   // delegate creation
@@ -129,12 +132,20 @@ async function execStep(
         chain: CHAIN,
         spendCapUsd: s.bounds?.max_amount ?? 0,
         ownerPerTxUsd: ctx.ownerCaps.caps.perTxUsd,
+        // EPIC-263-3: leaf-declared clamp bound reaches the record
+        // verbatim (draft §9 leaf governs — the record IS the leaf).
+        clamp:
+          typeof s.bounds?.clamp === "boolean" ? s.bounds.clamp : undefined,
       });
       ctx.store.put(rec);
       return {
         kind: "delegate",
         verdict: classifyStep(s.expect, { ok: true }),
-        detail: { delegate: s.delegate, spendCapUsd: rec.spendCapUsd },
+        detail: {
+          delegate: s.delegate,
+          spendCapUsd: rec.spendCapUsd,
+          ...(rec.clamp !== undefined ? { clamp: rec.clamp } : {}),
+        },
       };
     } catch (e) {
       // Validation throw IS the rejection when the step expects one.
@@ -159,15 +170,50 @@ async function execStep(
       walletStore: ctx.wallets,
     });
     const rawDeny = out.ok ? undefined : out.reason;
-    const checkId = rawDeny ? checkIdForDeny(rawDeny) : "WITHIN";
+    // EPIC-263 Shape 2: allowed+clamped carries the adjusting bound's
+    // check id (CAP_EXCEEDED), not WITHIN.
+    const clamped = out.ok === true && out.clamped === true;
+    const checkId = rawDeny
+      ? checkIdForDeny(rawDeny)
+      : clamped
+        ? "CAP_EXCEEDED"
+        : "WITHIN";
+    const clampFields = clamped
+      ? {
+          clamped: true,
+          requested_amount: out.ok === true ? out.requestedAmountUsd : undefined,
+          effective_amount: out.ok === true ? out.effectiveAmountUsd : undefined,
+          effective_cap: out.ok === true ? out.effectiveCapUsd : undefined,
+        }
+      : { clamped: false };
+    let verdict = classifyStep(s.expect, {
+      ok: out.ok,
+      checkId,
+      ...clampFields,
+    });
+    const expCheck =
+      s.expect !== null && typeof s.expect === "object"
+        ? (s.expect as { check?: string }).check
+        : undefined;
+    // KD05-class: BUDGET on the delegate path — parent budget
+    // accounting has NO prod mechanism here (spendAsDelegate only sees
+    // effectiveCap). Report unmapped, never emulate (D-263-Q5).
+    let note: string | undefined;
+    if (ctx.clampTrack && verdict === "mismatch" && expCheck === "BUDGET") {
+      verdict = "unmapped";
+      note =
+        "parent-budget charging on delegate path — no prod mechanism (BUDGET is spend-path only)";
+    }
     return {
       kind: "tx",
-      verdict: classifyStep(s.expect, { ok: out.ok, checkId }),
+      verdict,
       detail: {
         ok: out.ok,
         reason: rawDeny,
         checkId,
         amount,
+        ...clampFields,
+        ...(note ? { note } : {}),
       },
     };
   }
@@ -198,6 +244,7 @@ async function execStep(
 export async function runDelegationVector(
   v: DelegationVector,
   corpusSha256: string,
+  opts?: { clampTrack?: boolean },
 ): Promise<VectorResult> {
   const dimensions = delegateDimensions(v);
   const ownerCaps = boundsToCaps(v.parent);
@@ -210,7 +257,13 @@ export async function runDelegationVector(
     const steps: StepOutcome[] = [];
     for (const s of v.steps) {
       steps.push(
-        await execStep(s, { store, wallets, ownerCaps, calls }),
+        await execStep(s, {
+          store,
+          wallets,
+          ownerCaps,
+          calls,
+          clampTrack: opts?.clampTrack,
+        }),
       );
     }
     const hasUnmapped = steps.some((s) => s.verdict === "unmapped");

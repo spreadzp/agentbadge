@@ -1371,7 +1371,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 50
+          "amount": 50,
+          "clamped": false
         }
       }
     ]
@@ -1901,7 +1902,8 @@
           "ok": false,
           "reason": "no-active-delegate",
           "checkId": "REVOKED",
-          "amount": 10
+          "amount": 10,
+          "clamped": false
         }
       }
     ]
@@ -1954,7 +1956,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 10
+          "amount": 10,
+          "clamped": false
         }
       }
     ],
@@ -2021,7 +2024,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 80
+          "amount": 80,
+          "clamped": false
         }
       },
       {
@@ -2030,7 +2034,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 30
+          "amount": 30,
+          "clamped": false
         }
       }
     ],
@@ -2088,7 +2093,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 10
+          "amount": 10,
+          "clamped": false
         }
       },
       {
@@ -2097,7 +2103,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 10
+          "amount": 10,
+          "clamped": false
         }
       }
     ],
@@ -2180,7 +2187,8 @@
           "ok": false,
           "reason": "no-active-delegate",
           "checkId": "REVOKED",
-          "amount": 10
+          "amount": 10,
+          "clamped": false
         }
       }
     ]
@@ -2252,7 +2260,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 60
+          "amount": 60,
+          "clamped": false
         }
       },
       {
@@ -2290,7 +2299,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 50
+          "amount": 50,
+          "clamped": false
         }
       },
       {
@@ -2299,7 +2309,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 40
+          "amount": 40,
+          "clamped": false
         }
       },
       {
@@ -2308,7 +2319,8 @@
         "detail": {
           "ok": true,
           "checkId": "WITHIN",
-          "amount": 70
+          "amount": 70,
+          "clamped": false
         }
       }
     ],

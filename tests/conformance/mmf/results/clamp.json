@@ -1,0 +1,2573 @@
+[
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K01",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "record": {
+            "amount": 50000,
+            "allowed": true,
+            "check": "CAP_EXCEEDED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "record": {
+            "amount": 50000,
+            "allowed": true,
+            "check": "CAP_EXCEEDED"
+          }
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K02",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 60000,
+            "allowed": false
+          }
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "CAP_EXCEEDED",
+            "rawDeny": "perTx",
+            "replayed": false,
+            "clamped": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 60000,
+            "allowed": false
+          }
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "CAP_EXCEEDED",
+          "rawDeny": "perTx",
+          "replayed": false,
+          "clamped": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K03",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "CAP_EXCEEDED",
+            "rawDeny": "perTx",
+            "replayed": false,
+            "clamped": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "CAP_EXCEEDED",
+          "rawDeny": "perTx",
+          "replayed": false,
+          "clamped": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K04",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K05",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K06",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "PAYEE",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 60000,
+            "allowed": false
+          }
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "PAYEE",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 60000,
+            "allowed": false
+          }
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "check PAYEE has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K07",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "CURRENCY",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "CURRENCY",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "check CURRENCY has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K08",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "NON_POSITIVE",
+            "rawDeny": "invalid_amount",
+            "replayed": false,
+            "clamped": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "NON_POSITIVE",
+          "rawDeny": "invalid_amount",
+          "replayed": false,
+          "clamped": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K09",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "EXPIRED",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "EXPIRED",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "check EXPIRED has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K10",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "REVOKED",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "REVOKED",
+            "rawDeny": "spend_suspended",
+            "replayed": false,
+            "clamped": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "REVOKED",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "REVOKED",
+          "rawDeny": "spend_suspended",
+          "replayed": false,
+          "clamped": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K11",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "VELOCITY",
+            "rawDeny": "velocity_tx",
+            "replayed": false,
+            "clamped": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "VELOCITY",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "VELOCITY",
+          "rawDeny": "velocity_tx",
+          "replayed": false,
+          "clamped": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K12",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 90,
+          "effective_amount": 60,
+          "effective_cap": 60
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 90,
+            "effective_amount": 60,
+            "effective_cap": 60,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t3",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_total_budget": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "unwindowed total_budget — no prod mechanism (draft bounds carry no budget_window_days)"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 90,
+          "effective_amount": 60,
+          "effective_cap": 60
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 90,
+          "effective_amount": 60,
+          "effective_cap": 60,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t3",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "draft total_budget carries no budget_window_days — unwindowed budget has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K13",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 90,
+            "allowed": false
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 90,
+            "effective_amount": 60,
+            "effective_cap": 60,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_total_budget": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "unwindowed total_budget — no prod mechanism (draft bounds carry no budget_window_days)"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET",
+          "status": "DENIED",
+          "clamped": false,
+          "record": {
+            "amount": 90,
+            "allowed": false
+          }
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 90,
+          "effective_amount": 60,
+          "effective_cap": 60,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "draft total_budget carries no budget_window_days — unwindowed budget has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K14",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "replayed": true,
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REPLAY"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "same_params",
+          "expectedCheck": "CAP_EXCEEDED",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "replayed": true,
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      }
+    ],
+    "notes": "stored-decision replay — no decision-store in prod (tx_id is correlation-only)"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K15",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "clamped": false
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "clamped": false
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 70000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "clamped": false,
+            "state": "reserved",
+            "reservationsForTxId": 3
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "diff_amount",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 3
+          }
+        },
+        {
+          "tx_id": "t1",
+          "case": "diff_amount",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 3
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 70000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "clamped": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "clamped": false,
+          "state": "reserved",
+          "reservationsForTxId": 3
+        }
+      }
+    ],
+    "notes": "check TX_CONFLICT has no prod mechanism"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "track": "clamp",
+    "vector_id": "K16",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        {
+          "error": true,
+          "check": "CLAIM:BINDING"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED",
+        "CLAIM",
+        "SETTLE"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "CAP_EXCEEDED",
+            "replayed": false,
+            "clamped": true,
+            "requested_amount": 60000,
+            "effective_amount": 50000,
+            "effective_cap": 50000,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_currency": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.currency has no prod mechanism"
+      },
+      "bounds_allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.allowed_payees has no prod mechanism"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      },
+      "bounds_clamp": {
+        "mapped_to": "SpendCaps.clamp (envelope) → checkEnvelope effective verdict",
+        "equivalence": "Exact",
+        "note": "263-1 — Shape 2 check=CAP_EXCEEDED on allowed+clamped"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "status": "AUTHORIZED",
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "CAP_EXCEEDED",
+          "replayed": false,
+          "clamped": true,
+          "requested_amount": 60000,
+          "effective_amount": 50000,
+          "effective_cap": 50000,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true,
+          "check": "CLAIM:BINDING"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "claim binds the effective amount: claiming the requested amount fails as CLAIM:BINDING, claiming the effective amount succeeds"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf",
+    "track": "clamp",
+    "vector_id": "KD01",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 1
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
+        "equivalence": "Exact",
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      },
+      "bounds_clamp": {
+        "mapped_to": "DelegateRecord.clamp → spendAsDelegate effective-cap verdict",
+        "equivalence": "Exact",
+        "note": "263-2 — leaf governs (record is the leaf); kit.spend gets STRICTLY effective"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100,
+          "clamp": true
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "CAP_EXCEEDED",
+          "amount": 150,
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf",
+    "track": "clamp",
+    "vector_id": "KD02",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "clamped": false
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
+        "equivalence": "Exact",
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      },
+      "bounds_clamp": {
+        "mapped_to": "DelegateRecord.clamp → spendAsDelegate effective-cap verdict",
+        "equivalence": "Exact",
+        "note": "263-2 — leaf governs (record is the leaf); kit.spend gets STRICTLY effective"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": false,
+          "reason": "cap-exceeded",
+          "checkId": "CAP_EXCEEDED",
+          "amount": 150,
+          "clamped": false
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf",
+    "track": "clamp",
+    "vector_id": "KD03",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 1
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
+        "equivalence": "Exact",
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      },
+      "bounds_clamp": {
+        "mapped_to": "DelegateRecord.clamp → spendAsDelegate effective-cap verdict",
+        "equivalence": "Exact",
+        "note": "263-2 — leaf governs (record is the leaf); kit.spend gets STRICTLY effective"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100,
+          "clamp": true
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "CAP_EXCEEDED",
+          "amount": 150,
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf",
+    "track": "clamp",
+    "vector_id": "KD04",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
+        "equivalence": "Exact",
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      },
+      "bounds_clamp": {
+        "mapped_to": "DelegateRecord.clamp → spendAsDelegate effective-cap verdict",
+        "equivalence": "Exact",
+        "note": "263-2 — leaf governs (record is the leaf); kit.spend gets STRICTLY effective"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "error": "spendCapUsd exceeds owner perTx cap (max 500)"
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "mmf-v0.5-draft",
+    "corpus_sha256": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf",
+    "track": "clamp",
+    "vector_id": "KD05",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        },
+        {
+          "allowed": true,
+          "check": "CAP_EXCEEDED",
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET",
+          "clamped": false
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 3
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd≤owner.perTxUsd (strict reject)",
+        "equivalence": "Exact",
+        "note": "non-widening strict at register post-234-42 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      },
+      "bounds_clamp": {
+        "mapped_to": "DelegateRecord.clamp → spendAsDelegate effective-cap verdict",
+        "equivalence": "Exact",
+        "note": "263-2 — leaf governs (record is the leaf); kit.spend gets STRICTLY effective"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100,
+          "clamp": true
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "CAP_EXCEEDED",
+          "amount": 150,
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "CAP_EXCEEDED",
+          "amount": 150,
+          "clamped": true,
+          "requested_amount": 150,
+          "effective_amount": 100,
+          "effective_cap": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "unmapped",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 50,
+          "clamped": false,
+          "note": "parent-budget charging on delegate path — no prod mechanism (BUDGET is spend-path only)"
+        }
+      }
+    ],
+    "notes": "clamped spends are charged to every ancestor: the parent's budget stops the child"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "upstream": "ashedrack/mandata",
+  "branch": "draft/v0.5-clamp",
+  "commit_sha": "a91b7f4",
+  "fetched_at": "2026-11-26T13:20:07Z",
+  "draft_version": "mmf-v0.5-draft",
+  "note": "FROZEN pin (DM 2026-11-23 15:28 — 7/7 §11 choices resolved). Re-pin only on a new freeze via scripts/fetch-mmf-draft-v05.sh.",
+  "files": {
+    "mmf-v0.5-clamp-proposal.md": "94b148b015f4abb17773747baa567e927791ef616efc915b95f231536445b786",
+    "clamp-core.json": "5f857abd35afe7431a57603eb601e0b174b7651096145d21fa35bdc7cfa1992c",
+    "clamp-delegation.json": "337c547d635ce6d0797b28750c30e77e7318c49dbeabb53c5bf1cef9536ec7cf"
+  },
+  "upstream_paths": {
+    "mmf-v0.5-clamp-proposal.md": "spec/drafts/mmf-v0.5-clamp-proposal.md",
+    "clamp-core.json": "spec/drafts/vectors/clamp-core.json",
+    "clamp-delegation.json": "spec/drafts/vectors/clamp-delegation.json"
+  },
+  "generated": {
+    "golden-evidence-clamped.json": "e5734ffed2c7f425eb6483763d89d2b88da066b9b331dff349f7f7a64e3a477d",
+    "golden_note": "produced by OUR mmf-canon §6 implementation (offer accepted DM 15:28 — hash must come from an implementation, not be written by hand)"
+  }
+}
