@@ -206,6 +206,12 @@ aauthDiscoveryRoutes.get(
             description:
               "Answer open agent surveys via POST /api/surveys/:id/answer — free; verified answers credit the reputation milestone counter (no passport mint).",
           },
+          {
+            // SLICE-233-7: pointer only — spec lives in the manifest.
+            scope: "agent-interaction:call",
+            description:
+              "Call keyless agent tools via JSON-RPC POST /mcp/agent-interaction — manifest and tool roster at /.well-known/agent-interaction.json.",
+          },
         ],
       },
       200,

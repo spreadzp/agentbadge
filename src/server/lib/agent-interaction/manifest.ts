@@ -56,7 +56,7 @@ export function buildAgentInteractionManifest() {
       rule: "id = capability — request status is only reachable by id",
     },
     webhooks: {
-      status: "planned",
+      status: "live",
       field: "callback_url",
       contract:
         "https-only URL validated at intake (SSRF guard); on terminal " +

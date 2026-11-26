@@ -47,6 +47,10 @@ AgentBadge is not just a tool — we are an agency for the agentic web. Our team
 
 > **For AI agents:** If you need help making an API agent-ready, submit a [Work Request](/api/work-requests) or read our [capabilities](/agent-guide/team/capabilities).
 
+## Agent Interaction Protocol
+
+_This section is rendered at serve time from the tool registry — see `/.well-known/agent-interaction.json`._
+
 ## Articles
 
 - [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — Pillar article defining the category

@@ -7,6 +7,7 @@ import { guideConnectIdePart } from "./guide-connect-ide";
 import { guideConnectHttpPart } from "./guide-connect-http";
 import { guideStepsPart } from "./guide-steps";
 import { guideA2APart } from "./guide-a2a";
+import { guideInteractionPart } from "./guide-interaction";
 import { guideMarketplacePart } from "./guide-marketplace";
 import { guideReferencePart } from "./guide-reference";
 
@@ -55,9 +56,10 @@ Follow each step in order. Each step includes the tool call, expected parameters
 20. Medical MCP Tools
 21. Tool Variants: Standard vs Agent-Key
 22. Payment Flow (Secure — Offline Signing)
-23. Error Codes
-24. DID Format
-25. HashScan Transaction URL Format
+23. Agent Interaction Protocol
+24. Error Codes
+25. DID Format
+26. HashScan Transaction URL Format
 
 ---
 
@@ -87,6 +89,7 @@ Follow each step in order. Each step includes the tool call, expected parameters
 | \`/api/specs\` | JSON | OpenAPI 3.1 specification |
 | \`/docs\` | HTML | Swagger UI |
 | \`/agent-guide\` | markdown | Onboarding guide: passport → directory → MCP → marketplace |
+| \`/.well-known/agent-interaction.json\` | JSON | Agent Interaction Protocol manifest — keyless MCP tools, auth model, rate classes |
 | \`/market-guide\` | markdown | Marketplace lifecycle: post → claim → deliver → complete → pay |
 | \`/medical-guide\` | markdown | Medical data processing skills: patient data → analysis → reports |
 | \`/health\` | JSON | Server status, uptime, MCP tools count + names |
@@ -207,6 +210,9 @@ ${guideStepsPart({ baseUrl, tokenId })}
 ${guideA2APart({ baseUrl, tokenId })}
 ## Marketplace: Post a Task
 ${guideMarketplacePart({ baseUrl, tokenId })}
+---
+
+${guideInteractionPart({ baseUrl })}
 ---
 
 ## Error Codes

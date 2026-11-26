@@ -32,6 +32,10 @@ import { GuideLayout } from "../../../views/chrome/guide-layout";
 import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../../lib/json-ld";
 import { BUILD_DATE } from "../../lib/build-info";
 import { applyChainTemplates } from "../../lib/chain-templates.js";
+import {
+  agentInteractionGuideSection,
+  agentInteractionJsonBlock,
+} from "../../lib/agent-interaction/guide-section";
 import { BLOG_ARTICLES } from "../../lib/blog/articles/index";
 
 export const agentKnowledgeRoutes = new Hono();
@@ -94,6 +98,12 @@ async function discoverArticles(): Promise<{ slug: string; title: string }[]> {
 
 async function serveIndexMarkdown(): Promise<string> {
   let md = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+  // SLICE-233-7: protocol section renders from the registry (canonical),
+  // not hand-maintained markdown — same injection pattern as Articles.
+  md = md.replace(
+    /## Agent Interaction Protocol[\s\S]*?(?=## |$)/,
+    `${agentInteractionGuideSection(BASE_URL)}\n`,
+  );
   const articles = await discoverArticles();
   if (articles.length > 0) {
     const articlesSection = `\n## Articles\n\n${articles
@@ -176,7 +186,10 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
         team_services: "/agent-guide/team/services",
         team_contact: "/agent-guide/team/contact",
         work_requests: "/api/work-requests",
+        agent_interaction_mcp: "/mcp/agent-interaction",
+        agent_interaction_manifest: "/.well-known/agent-interaction.json",
       },
+      agent_interaction: agentInteractionJsonBlock(BASE_URL),
       // SLICE-259-40 (AB-154): machine-readable retry semantics —
       // 429 → Retry-After + X-RateLimit-*; mutating POSTs accept
       // Idempotency-Key; safe to retry with exponential backoff.
