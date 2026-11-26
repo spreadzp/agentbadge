@@ -43,6 +43,8 @@ export interface InteractionSubmitInput {
   verified?: boolean;
   publishToQa?: boolean;
   idempotencyKey?: string | null;
+  /** D-233-5: pre-validated webhook target (callback-url.ts). */
+  callbackUrl?: string | null;
   expiresAtMs: number;
   createdAtMs?: number;
   actorResolution: string;

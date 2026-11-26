@@ -48,6 +48,7 @@ export function createMemoryRequestStore(
         spamFlag: false,
         publishToQa: input.publishToQa ?? false,
         idempotencyKey: input.idempotencyKey ?? null,
+        callbackUrl: input.callbackUrl ?? null,
         expiresAtMs: input.expiresAtMs,
         createdAtMs: input.createdAtMs ?? Date.now(),
         respondedAtMs: null,

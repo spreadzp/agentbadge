@@ -16,7 +16,7 @@ import type {
   InteractionSessionRecord,
 } from "./interaction-types";
 import { STATUS_TO_STATE } from "./interaction-types";
-import { toRequest } from "./store-db";
+import { toRequest, CALLBACK_URL_FP_KEY } from "./store-db";
 
 /**
  * EPIC-228 (SLICE-228-1): Postgres adapter — InteractionRepository
@@ -87,8 +87,12 @@ export function createDbInteractionStore(
         state: input.state,
         kind: input.kind ?? null,
         payload: input.payload as InteractionSubmit["payload"],
-        fingerprint:
-          input.fingerprint as unknown as InteractionSubmit["fingerprint"],
+        fingerprint: {
+          ...input.fingerprint,
+          ...(input.callbackUrl != null
+            ? { [CALLBACK_URL_FP_KEY]: input.callbackUrl }
+            : {}),
+        } as unknown as InteractionSubmit["fingerprint"],
         fpHash: input.fpHash,
         agentId: input.agentId ?? null,
         verified: input.verified ?? false,

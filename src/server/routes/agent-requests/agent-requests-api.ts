@@ -16,17 +16,8 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
 import { resolveClientIp } from "../../middleware/rate-limit";
-import {
-  buildFingerprint,
-  normalizeQuestion,
-  questionHashFor,
-} from "../../lib/request-inbox/fingerprint";
-import {
-  contentHashFor,
-  payloadQuestionText,
-  canonicalJson,
-  qaFastPathBody,
-} from "../../lib/request-inbox/qa";
+import { buildFingerprint } from "../../lib/request-inbox/fingerprint";
+import { qaFastPathBody } from "../../lib/request-inbox/qa";
 import { registerQaSearchRoute } from "./agent-requests-qa-api";
 import { registerRequestPollRoute } from "./agent-requests-poll-api";
 import {
@@ -39,11 +30,16 @@ import {
   PAYLOAD_MAX,
   META_MAX,
 } from "../../lib/request-inbox/intake";
+import {
+  createRequestSubmitter,
+  getSharedSubmitLanes,
+  DEFAULT_SUBMIT_WINDOW_MS,
+  DEFAULT_SUBMIT_MAX,
+} from "../../lib/request-inbox/submit";
+import { validateCallbackUrl } from "../../lib/request-inbox/callback-url";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../../config/env/types";
 
-const DEFAULT_SUBMIT_WINDOW_MS = 2 * 60 * 60_000; // ~2h (D-252-Q6)
-const DEFAULT_SUBMIT_MAX = 1;
 const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
 
 export interface AgentRequestRoutesDeps {
@@ -68,11 +64,28 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
   const app = new Hono();
   const { stores, env } = deps;
   const now = deps.now ?? (() => Date.now());
-  const lanes = createSubmitLanes({
-    windowMs: deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS,
-    max: deps.submitMax ?? DEFAULT_SUBMIT_MAX,
-    softMax: deps.submitSoftMax,
+  // SLICE-233-3: production wiring (no overrides) shares the process-wide
+  // lane bucket with the MCP tool — one policy, one quota across
+  // surfaces. Custom test params get isolated lanes as before.
+  const customLanes =
+    deps.submitWindowMs !== undefined ||
+    deps.submitMax !== undefined ||
+    deps.submitSoftMax !== undefined ||
+    deps.now !== undefined;
+  const lanes = customLanes
+    ? createSubmitLanes({
+        windowMs: deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS,
+        max: deps.submitMax ?? DEFAULT_SUBMIT_MAX,
+        softMax: deps.submitSoftMax,
+        now,
+      })
+    : getSharedSubmitLanes();
+  const submit = createRequestSubmitter({
+    requests: stores.requests,
+    ttlMs: env.requestTtlMs,
+    lanes,
     now,
+    probeWindowMs: deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS,
   });
 
   // QA corpus search — registered BEFORE /:id so "qa" wins the param
@@ -113,9 +126,24 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
         }
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "payload required",);
       }
-      const { kind, payload, publish_to_qa } = intake.body;
+      const { kind, payload, publish_to_qa, callback_url } = intake.body;
       if (kind != null && hasJsonbUnsafe(kind)) { // re-audit M-8
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "kind unsafe");
+      }
+      // D-233-5: callback_url is opt-in — validated (https + SSRF guard
+      // incl. DNS resolution) BEFORE any persist or fast-path answer.
+      let callbackUrl: string | null = null;
+      if (callback_url != null) {
+        const check = await validateCallbackUrl(callback_url);
+        if (!check.ok) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.INVALID_INPUT,
+            `callback_url rejected: ${check.reason}`,
+          );
+        }
+        callbackUrl = check.url;
       }
 
       const agentId = agentKeyOf(c);
@@ -132,129 +160,55 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       if (rawKey !== null && !/^[\x20-\x7E]{8,255}$/.test(rawKey)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad idempotency-key",);
       }
-      const idempotencyKey = rawKey;
 
-      // 1. QA fast-path (D-252-Q7) — no row created.
-      const question = payloadQuestionText(payload);
-      if (question) {
-        const qHash = questionHashFor(normalizeQuestion(question));
-        const pair = await stores.requests.getQaByHash(qHash);
-        if (pair) {
-          try {
-            await stores.requests.upsertQaPair({
-              id: pair.id,
-              questionHash: pair.questionHash,
-              question: pair.question,
-              response: pair.response,
-              sourceRequestId: pair.sourceRequestId,
-              createdAtMs: pair.createdAtMs,
-            }); // same questionHash → uses++
-          } catch {
-            /* uses++ is advisory — never fail the fast path (N-6) */
-          }
+      // Steps 1–4 (QA fast-path → idempotent replay → submit lanes →
+      // persist + spam probe) run in the shared pipeline — the same
+      // code the agentbadge_create_task_request tool calls.
+      const outcome = await submit({
+        kind: kind ?? null,
+        payload,
+        publishToQa: publish_to_qa ?? false,
+        agentId,
+        fpHash,
+        softFpHash,
+        ipFpHash,
+        fingerprint,
+        idempotencyKey: rawKey,
+        callbackUrl,
+        // Arc-audit M9: legacy intake writes into the SHARED queue —
+        // stamp the origin so operators can tell these rows apart
+        // from v1 interactions (which carry their own caps/limits).
+        channel: "legacy",
+      });
+      switch (outcome.kind) {
+        case "fast_path":
           // D-256-Q15: honest fast-path provenance — no new row was
           // created; the answer comes from the public corpus.
-          return c.json(qaFastPathBody(pair), 200);
-        }
-      }
-
-      // 2. Idempotent replay — bypasses the submit limit (AAuth §11.8).
-      if (idempotencyKey) {
-        const existing = await stores.requests.findByIdempotency(
-          idempotencyKey,
-          fpHash,
-        );
-        if (existing) {
-          // Re-audit M-11: jsonb reorders keys → canonical deep-sort
-          // both sides; a janitor-purged payload can't be compared,
-          // so key+fpHash match is the replay contract.
-          if (
-            existing.payload !== null &&
-            canonicalJson(existing.payload) !== canonicalJson(payload)
-          ) {
-            return errorResponse(c, 422, ErrorCodes.INVALID_INPUT, "idempotency-key reused with a different payload",);
-          }
-          const url = `/api/requests/${existing.id}`;
+          return c.json(qaFastPathBody(outcome.pair), 200);
+        case "payload_mismatch":
+          return errorResponse(c, 422, ErrorCodes.INVALID_INPUT, "idempotency-key reused with a different payload",);
+        case "limited":
+          c.header("Retry-After", String(outcome.retryAfterSec));
+          return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "submit rate-limit exceeded", { retryable: true },);
+        case "store_error":
+          return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "submit failed, retry later", { retryable: true },);
+        case "duplicate":
+        case "submitted": {
+          const rec = outcome.record;
+          const url = `/api/requests/${rec.id}`;
           c.header("Location", url);
           c.header("Retry-After", String(RETRY_AFTER_SEC));
           return c.json(
-            { request_id: existing.id, state: existing.state, poll_url: url, duplicate: true },
+            {
+              request_id: rec.id,
+              state: rec.state,
+              poll_url: url,
+              ...(outcome.kind === "duplicate" ? { duplicate: true } : {}),
+            },
             202,
           );
         }
       }
-
-      // 3. Submit rate-limit (D-252-Q6): hard + IP + soft lanes.
-      const hit = lanes.check(agentId, fpHash, softFpHash, ipFpHash);
-      if (hit) {
-        c.header("Retry-After", String(hit.retryAfterSec));
-        return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "submit rate-limit exceeded", { retryable: true },);
-      }
-
-      // 4. Persist + spam-flag probe (D-252-Q5).
-      const recordId = `rq_${crypto.randomUUID().replaceAll("-", "")}`;
-      let record;
-      try {
-        ({ record } = await stores.requests.submit({
-          id: recordId,
-          state: "submitted",
-          kind: kind ?? null,
-          payload,
-          fingerprint,
-          fpHash,
-          agentId,
-          verified: agentId != null,
-          publishToQa: publish_to_qa ?? false,
-          idempotencyKey,
-          expiresAtMs: now() + env.requestTtlMs,
-          // Arc-audit M9: legacy intake writes into the SHARED queue —
-          // stamp the origin so operators can tell these rows apart
-          // from v1 interactions (which carry their own caps/limits).
-          channel: "legacy",
-        }));
-      } catch {
-        // Audit M-1 + re-audit N-1: store failure post-lane → 503,
-        // and refund the consumed slots so the retry is not 429.
-        lanes.refund(agentId, fpHash, softFpHash, ipFpHash);
-        return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "submit failed, retry later", { retryable: true },);
-      }
-
-      if (question) {
-        try {
-          // Audit M-1: the spam probe is advisory — never 500 a submit.
-          const hash = contentHashFor(kind ?? null, question);
-          // N-2: bounded probe — unbounded scan = amplifier.
-          const recent = await stores.requests.listByState({
-            sinceMs:
-              now() - (deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS),
-            limit: 200,
-          });
-          const isSpam = recent.some(
-            (r) =>
-              r.id !== record.id &&
-              r.fpHash === fpHash &&
-              r.kind === (kind ?? null) &&
-              r.payload != null &&
-              contentHashFor(
-                r.kind,
-                payloadQuestionText(r.payload) ?? "",
-              ) === hash,
-          );
-          if (isSpam) {
-            await stores.requests.setSpamFlag(record.id, true);
-          }
-        } catch {
-          /* advisory only */
-        }
-      }
-
-      const url = `/api/requests/${record.id}`;
-      c.header("Location", url);
-      c.header("Retry-After", String(RETRY_AFTER_SEC));
-      return c.json(
-        { request_id: record.id, state: "submitted", poll_url: url },
-        202,
-      );
     },
   );
 

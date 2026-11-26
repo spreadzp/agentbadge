@@ -5,7 +5,8 @@ import type {
   InteractionRepository,
 } from "@agentbadge/database";
 
-import { createDbRequestStore, createDbSurveyStore } from "./store-db";
+import { createDbRequestStore } from "./store-db";
+import { createDbSurveyStore } from "./survey-store-db";
 import { createDbInteractionStore } from "./interaction-store-db";
 import {
   createMemoryRequestInboxData,

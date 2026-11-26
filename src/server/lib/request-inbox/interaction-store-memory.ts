@@ -123,6 +123,7 @@ export function createMemoryInteractionStore(
         spamFlag: false,
         publishToQa: input.publishToQa ?? false,
         idempotencyKey: input.idempotencyKey ?? null,
+        callbackUrl: input.callbackUrl ?? null,
         expiresAtMs: input.expiresAtMs,
         createdAtMs: nowMs,
         respondedAtMs: null,

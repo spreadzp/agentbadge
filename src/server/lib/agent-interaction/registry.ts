@@ -28,6 +28,8 @@ import {
   handleDiscover,
   handleGetRequestStatus,
 } from "./tools/read";
+import { handleCreateTaskRequest } from "./tools/write";
+import { REQUEST_KINDS } from "../request-inbox/intake";
 import { REQUEST_ID_RE } from "../request-inbox/types";
 
 export const AGENT_INTERACTION_PROTOCOL_VERSION = "2025-03-26";
@@ -156,13 +158,13 @@ export const AGENT_INTERACTION_TOOLS: AgentInteractionTool[] = [
     inputSchema: z
       .object({
         payload: z.unknown(),
-        kind: str(64).optional(),
+        kind: z.enum(REQUEST_KINDS).optional(),
         publish_to_qa: z.boolean().optional(),
         idempotency_key: idempotencyKey(),
         callback_url: str(2048).optional(),
       })
       .strict(),
-    handler: notImplemented("agentbadge_create_task_request", "SLICE-233-3"),
+    handler: handleCreateTaskRequest,
   },
   {
     name: "agentbadge_search_knowledge",

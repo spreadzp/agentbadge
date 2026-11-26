@@ -2,39 +2,38 @@ import type {
   AgentQAPairUpsert,
   AgentRequestRepository,
   AgentRequestUpsert,
-  AgentSurveyRepository,
-  AgentSurveyUpsert,
-  SurveyAnswerUpsert,
 } from "@agentbadge/database";
 
-import {
-  SurveyAnswerDuplicateError,
-  type SurveyStore,
-} from "./survey-store";
 import type { SubmitInput, RequestStore } from "./store";
 import type {
   InboxFingerprint,
   InboxQaPair,
   InboxRequestRecord,
-  InboxSurveyAnswer,
-  InboxSurveyRecord,
 } from "./types";
 
-/** EPIC-252 (SLICE-252-1): Postgres adapter — codec rows → domain records. */
+/** EPIC-252 (SLICE-252-1): Postgres adapter — codec rows → domain
+ *  records. The survey facet lives in survey-store-db.ts (file-size
+ *  guard, SLICE-233-3). */
 
 // Row types derive from the repository signatures — the emitted
 // `Models` namespace is not part of the package's public surface.
 type Repo = AgentRequestRepository;
-type SRepo = AgentSurveyRepository;
 type ReqRow = NonNullable<Awaited<ReturnType<Repo["get"]>>>;
 type QaRow = NonNullable<Awaited<ReturnType<Repo["getQaByHash"]>>>;
-type SurveyRow = NonNullable<Awaited<ReturnType<SRepo["getSurvey"]>>>;
-type AnswerRow = NonNullable<Awaited<ReturnType<SRepo["getAnswer"]>>>;
 
 const num = (v: unknown): number => Number(v);
 const numOrNull = (v: unknown): number | null =>
   v == null ? null : Number(v);
 const json = (v: unknown): unknown => v;
+
+/** D-233-5: callbackUrl rides inside the `fingerprint` jsonb column
+ *  (ops-only, outlives payload purge) — a dedicated agentRequest
+ *  column needs an @agentbadge/database republish + migration,
+ *  deferred to the 233-4 outbox window (EPIC-232 migration queue). */
+export const CALLBACK_URL_FP_KEY = "callback_url";
+const cbOf = (fp: unknown): string | null =>
+  ((fp as Record<string, unknown> | null)?.[CALLBACK_URL_FP_KEY] ??
+    null) as string | null;
 
 const toRequest = (r: ReqRow): InboxRequestRecord => ({
   id: r.id,
@@ -49,6 +48,7 @@ const toRequest = (r: ReqRow): InboxRequestRecord => ({
   spamFlag: r.spamFlag,
   publishToQa: r.publishToQa,
   idempotencyKey: r.idempotencyKey,
+  callbackUrl: cbOf(r.fingerprint),
   expiresAtMs: num(r.expiresAtMs),
   createdAtMs: num(r.createdAtMs),
   respondedAtMs: numOrNull(r.respondedAtMs),
@@ -80,27 +80,6 @@ const toQa = (r: QaRow): InboxQaPair => ({
   createdAtMs: num(r.createdAtMs),
 });
 
-const toSurvey = (r: SurveyRow): InboxSurveyRecord => ({
-  id: r.id,
-  title: r.title,
-  questions: json(r.questions),
-  active: r.active,
-  closesAtMs: numOrNull(r.closesAtMs),
-  createdAtMs: num(r.createdAtMs),
-});
-
-const toAnswer = (r: AnswerRow): InboxSurveyAnswer => ({
-  id: r.id,
-  surveyId: r.surveyId,
-  agentId: r.agentId,
-  fpHash: r.fpHash,
-  softFpHash: r.softFpHash,
-  answers: json(r.answers),
-  rated: r.rated,
-  flag: r.flag,
-  createdAtMs: num(r.createdAtMs),
-});
-
 export function createDbRequestStore(
   repo: AgentRequestRepository,
 ): RequestStore {
@@ -120,8 +99,12 @@ export function createDbRequestStore(
         state: input.state,
         kind: input.kind ?? null,
         payload: (input.payload ?? null) as AgentRequestUpsert["payload"],
-        fingerprint:
-          input.fingerprint as unknown as AgentRequestUpsert["fingerprint"],
+        fingerprint: {
+          ...input.fingerprint,
+          ...(input.callbackUrl != null
+            ? { [CALLBACK_URL_FP_KEY]: input.callbackUrl }
+            : {}),
+        } as unknown as AgentRequestUpsert["fingerprint"],
         fpHash: input.fpHash,
         agentId: input.agentId ?? null,
         verified: input.verified ?? false,
@@ -217,82 +200,6 @@ export function createDbRequestStore(
 
     async delete(id) {
       return repo.delete(id);
-    },
-  };
-}
-
-export function createDbSurveyStore(repo: AgentSurveyRepository): SurveyStore {
-  return {
-    async putSurvey(s) {
-      const upsert: AgentSurveyUpsert = {
-        id: s.id,
-        title: s.title,
-        questions: s.questions as AgentSurveyUpsert["questions"],
-        active: s.active,
-        closesAtMs: s.closesAtMs,
-        createdAtMs: s.createdAtMs,
-      };
-      return toSurvey(await repo.putSurvey(upsert));
-    },
-
-    async getSurvey(id) {
-      const row = await repo.getSurvey(id);
-      return row ? toSurvey(row) : null;
-    },
-
-    async listOpenSurveys(nowMs, limit = 50) {
-      return (await repo.listOpenSurveys(nowMs, limit)).map(toSurvey);
-    },
-
-    async setSurveyActive(id, active) {
-      return (await repo.setSurveyActive(id, active)) !== null;
-    },
-
-    async putAnswer(a) {
-      const upsert: SurveyAnswerUpsert = {
-        id: a.id,
-        surveyId: a.surveyId,
-        agentId: a.agentId,
-        fpHash: a.fpHash,
-        answers: a.answers as SurveyAnswerUpsert["answers"],
-        rated: a.rated,
-        createdAtMs: a.createdAtMs,
-      };
-      try {
-        return toAnswer(await repo.putAnswer(upsert));
-      } catch (err) {
-        // Re-audit H-5: only a real unique-violation maps to 409 —
-        // Prisma P2002 or SQLSTATE 23505. A message-substring match
-        // also caught FK errors (…_surveyId_fkey) as false dups.
-        const code = (err as { code?: string } | null)?.code;
-        if (code === "P2002" || code === "23505") {
-          throw new SurveyAnswerDuplicateError();
-        }
-        throw err;
-      }
-    },
-
-    async findAnswerByAgent(surveyId, agentId) {
-      const row = await repo.findAnswerByAgent(surveyId, agentId);
-      return row ? toAnswer(row) : null;
-    },
-
-    async findAnswerByFp(surveyId, fpHash) {
-      const row = await repo.findAnswerByFp(surveyId, fpHash);
-      return row ? toAnswer(row) : null;
-    },
-
-    async findAnswerBySoftFp(surveyId, softFpHash) {
-      const row = await repo.findAnswerBySoftFp(surveyId, softFpHash);
-      return row ? toAnswer(row) : null;
-    },
-
-    async listAnswers(surveyId, limit = 500) {
-      return (await repo.listAnswers(surveyId, limit)).map(toAnswer);
-    },
-
-    async markRated(id) {
-      return repo.markRated(id);
     },
   };
 }

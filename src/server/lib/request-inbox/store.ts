@@ -40,6 +40,9 @@ export interface SubmitInput {
    *  (default false — privacy-safe). */
   publishToQa?: boolean;
   idempotencyKey?: string | null;
+  /** D-233-5: pre-validated callback target (https + SSRF-checked
+   *  upstream — see callback-url.ts). */
+  callbackUrl?: string | null;
   expiresAtMs: number;
   createdAtMs?: number;
   // ─── EPIC-228 (D-228-10): interaction columns — absent on legacy

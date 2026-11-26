@@ -51,6 +51,11 @@ export interface InboxRequestRecord {
    *  request stays unlisted (readable only via its bearer id). */
   publishToQa: boolean;
   idempotencyKey: string | null;
+  /** D-233-5: opt-in webhook target — https URL validated through the
+   *  SSRF guard at intake. Internal field: never returned by public
+   *  projections (poll/{state,response}); read by the 233-4 outbox
+   *  worker on terminal transition. */
+  callbackUrl: string | null;
   /** Row TTL — past this the request answers 410 and may be deleted. */
   expiresAtMs: number;
   createdAtMs: number;
