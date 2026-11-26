@@ -61,7 +61,7 @@ const scenario: Scenario = {
             present: ["result.structuredContent.request_id", "result.structuredContent.poll_url", "result.structuredContent.webhook_secret"],
             regex: {
               "result.structuredContent.request_id": "^rq_",
-              "result.structuredContent.webhook_secret": "^whsec_[0-9a-f]{64}$",
+              "result.structuredContent.webhook_secret": "^whsec_[A-Za-z0-9_-]{43}$",
             },
           },
         },
