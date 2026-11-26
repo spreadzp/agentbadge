@@ -50,6 +50,20 @@ export { DbAiStore } from "./store-db";
 export { drainAiJobs, startAiWorker, stopAiWorker } from "./worker";
 export type { AiDrainResult, DrainAiDeps } from "./worker";
 export {
+  AI_SUBJECT_AGENT_REQUEST,
+  INTAKE_AI_SCENARIOS,
+  enqueueAiIntakeJobs,
+  loadAiSuggestions,
+  registerAiIntakeHook,
+  resetAiIntakeHook,
+  wireAiIntake,
+} from "./intake";
+export type { AiSuggestionView, EnqueueIntakeResult } from "./intake";
+export {
+  INTAKE_RUNNER_SCENARIOS,
+  registerIntakeRunners,
+} from "./intake-runners";
+export {
   AI_JOB_STATUSES,
   AI_MODES,
   AI_RUN_STATUSES,

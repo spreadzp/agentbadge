@@ -17,7 +17,9 @@ import {
   INTERACTION_SIGNAL_TYPES,
   type ClassifyInput,
 } from "../../server/lib/agent-interaction";
+import type { AiSuggestionView } from "../../server/lib/ai/intake";
 import { fmtMs, kv } from "../finops/shared";
+import { aiSuggestionSection } from "./ai-suggestion";
 import {
   actorPill,
   flashBanner,
@@ -33,6 +35,8 @@ export interface DetailData {
   events: InteractionEventRecord[];
   thread: { id: string; status: string; kind: string | null; excerpt: string; createdAtMs: number }[];
   sessionRequestCount: number | null;
+  /** EPIC-232 (§16.5): advisory AI runs — display-only block. */
+  aiSuggestions?: AiSuggestionView[];
   flash?: { ok?: string; err?: string };
 }
 
@@ -230,7 +234,8 @@ export function detailPage(d: DetailData): string {
     ${flashBanner(d.flash ?? {})}
     <a href="/admin/interactions" class="mb-3 inline-block text-xs text-slate-500 hover:text-slate-300">← Inbox</a>
     ${metaSection(d)} ${payloadSection(d)} ${threadSection(d)}
-    ${classifySection(d)} ${respondRejectSection(d)}
+    ${classifySection(d)} ${aiSuggestionSection(d.aiSuggestions ?? [])}
+    ${respondRejectSection(d)}
     ${responsesSection(d)} ${eventsSection(d)}
   `;
   return interactionShell(`Request ${d.request.id}`, body).toString();

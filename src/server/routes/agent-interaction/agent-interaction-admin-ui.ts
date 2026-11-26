@@ -40,6 +40,12 @@ import {
   reject,
   respond,
 } from "../../lib/agent-interaction";
+import {
+  loadAiSuggestions,
+  type AiSuggestionView,
+} from "../../lib/ai/intake";
+import { pickAiStores } from "../../lib/ai/db-stores";
+import type { AiStore } from "../../lib/ai/types";
 import { inboxPage } from "../../../views/admin-interactions/inbox";
 import { detailPage } from "../../../views/admin-interactions/detail";
 
@@ -94,6 +100,7 @@ export interface AgentInteractionAdminUiDeps {
   stores: RequestInboxStores;
   /** SLICE-264-8: credential store for operatorAuth — tests inject. */
   operatorStore?: OperatorStore;
+  aiStore?: AiStore; // 232-2 suggestion seam — memory store in tests
 }
 
 export function createAgentInteractionAdminUi(
@@ -174,6 +181,10 @@ export function createAgentInteractionAdminUi(
     const session = h.request.sessionId
       ? await stores.interactions.getSession(h.request.sessionId)
       : null;
+    // 232-2 §16.5: advisory AI block — fail-open (never sinks page).
+    const aiSuggestions = await loadAiSuggestions(
+      deps.aiStore ?? pickAiStores(getDatabase()), id,
+    ).catch((): AiSuggestionView[] => []);
     return page(
       c,
       detailPage({
@@ -189,6 +200,7 @@ export function createAgentInteractionAdminUi(
           createdAtMs: t.createdAtMs,
         })),
         sessionRequestCount: session?.requestCount ?? null,
+        aiSuggestions,
         flash: {
           ok: c.req.query("ok"),
           err: c.req.query("err"),
