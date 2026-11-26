@@ -200,12 +200,15 @@ export async function loadAiSuggestions(
   aiStore: AiStore,
   requestId: string,
   scenarios: readonly string[] = INTAKE_AI_SCENARIOS,
+  /** 232-9: polymorphic subject join — agent_request default;
+   *  review-center pages pass "feedback" / "review_case". */
+  subjectType: string = AI_SUBJECT_AGENT_REQUEST,
 ): Promise<AiSuggestionView[]> {
   const out: AiSuggestionView[] = [];
   for (const scenario of scenarios) {
     const [runs, policy] = await Promise.all([
       aiStore.listRuns({
-        subjectType: AI_SUBJECT_AGENT_REQUEST,
+        subjectType,
         subjectId: requestId,
         scenario,
         limit: 10,

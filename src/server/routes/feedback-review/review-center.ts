@@ -134,10 +134,26 @@ export function createReviewCenter(deps: {
       offset,
     });
     const page50 = rows.slice(0, QUEUE_PAGE);
+    // 232-9 E9: per-row AI lane — a successful review_assist run's
+    // modeAtTime drives "needs confirm" vs "ai suggested" vs "manual".
+    const items = await Promise.all(
+      page50.map(async (row) => {
+        const run = deps.aiStore
+          ? await deps.aiStore.latestRunFor("review_case", row.id, "review_assist")
+          : null;
+        const aiState =
+          run?.modeAtTime === "supervised"
+            ? ("confirm" as const)
+            : run != null
+              ? ("suggested" as const)
+              : ("manual" as const);
+        return { row, aiState };
+      }),
+    );
     return page(
       c,
       reviewsQueuePage({
-        items: page50,
+        items,
         status: st.status ?? "all",
         statuses: [...REVIEW_STATUSES, "all"],
         nextOffset: rows.length > QUEUE_PAGE ? offset + QUEUE_PAGE : null,
@@ -159,7 +175,12 @@ export function createReviewCenter(deps: {
     const [events, aiSuggestions] = await Promise.all([
       stores.feedback.listEvents(id.data),
       deps.aiStore
-        ? loadAiSuggestions(deps.aiStore, id.data, ["feedback_extract"])
+        ? loadAiSuggestions(
+            deps.aiStore,
+            id.data,
+            ["feedback_extract"],
+            "feedback",
+          )
         : Promise.resolve([]),
     ]);
     return page(
@@ -189,10 +210,12 @@ export function createReviewCenter(deps: {
       stores.reviews.listDecisions(id.data),
       stores.reviews.listEvents(id.data),
       deps.aiStore
-        ? loadAiSuggestions(deps.aiStore, id.data, [
-            "feedback_extract",
-            "review_assist",
-          ])
+        ? loadAiSuggestions(
+            deps.aiStore,
+            id.data,
+            ["feedback_extract", "review_assist"],
+            "review_case",
+          )
         : Promise.resolve([]),
     ]);
     return page(

@@ -36,7 +36,25 @@ const fbRow = (r: FeedbackRecord) => html`<tr>
   ${td(fmtIso(r.createdAt))}
 </tr>`;
 
-const rvRow = (r: ReviewCaseRecord) => html`<tr>
+/** 232-9 E9: queue-level AI lane — "confirm" (supervised run on the
+ *  case), "suggested" (visible run, other mode), "manual" (no run). */
+export type ReviewAiState = "confirm" | "suggested" | "manual";
+
+const aiStatePill = (s: ReviewAiState) =>
+  s === "confirm"
+    ? html`<span class="rounded border border-amber-700/60 bg-amber-950/40 px-1.5 py-0.5 text-[10px] text-amber-300">needs confirm</span>`
+    : s === "suggested"
+      ? html`<span class="text-[10px] text-slate-500">ai suggested</span>`
+      : html`<span class="text-[10px] text-slate-600">manual</span>`;
+
+export interface ReviewQueueItem {
+  row: ReviewCaseRecord;
+  aiState: ReviewAiState;
+}
+
+const rvRow = (it: ReviewQueueItem) => {
+  const r = it.row;
+  return html`<tr>
   ${td(html`<a
     href="/admin/review-center/reviews/${r.id}"
     class="text-emerald-400 hover:underline"
@@ -45,10 +63,12 @@ const rvRow = (r: ReviewCaseRecord) => html`<tr>
   ${td(rvPill(r.status), false)}
   ${td(r.reviewType)}
   ${td(rcActorPill(r.actorResolution), false)}
+  ${td(aiStatePill(it.aiState), false)}
   ${td(r.assignee ?? "—")}
   ${td(r.reopenCount > 0 ? `×${r.reopenCount}` : "—")}
   ${td(fmtIso(r.createdAt))}
 </tr>`;
+};
 
 export function feedbackQueuePage(input: {
   items: FeedbackRecord[];
@@ -98,7 +118,7 @@ export function feedbackQueuePage(input: {
 }
 
 export function reviewsQueuePage(input: {
-  items: ReviewCaseRecord[];
+  items: ReviewQueueItem[];
   status: string;
   statuses: readonly string[];
   nextOffset: number | null;
@@ -110,7 +130,7 @@ export function reviewsQueuePage(input: {
     ${input.items.length === 0
       ? emptyMsg("Queue is empty — no reviews at this status.")
       : html`${tableShell(
-          ["id", "status", "type", "actor", "assignee", "reopened", "created"],
+          ["id", "status", "type", "actor", "ai", "assignee", "reopened", "created"],
           html`${input.items.map(rvRow)}`,
         )}
         ${input.nextOffset !== null || input.offset > 0

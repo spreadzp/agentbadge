@@ -23,6 +23,7 @@ import {
   returnToTriage,
 } from "../../lib/reviews/workflow";
 import { decideReview } from "../../lib/reviews/decide";
+import { buildReviewEvent } from "../../lib/reviews/events";
 import { addReviewEvidence } from "../../lib/reviews/evidence";
 import { criteriaForReview } from "../../lib/reviews/criteria";
 import { feedbackIdSchema } from "../../lib/feedback/validate";
@@ -107,6 +108,38 @@ export function registerReviewCenterMutations(
       303,
     );
   });
+
+  // 232-9 E9: operator dismisses the supervised suggestion — the
+  // rejection lands as an INTERNAL event (rejected-AI-decisions
+  // metric input, D-232-6); the human decides normally afterwards.
+  app.post(
+    "/admin/review-center/reviews/:id/reject-suggestion",
+    async (c) => {
+      const g = await guardMutation(
+        c,
+        "reviews",
+        c.req.param("id"),
+        reviewIdSchema,
+      );
+      if (!g.ok) return g.res;
+      const runRef = formStr(g.body, "aiRunRef");
+      if (!runRef) {
+        return c.redirect(backTo("reviews", g.id, { err: "missing_run_ref" }), 303);
+      }
+      await stores.reviews.appendEvents(g.id, [
+        buildReviewEvent("review.ai_suggestion_rejected", "INTERNAL", {
+          runId: runRef.slice(0, 128),
+          scenario: "review_assist",
+          actor: g.operator,
+          reason: clipCp(formStr(g.body, "reason"), 200) || null,
+        }),
+      ]);
+      return c.redirect(
+        backTo("reviews", g.id, { ok: "suggestion_rejected" }),
+        303,
+      );
+    },
+  );
 
   app.post("/admin/review-center/reviews/:id/decline", async (c) => {
     const g = await guardMutation(c, "reviews", c.req.param("id"), reviewIdSchema);

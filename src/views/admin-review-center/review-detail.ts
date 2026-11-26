@@ -26,15 +26,55 @@ import {
   rvPill,
   VIS_PILL,
 } from "./shared";
+import { decideForm, type AssistSuggestion } from "./review-forms-decide";
 import {
   claimForm,
   convertForm,
-  decideForm,
   declineForm,
   evidenceForm,
   reopenForm,
   returnForm,
 } from "./review-forms";
+
+/** 232-9 E9: distill the latest visible review_assist run into the
+ *  decide-form suggestion — null when nothing usable is on screen,
+ *  or after the operator already rejected THIS run (rejection is
+ *  sticky: the form reverts to fully manual). */
+function assistSuggestion(
+  suggestions: AiSuggestionView[] | undefined,
+  events: { kind: string; payload: unknown }[] | undefined,
+): AssistSuggestion | null {
+  const s = (suggestions ?? []).find(
+    (x) => x.scenario === "review_assist" && x.status === "success" && x.runId,
+  );
+  if (
+    s?.runId &&
+    (events ?? []).some(
+      (e) =>
+        e.kind === "review.ai_suggestion_rejected" &&
+        (e.payload as { runId?: unknown })?.runId === s.runId,
+    )
+  ) {
+    return null;
+  }
+  const out = s?.output as
+    | {
+        criteria?: { name: string; passed: boolean; evidence?: string }[];
+        recommendation?: string;
+      }
+    | null
+    | undefined;
+  if (!s?.runId || !Array.isArray(out?.criteria)) return null;
+  return {
+    runId: s.runId,
+    mode: s.mode,
+    confidence: s.confidence,
+    threshold: s.threshold,
+    criteria: out.criteria,
+    recommendation:
+      typeof out.recommendation === "string" ? out.recommendation : "",
+  };
+}
 
 function metaSection(r: ReviewCaseRecord) {
   return html`<section
@@ -214,11 +254,7 @@ export function reviewDetailPage(input: {
     ${decideForm(
       r,
       input.formToken,
-      // 232-7 E6: the latest visible advisory run is the ref the
-      // human decision may cite — null when nothing was suggested.
-      input.aiSuggestions?.find(
-        (s) => s.scenario === "review_assist" && s.status === "success",
-      )?.runId ?? null,
+      assistSuggestion(input.aiSuggestions, input.events),
     )}
     ${declineForm(r, input.formToken)} ${reopenForm(r, input.formToken)}
     ${returnForm(r, input.formToken)} ${evidenceForm(r, input.formToken)}

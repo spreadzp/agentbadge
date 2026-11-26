@@ -93,6 +93,9 @@ export const REVIEW_EVENT_KINDS = [
   "review.returned",
   "review.evidence_added",
   "review.knowledge_converted",
+  // 232-9 E9: operator dismissed a supervised AI suggestion —
+  // append-only metric input for rejected-AI-decisions (D-232-6).
+  "review.ai_suggestion_rejected",
 ] as const;
 export type ReviewEventKind = (typeof REVIEW_EVENT_KINDS)[number];
 

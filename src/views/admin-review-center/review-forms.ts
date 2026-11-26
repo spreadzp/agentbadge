@@ -7,28 +7,26 @@
 
 import { html } from "hono/html";
 
-import { criteriaForReview } from "../../server/lib/reviews/criteria";
 import {
   REVIEW_DECLINE_REASONS,
-  REVIEW_DECISION_OUTCOMES,
   REVIEW_EVIDENCE_TYPES,
   type ReviewCaseRecord,
 } from "../../server/lib/reviews/types";
 
-const inputCls =
+export const inputCls =
   "mt-0.5 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200";
 
-const formBtn = (label: string, cls = "") => html`<button
+export const formBtn = (label: string, cls = "") => html`<button
   type="submit"
   class="mt-2 rounded bg-emerald-800 px-3 py-1.5 text-sm text-emerald-100 hover:bg-emerald-700 ${cls}"
 >
   ${label}
 </button>`;
 
-const tokenField = (token: string) =>
+export const tokenField = (token: string) =>
   html`<input type="hidden" name="formToken" value="${token}" />`;
 
-const sel = (
+export const sel = (
   name: string,
   options: readonly string[],
   current: unknown,
@@ -80,71 +78,6 @@ export function declineForm(r: ReviewCaseRecord, token: string) {
         <input name="reason" maxlength="300" class="${inputCls}" />
       </label>
       ${formBtn("Decline →", "bg-red-800 hover:bg-red-700")}
-    </form>
-  </section>`;
-}
-
-export function decideForm(
-  r: ReviewCaseRecord,
-  token: string,
-  /** 232-7 E6: latest visible review_assist run id — rendered as a
-   *  hidden field; submitting the human decide-form records which
-   *  advisory run was on screen (aiRunRef). Never prefilled fields. */
-  aiRunRef?: string | null,
-) {
-  if (r.status !== "IN_REVIEW") return "";
-  const criteria = criteriaForReview(r.reviewType);
-  return html`<section
-    class="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-3"
-  >
-    <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">
-      Decide — score every platform criterion (required FAIL
-      contradicts APPROVED*)
-    </h3>
-    <form
-      method="post"
-      action="/admin/review-center/reviews/${r.id}/decide"
-      class="space-y-2"
-    >
-      ${tokenField(token)}
-      ${aiRunRef
-        ? html`<input type="hidden" name="aiRunRef" value="${aiRunRef}" />`
-        : ""}
-      <div class="space-y-1.5">
-        ${criteria.map(
-          (c) => html`<div
-            class="flex flex-wrap items-center gap-2 text-xs"
-          >
-            <span class="w-56 text-slate-300"
-              >${c.label}
-              ${c.required
-                ? html`<span class="text-amber-400">*</span>`
-                : ""}</span
-            >
-            ${sel(`crit_${c.key}`, ["", "PASS", "FAIL", "NA"], "")}
-            <input
-              name="note_${c.key}"
-              maxlength="1000"
-              placeholder="note (internal — not shown to agent)"
-              class="${inputCls} flex-1"
-            />
-          </div>`,
-        )}
-      </div>
-      <label class="block text-xs text-slate-500"
-        >outcome ${sel("outcome", ["", ...REVIEW_DECISION_OUTCOMES], "")}
-      </label>
-      <label class="block text-xs text-slate-500">
-        summary (public — returned to the agent)
-        <textarea
-          name="summary"
-          rows="3"
-          maxlength="4000"
-          required
-          class="${inputCls}"
-        ></textarea>
-      </label>
-      ${formBtn("Decide →")}
     </form>
   </section>`;
 }
