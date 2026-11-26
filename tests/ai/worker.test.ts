@@ -39,6 +39,7 @@ const CFG: AiEnvConfig = {
   jobLeaseMs: 60_000,
   jobMaxAttempts: 3,
   jobQueueCap: 500,
+    subjectDailyCallLimit: 0,
 };
 
 function stubProvider(

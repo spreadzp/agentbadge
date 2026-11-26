@@ -85,7 +85,7 @@ export async function resolveJobMode(
   const declaredMode = policy?.mode ?? "off";
   // Budget is read per job — call count grows inside the drain.
   const budget = enabled
-    ? await checkBudget(store, cfg, now)
+    ? await checkBudget(store, cfg, now, job.subjectType)
     : { state: "ok" as const, dailyCalls: 0, monthlyUsdEstimate: 0 };
   return {
     declaredMode,

@@ -66,7 +66,9 @@ export async function setPolicyMode(
   const before = await store.getPolicy(scenario);
   if (mode === "supervised") {
     const th = before?.confidenceThreshold ?? null;
-    if (th === null || th <= 0) {
+    // Delta-3 M-4: NaN slips past `th <= 0` — require a finite,
+    // strictly-positive, in-range floor.
+    if (th === null || !Number.isFinite(th) || th <= 0 || th > 1) {
       throw new AiPolicyContractError(
         "supervised requires a positive confidenceThreshold",
       );
@@ -117,6 +119,18 @@ export async function setPolicyThreshold(
   reason?: string,
 ) {
   const before = await store.getPolicy(scenario);
+  // Delta-3 M-4: the layer validates range itself — route guards
+  // can be bypassed by future callers.
+  if (
+    confidenceThreshold !== null &&
+    (!Number.isFinite(confidenceThreshold) ||
+      confidenceThreshold < 0 ||
+      confidenceThreshold > 1)
+  ) {
+    throw new AiPolicyContractError(
+      "confidenceThreshold must be finite in [0,1]",
+    );
+  }
   // Delta-2 N-M6: while supervised, the threshold cannot drop to
   // null/0 — that combination is the fail-open prefill path.
   if (

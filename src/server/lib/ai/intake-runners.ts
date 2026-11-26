@@ -77,31 +77,30 @@ export function sanitizeUntrusted(
   text: string,
   max: number = MAX_UNTRUSTED_CHARS,
 ): string {
-  // Delta-2 N-M1: \x0B-\x1F is a RANGE (form feed, ESC, \x0E-\x1E all
-  // stripped); plus Unicode line/paragraph separators + bidi marks.
-  return text
-    .replace(/[\x00-\x08\x0B-\x1F\x7F\u0085\u2028\u2029\u202A-\u202E]/g, "")
-    .slice(0, max);
+  // Delta-3 H-6: the fence is unforgeable BY CONSTRUCTION — every
+  // ASCII < and > in untrusted content becomes the fullwidth
+  // look-alike, so no tag (</untrusted_input>, malformed, split,
+  // fullwidth-double) can ever close the block. This replaces the
+  // bypassable tag-regex blacklist. Zero-width / bidi / invisible
+  // format chars are stripped outright; slice by code point.
+  const clean = text
+    .replace(
+      /[\x00-\x08\x0B-\x1F\x7F\u0085\u061C\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g,
+      "",
+    )
+    .replace(/</g, "＜")
+    .replace(/>/g, "＞");
+  return Array.from(clean).slice(0, max).join("");
 }
 
-/**
- * Delta-2 H-6: the fence itself must be unforgeable — an author who
- * can write `</untrusted_input>` inside the payload would close the
- * data block and smuggle instructions after it. Neutralize the tag
- * name wherever it appears in content (case-insensitive).
- */
-const FENCE_TAG_RE = /<\/?\s*untrusted_input\s*>/gi;
+/** Fence-unforgeable data block — content can contain no ASCII <>. */
 export function untrustedBlock(text: string): string {
-  const safe = sanitizeUntrusted(text).replace(FENCE_TAG_RE, " ");
-  return `<untrusted_input>\n${safe}\n</untrusted_input>`;
+  return `<untrusted_input>\n${sanitizeUntrusted(text)}\n</untrusted_input>`;
 }
 
 /** One-line untrusted field (labels, kinds) — no newlines. */
 export function sanitizeInline(text: string, max = 160): string {
-  return sanitizeUntrusted(text, max)
-    .replace(FENCE_TAG_RE, " ")
-    .replace(/[\r\n]+/g, " ")
-    .trim();
+  return sanitizeUntrusted(text, max).replace(/[\r\n]+/g, " ").trim();
 }
 
 export async function loadSubject(

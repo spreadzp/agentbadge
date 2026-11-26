@@ -25,6 +25,7 @@ import {
   promptFor,
   sanitizeInline,
   UNTRUSTED_RULE,
+  untrustedBlock,
   userBlock,
 } from "./intake-runners";
 import { registerScenarioRunner } from "./scenarios";
@@ -86,7 +87,9 @@ function candidateBlock(candidates: KnowledgeSearchHit[]): string {
         (c.snippet ? ` | ${sanitizeInline(c.snippet, 160)}` : ""),
     )
     .join("\n");
-  return `candidates:\n${rows}`;
+  // Delta-3 M-8: operator-published items can carry converted
+  // agent text — candidates ride behind the same fence.
+  return `candidates:\n${untrustedBlock(rows)}`;
 }
 
 /** H-3: model may only rank ids it was actually shown. */

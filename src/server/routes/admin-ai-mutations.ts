@@ -20,6 +20,7 @@ import { rejectCtrl } from "./admin-operator-guard";
 import { FEEDBACK_EXTRACT_SCENARIO } from "../lib/ai/feedback-runner";
 import { INTAKE_AI_SCENARIOS } from "../lib/ai/intake";
 import {
+  AiPolicyContractError,
   setPolicyMode,
   setPolicyModel,
   setPolicyThreshold,
@@ -112,17 +113,42 @@ export function registerAdminAiMutations(
     }
 
     const reason = str(b, "reason").slice(0, 200) || undefined;
-    // Delta-2 N-M6: threshold/model write BEFORE mode — a transient
-    // {mode:supervised, threshold:null} row can never exist, even
-    // between the two writes.
-    if (th !== undefined && th !== (before?.confidenceThreshold ?? null)) {
-      await setPolicyThreshold(aiStore, scenario, th, actor.id, reason);
-    }
-    if (model !== undefined && model !== (before?.model ?? null)) {
-      await setPolicyModel(aiStore, scenario, model, actor.id, reason);
-    }
-    if (mode && mode !== before?.mode) {
-      await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
+    // Delta-3 M-4: write order depends on direction — ENTERING
+    // supervised needs the threshold on the row FIRST (no transient
+    // supervised-without-threshold), LEAVING supervised needs mode
+    // first (the threshold-clear is legal only after the mode drops).
+    // AiPolicyContractError maps back to the same flash the route's
+    // own validation would emit — not a 500.
+    try {
+      if (finalMode === "supervised") {
+        if (th !== undefined && th !== (before?.confidenceThreshold ?? null)) {
+          await setPolicyThreshold(aiStore, scenario, th, actor.id, reason);
+        }
+        if (model !== undefined && model !== (before?.model ?? null)) {
+          await setPolicyModel(aiStore, scenario, model, actor.id, reason);
+        }
+        if (mode && mode !== before?.mode) {
+          await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
+        }
+      } else {
+        if (mode && mode !== before?.mode) {
+          await setPolicyMode(aiStore, scenario, mode as AiMode, actor.id, reason);
+        }
+        if (th !== undefined && th !== (before?.confidenceThreshold ?? null)) {
+          await setPolicyThreshold(aiStore, scenario, th, actor.id, reason);
+        }
+        if (model !== undefined && model !== (before?.model ?? null)) {
+          await setPolicyModel(aiStore, scenario, model, actor.id, reason);
+        }
+      }
+    } catch (e) {
+      if (e instanceof AiPolicyContractError) {
+        return c.redirect(
+          backWith({ err: "supervised_requires_threshold" }),
+          303,
+        );
+      }
+      throw e;
     }
     return c.redirect(backWith({ ok: `updated_${scenario}` }), 303);
   });

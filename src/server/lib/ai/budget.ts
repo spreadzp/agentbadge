@@ -44,9 +44,17 @@ export async function checkBudget(
   store: AiStore,
   cfg: Pick<
     AiEnvConfig,
-    "dailyCallLimit" | "monthlyBudgetUsd" | "usdPer1MTokens" | "shadowReserveCalls"
+    | "dailyCallLimit"
+    | "monthlyBudgetUsd"
+    | "usdPer1MTokens"
+    | "shadowReserveCalls"
+    | "subjectDailyCallLimit"
   >,
   now: Date = new Date(),
+  /** Delta-3 H-8: partition check — the caller's stream is metered
+   *  against its OWN daily share; other streams' floods can't
+   *  exhaust it. */
+  subjectType?: string,
 ): Promise<BudgetState> {
   // 232-12 H-8: the daily meter counts real provider calls only —
   // error/skipped rows never reached the LLM and must not burn the
@@ -59,7 +67,22 @@ export async function checkBudget(
     cfg.dailyCallLimit > 0 && dailyCalls >= cfg.dailyCallLimit;
   const usdExhausted =
     cfg.monthlyBudgetUsd > 0 && monthlyUsdEstimate >= cfg.monthlyBudgetUsd;
-  if (callsExhausted || usdExhausted) {
+  // Delta-3: per-subjectType partition — the stream's own meter,
+  // not the global one. An agent_request flood hits ITS cap while
+  // review_case keeps its share of the day.
+  let subjectExhausted = false;
+  if (
+    subjectType !== undefined &&
+    cfg.subjectDailyCallLimit !== undefined &&
+    cfg.subjectDailyCallLimit > 0
+  ) {
+    const subjectCalls = await store.countProviderCallsSince(
+      utcDayStart(now),
+      subjectType,
+    );
+    subjectExhausted = subjectCalls >= cfg.subjectDailyCallLimit;
+  }
+  if (callsExhausted || usdExhausted || subjectExhausted) {
     return { state: "exhausted", dailyCalls, monthlyUsdEstimate };
   }
   if (

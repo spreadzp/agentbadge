@@ -34,6 +34,7 @@ const CFG: AiEnvConfig = {
   jobLeaseMs: 60_000,
   jobMaxAttempts: 1,
   jobQueueCap: 500,
+    subjectDailyCallLimit: 0,
 };
 
 const FORM = "application/x-www-form-urlencoded";

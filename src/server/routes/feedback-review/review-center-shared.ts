@@ -123,7 +123,12 @@ export async function loadReviewAiSuggestions(
 ): Promise<AiSuggestionView[]> {
   if (!aiStore) return [];
   const enabled = aiConfig?.enabled ?? false;
-  const budget = enabled ? await checkBudget(aiStore, aiConfig!) : undefined;
+  // Delta-3 H-8: render against the review_case partition — an
+  // intake flood that exhausted ITS share must not flip the
+  // review suggestion gates to off.
+  const budget = enabled
+    ? await checkBudget(aiStore, aiConfig!, new Date(), "review_case")
+    : undefined;
   const effectiveNow = (_scenario: string, declared: string) =>
     resolveEffectiveMode(declared, {
       enabled,

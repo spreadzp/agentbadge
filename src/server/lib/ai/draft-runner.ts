@@ -23,6 +23,7 @@ import {
   promptFor,
   sanitizeInline,
   sanitizeUntrusted,
+  untrustedBlock,
   UNTRUSTED_RULE,
   userBlock,
 } from "./intake-runners";
@@ -135,8 +136,10 @@ export function registerAnswerDraftRunner(opts: {
       .join("\n");
     const user =
       userBlock(subject) +
+      // Delta-3 M-8: excerpts are published knowledge but can carry
+      // converted agent text — they go behind the same fence.
       (ctx
-        ? `\n\nknowledge base excerpts (cite via usedKnowledgeIds):\n${ctx}`
+        ? `\n\nknowledge base excerpts (cite via usedKnowledgeIds):\n${untrustedBlock(ctx)}`
         : "\n\n(no knowledge base excerpts matched this request)");
     const prompt = promptFor(
       ANSWER_DRAFT_SCENARIO,

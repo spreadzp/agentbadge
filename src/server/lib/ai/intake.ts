@@ -202,6 +202,11 @@ export interface AiSuggestionView {
   latencyMs: number | null;
   error: string | null;
   createdAt: string | null;
+  /** Delta-3 M-5: newest non-shadow ATTEMPT's status/error — keeps
+   *  provider faults visible even when the suggestion itself is the
+   *  older success run (N-H1 source). */
+  lastAttemptStatus: string;
+  lastAttemptError: string | null;
 }
 
 /**
@@ -243,6 +248,13 @@ export async function loadAiSuggestions(
     const run: AiRunRecord | undefined = runs.find(
       (r) => r.modeAtTime !== "shadow" && r.status === "success",
     );
+    // Delta-3 M-5: the suggestion is the success run, but the
+    // operator still needs to see that a LATER attempt failed —
+    // "never ran" vs "provider errored after the success" render
+    // differently.
+    const lastAttempt: AiRunRecord | undefined = runs.find(
+      (r) => r.modeAtTime !== "shadow",
+    );
     const declared = policy?.mode ?? "off";
     const threshold = policy?.confidenceThreshold ?? null;
     const confidence = run?.confidence ?? null;
@@ -262,6 +274,10 @@ export async function loadAiSuggestions(
       latencyMs: run?.latencyMs ?? null,
       error: run?.error ?? null,
       createdAt: run?.createdAt ?? null,
+      // M-5: last non-shadow attempt's outcome — success suggestion
+      // source stays intact while failures stay visible.
+      lastAttemptStatus: lastAttempt?.status ?? "none",
+      lastAttemptError: lastAttempt?.error ?? null,
     });
   }
   return out;

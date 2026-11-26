@@ -123,10 +123,14 @@ export class InMemoryAiStore implements AiStore {
     ).length;
   }
 
-  async countProviderCallsSince(sinceIso: string): Promise<number> {
+  async countProviderCallsSince(
+    sinceIso: string,
+    subjectType?: string,
+  ): Promise<number> {
     return [...this.runs.values()].filter(
       (r) =>
         r.createdAt >= sinceIso &&
+        (subjectType === undefined || r.subjectType === subjectType) &&
         r.status !== "skipped" &&
         reachedProvider(r.error),
     ).length;

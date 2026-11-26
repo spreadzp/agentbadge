@@ -129,6 +129,7 @@ export function createAdminAiUi(deps: {
         monthlyBudgetUsd: 0,
         usdPer1MTokens: 0,
         shadowReserveCalls: 0,
+        subjectDailyCallLimit: 0,
       },
     );
     const [rows, changes] = await Promise.all([

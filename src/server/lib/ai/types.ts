@@ -190,7 +190,12 @@ export interface AiStore {
    * minus pre-provider faults (no_provider/no_runner/runner_fault/
    * seam_unavailable). The daily budget meter counts THESE.
    */
-  countProviderCallsSince(sinceIso: string): Promise<number>;
+  /** Delta-3 H-8: optional subjectType — the daily meter is
+   * partitioned per stream so one noisy stream can't starve others. */
+  countProviderCallsSince(
+    sinceIso: string,
+    subjectType?: string,
+  ): Promise<number>;
   /** Sum of tokensTotal since ISO ts — monthly USD meter. */
   sumTokensSince(sinceIso: string): Promise<number>;
 

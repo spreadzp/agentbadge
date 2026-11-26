@@ -38,4 +38,8 @@ export interface AiEnvConfig {
    *  queued jobs stops enqueuing (unbounded backlog = unbounded
    *  provider-call liability). AI_JOB_QUEUE_CAP, default 500. */
   jobQueueCap: number;
+  /** Delta-3 H-8: per-subjectType daily provider-call partition —
+   *  one stream can exhaust only its own share, not the review
+   *  lane's. AI_SUBJECT_DAILY_LIMIT, 0 = no partition. */
+  subjectDailyCallLimit: number;
 }

@@ -111,9 +111,13 @@ async function reviewText(
   const criteria = rec.agentCriteria
     ? `agentCriteria:\n${untrustedBlock(JSON.stringify(rec.agentCriteria).slice(0, 2000))}\n`
     : "";
+  // Delta-3 H-6: reviewType/workRef are agent-controlled too —
+  // they ride INSIDE the fence like every other field.
   return (
-    `reviewType: ${sanitizeInline(rec.reviewType, 64)}\n` +
-    `workRef: ${sanitizeInline(rec.workRef, 200)}\n${criteria}` +
+    `case fields:\n${untrustedBlock(
+      `reviewType: ${sanitizeInline(rec.reviewType, 64)}\n` +
+        `workRef: ${sanitizeInline(rec.workRef, 200)}`,
+    )}\n${criteria}` +
     `evidence:\n${untrustedBlock(ev || "(none)")}`
   );
 }
