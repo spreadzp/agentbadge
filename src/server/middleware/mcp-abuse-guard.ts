@@ -36,6 +36,11 @@ import {
   type RateLimitEntry,
   type RateLimitStore,
 } from "./rate-limit";
+import {
+  normalizeToolName,
+  toolNameFromBody,
+  toolNameFromPath,
+} from "./mcp-abuse-guard-body";
 
 // ─── Heavy ops ───────────────────────────────────────────
 // Onchain-mutating tools + big-index searches + the future Arc write
@@ -100,10 +105,12 @@ export interface McpAbuseGuardOptions {
   resolveTier?: (c: Context) => string;
 }
 
-const DEFAULT_ANON_MAX = 60;
-const DEFAULT_KEYED_MAX = 120;
-const DEFAULT_HEAVY_MAX = 10;
-const DEFAULT_WINDOW_MS = 60_000;
+// Arc-audit M14 (233-10): exported so the agent-interaction manifest
+// quotes the SAME numbers the guard enforces (no hand-mirrored drift).
+export const DEFAULT_ANON_MAX = 60;
+export const DEFAULT_KEYED_MAX = 120;
+export const DEFAULT_HEAVY_MAX = 10;
+export const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_ENTRIES = 10_000;
 const MCP_ABUSE_HIT_FLAG = "mcpAbuseHit";
 let _guardInstanceSeq = 0;
@@ -120,60 +127,8 @@ export function setMcpHeavyGate(gate: MiddlewareHandler | undefined): void {
 }
 
 // ─── Tool-name extraction ────────────────────────────────
-
-const REST_TOOL_RE = /^\/mcp(?:\/[^/?]+)?\/tools\/([^/?]+)/;
-
-function toolNameFromPath(path: string): string | undefined {
-  const m = REST_TOOL_RE.exec(path);
-  try {
-    return m ? decodeURIComponent(m[1]) : undefined;
-  } catch {
-    return undefined; // malformed %-encoding — treat as non-heavy
-  }
-}
-
-/** Arc-audit H-4/M-6: normalise before the heavySet lookup — strip
- *  anything after a null byte (arc_send_raw_tx%00extra bypass) and
- *  lower-case (Arc_Send_Raw_Tx bypass). */
-function normalizeToolName(raw: string): string {
-  const nul = raw.indexOf("\0");
-  return (nul >= 0 ? raw.slice(0, nul) : raw).toLowerCase();
-}
-
-type RpcItem = { method?: string; params?: { name?: string } };
-
-function nameFromRpcItem(item: RpcItem | undefined): string | undefined {
-  return item?.method === "tools/call" ? item.params?.name : undefined;
-}
-
-/** Read JSON-RPC tools/call name from a cloned request — the clone keeps
- *  the downstream handler's body intact.
- *  Arc-audit H-3: JSON-RPC 2.0 allows batch arrays. A single-element
- *  batch wrapping a heavy op used to slip past detection entirely —
- *  arrays are scanned and the first HEAVY member name is returned so
- *  the bucket/gate applies. */
-async function toolNameFromBody(
-  c: Context,
-  heavySet: ReadonlySet<string>,
-): Promise<string | undefined> {
-  if (c.req.method !== "POST") return undefined;
-  try {
-    const clone = c.req.raw.clone();
-    const body = (await clone.json()) as RpcItem | RpcItem[];
-    if (Array.isArray(body)) {
-      const names = body.map((item) => nameFromRpcItem(item));
-      const heavyName = names.find(
-        (n): n is string =>
-          typeof n === "string" && heavySet.has(normalizeToolName(n)),
-      );
-      return heavyName ?? names.find((n) => typeof n === "string");
-    }
-    return nameFromRpcItem(body);
-  } catch {
-    /* non-JSON body — nothing to inspect */
-  }
-  return undefined;
-}
+// Helpers live in mcp-abuse-guard-body.ts (300-line file cap) —
+// toolNameFromPath / normalizeToolName / toolNameFromBody.
 
 // ─── Bucket hit ──────────────────────────────────────────
 
@@ -270,10 +225,17 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
     }
 
     // Layer 3: heavy-op bucket + optional x402 gate.
-    const rawName =
-      toolNameFromPath(c.req.path) ?? (await toolNameFromBody(c, heavySet));
-    const toolName = rawName ? normalizeToolName(rawName) : undefined;
-    if (toolName && heavySet.has(toolName)) {
+    const fromPath = toolNameFromPath(c.req.path);
+    const fromBody = fromPath ? undefined : await toolNameFromBody(c, heavySet);
+    // Arc-audit 233 H-3: an unreadable body on a POST is charged the
+    // HEAVY class — never silently skip the bucket (fail-closed).
+    const bodyUnreadable = fromPath === undefined && fromBody === false;
+    const toolName = fromPath
+      ? normalizeToolName(fromPath)
+      : typeof fromBody === "string"
+        ? normalizeToolName(fromBody)
+        : undefined;
+    if (bodyUnreadable || (toolName && heavySet.has(toolName))) {
       const chargeHeavy = async (): Promise<Response | void> => {
         const heavy = await hit(store, `mcp:heavy:${lane}`, windowMs, now);
         if (heavy.count > heavyMax) {

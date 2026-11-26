@@ -65,11 +65,26 @@ describe("resolveAndPin", () => {
     }
   });
 
-  it("skips blocked IPs and returns first safe one", async () => {
-    mockResolve4.mockResolvedValueOnce(["10.0.0.1", "8.8.8.8"]);
-    mockResolve6.mockRejectedValueOnce(new Error("no AAAA"));
+  it("arc-audit C1: a mixed answer (private + public) is REJECTED — every resolved IP must be safe", async () => {
+    for (const mixed of [
+      ["127.0.0.1", "8.8.8.8"],
+      ["8.8.8.8", "127.0.0.1"],
+      ["10.0.0.1", "93.184.216.34", "1.1.1.1"],
+      ["169.254.169.254", "8.8.8.8"],
+    ]) {
+      mockResolve4.mockResolvedValueOnce(mixed);
+      mockResolve6.mockRejectedValueOnce(new Error("no AAAA"));
+      await expect(resolveAndPin("mixed.example.com")).rejects.toThrow(
+        SsrfBlockedError,
+      );
+    }
+  });
 
-    const result = await resolveAndPin("mixed.example.com");
+  it("returns the first IP once ALL records are proven safe", async () => {
+    mockResolve4.mockResolvedValueOnce(["8.8.8.8", "1.1.1.1"]);
+    mockResolve6.mockResolvedValueOnce(["2606:4700:4700::1111"]);
+
+    const result = await resolveAndPin("multi.example.com");
     expect(result.ip).toBe("8.8.8.8");
   });
 });

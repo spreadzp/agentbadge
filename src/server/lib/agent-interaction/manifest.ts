@@ -18,6 +18,12 @@ import {
   AGENT_INTERACTION_PROTOCOL_VERSION,
   AGENT_INTERACTION_TOOLS,
 } from "./registry";
+import {
+  DEFAULT_ANON_MAX,
+  DEFAULT_HEAVY_MAX,
+  DEFAULT_KEYED_MAX,
+  DEFAULT_WINDOW_MS,
+} from "../../middleware/mcp-abuse-guard";
 
 export function buildAgentInteractionManifest() {
   return {
@@ -35,10 +41,12 @@ export function buildAgentInteractionManifest() {
         "optional agb_ Bearer for the keyed lane (verified agentId). " +
         "agb_ never appears in page-context WebMCP (D-233-8).",
     },
+    // Arc-audit M14 (233-10): numbers come from the guard's own
+    // constants — a hand-written string here used to drift silently.
     rate_limits: {
-      anon: "60 req/min per IP",
-      keyed: "120 req/min per agent (Bearer agb_)",
-      heavy: "10 req/min per lane on rateClass=heavy tools",
+      anon: `${DEFAULT_ANON_MAX} req/${DEFAULT_WINDOW_MS / 60_000}min per IP`,
+      keyed: `${DEFAULT_KEYED_MAX} req/${DEFAULT_WINDOW_MS / 60_000}min per agent (Bearer agb_)`,
+      heavy: `${DEFAULT_HEAVY_MAX} req/${DEFAULT_WINDOW_MS / 60_000}min per lane on rateClass=heavy tools`,
     },
     tools: AGENT_INTERACTION_TOOLS.map((t) => ({
       name: t.name,
@@ -56,14 +64,29 @@ export function buildAgentInteractionManifest() {
       rule: "id = capability — request status is only reachable by id",
     },
     webhooks: {
-      status: "live",
+      // Arc-audit H4 (233-10): honest durability — delivery pipeline
+      // IS live (SSRF-pinned, signed, bounded retries) but the outbox
+      // is in-process memory until the @agentbadge/database republish
+      // wires the Postgres adapter: a restart drops queued rows and
+      // multi-replica drains independently.
+      status: "degraded",
+      durability:
+        "in-process outbox — a restart loses queued (not yet " +
+        "delivered) webhooks; durable adapter pending @agentbadge/" +
+        "database republish",
       field: "callback_url",
       contract:
-        "https-only URL validated at intake (SSRF guard); on terminal " +
-        "state (completed|failed|expired) we POST {request_id, state, " +
-        "response?} with X-AgentBadge-Signature (HMAC-SHA256), bounded " +
-        "exponential retries (D-233-5, O1/O2).",
+        "https-only URL validated at intake (SSRF guard + DNS pin); " +
+        "on terminal state (completed|failed|expired) we POST " +
+        "{request_id, state, response?} with X-AgentBadge-Signature " +
+        "(HMAC-SHA256 over t.body), bounded exponential retries.",
       signature_header: "X-AgentBadge-Signature",
+      // H1: per-request secret — returned once in the submit response
+      // as webhook_secret; receivers verify with their own value.
+      signing:
+        "per-request whsec_ secret (HMAC-derived from request_id) — " +
+        "returned as webhook_secret at submit; verify t.v1 over " +
+        "'<t>.<raw-body>'",
     },
     discovery_refs: [
       "/.well-known/agent-card.json",

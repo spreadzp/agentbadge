@@ -13,6 +13,40 @@
 import type { RequestStore } from "./store";
 import { REQUEST_ID_RE, type InboxRequestRecord } from "./types";
 
+/** Arc-audit M13 (233-10): the public response channel strips keys
+ *  that are unambiguously internal (identity/fingerprint/webhook
+ *  internals or `_`-prefixed) before leaving through poll/webhook —
+ *  the operator response shape is free-form, so a strict allowlist
+ *  would break legitimate payloads; this bounds the leak surface to
+ *  declared-internal names. */
+const INTERNAL_RESPONSE_KEYS = new Set([
+  "fingerprint",
+  "fpHash",
+  "softFpHash",
+  "ipFpHash",
+  "agentId",
+  "actorRef",
+  "actorResolution",
+  "ip",
+  "callbackUrl",
+  "webhookSecret",
+  "internal",
+]);
+
+export function publicResponseFor(response: unknown): unknown {
+  const proj = (v: unknown): unknown => {
+    if (v === null || typeof v !== "object") return v;
+    if (Array.isArray(v)) return v.map(proj);
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (k.startsWith("_") || INTERNAL_RESPONSE_KEYS.has(k)) continue;
+      out[k] = proj(val);
+    }
+    return out;
+  };
+  return proj(response);
+}
+
 export type RequestPollOutcome =
   | { kind: "pending"; record: InboxRequestRecord }
   | { kind: "terminal"; record: InboxRequestRecord }

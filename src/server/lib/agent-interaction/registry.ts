@@ -88,7 +88,9 @@ export interface AgentInteractionTool {
   handler: (args: unknown, ctx: AgentToolContext) => Promise<AgentToolResult>;
 }
 
-const str = (max: number) => z.string().min(1).max(max);
+// Arc-audit M10 (233-10): trim BEFORE min(1) — a whitespace-only
+// string used to pass min-length and hit the service layer as "".
+const str = (max: number) => z.string().trim().min(1).max(max);
 const strList = (maxItems: number, maxLen: number) =>
   z.array(str(maxLen)).max(maxItems).optional();
 const IDEMPOTENCY_KEY_RE = /^[\x20-\x7E]{8,255}$/;

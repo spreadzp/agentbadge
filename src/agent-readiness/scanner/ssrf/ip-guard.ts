@@ -81,18 +81,90 @@ function isIPv4InBlockedRange(ip: string): { blocked: boolean; range?: string } 
   return { blocked: false };
 }
 
-function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
-  const mapped = parseIPv4MappedV6(ip);
-  if (mapped) return isIPv4InBlockedRange(mapped);
-
-  if (ip === "::1") return { blocked: true, range: "loopback-v6" };
-  if (/^fc[0-9a-f]{2}:/i.test(ip) || /^fd[0-9a-f]{2}:/i.test(ip)) {
-    return { blocked: true, range: "ula-v6" };
+/** Expand any IPv6 textual form (compressed `::`, dotted-quad tail,
+ *  mixed case) into 8 hextets; null on malformed input. Needed for
+ *  prefix checks — literal-regex matching misses compressed forms
+ *  (`fd::1` vs `fd00::`, `0:0:0:0:0:ffff:7f00:1` vs `::ffff:127.0.0.1`). */
+function expandIpv6ToHextets(ip: string): number[] | null {
+  const normalized = unbracketV6(ip).toLowerCase();
+  let head = normalized;
+  const v4Tail: number[] = [];
+  const dotMatch = normalized.match(/(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dotMatch) {
+    const octs = dotMatch[1].split(".").map(Number);
+    if (octs.some((o) => o > 255)) return null;
+    v4Tail.push((octs[0] << 8) | octs[1], (octs[2] << 8) | octs[3]);
+    head = normalized.slice(0, dotMatch.index);
+    if (head.endsWith(":") && !head.endsWith("::")) head = head.slice(0, -1);
   }
-  if (/^fe80:/i.test(ip)) return { blocked: true, range: "link-local-v6" };
-  // SLICE-259-39: v6 multicast ff00::/8 — same class as 224.0.0.0/4.
-  if (/^ff[0-9a-f]{2}:/i.test(ip)) return { blocked: true, range: "multicast-v6" };
-  if (ip === "::" || ip === "::ffff:0.0.0.0") return { blocked: true, range: "unspecified" };
+  const halves = head.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":").filter((s) => s.length) : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter((s) => s.length) : [];
+  const hexRe = /^[0-9a-f]{1,4}$/;
+  if (![...left, ...right].every((h) => hexRe.test(h))) return null;
+  if (halves.length === 1) {
+    if (left.length + v4Tail.length !== 8) return null;
+    return [...left.map((h) => parseInt(h, 16)), ...v4Tail];
+  }
+  const missing = 8 - left.length - right.length - v4Tail.length;
+  if (missing < 0) return null;
+  return [
+    ...left.map((h) => parseInt(h, 16)),
+    ...new Array<number>(missing).fill(0),
+    ...right.map((h) => parseInt(h, 16)),
+    ...v4Tail,
+  ];
+}
+
+function hextetsToV4(hi: number, lo: number): string {
+  return `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+}
+
+function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
+  const hx = expandIpv6ToHextets(ip);
+  if (!hx) {
+    // Malformed literal — URL parsing rejects most of these upstream;
+    // keep the legacy mapped-v4 fast path as a last-resort check.
+    const mapped = parseIPv4MappedV6(ip);
+    if (mapped) return isIPv4InBlockedRange(mapped);
+    return { blocked: false };
+  }
+  const [h0, h1] = hx;
+
+  // IPv4-mapped ::ffff:0:0/96 in ANY textual form (compressed or
+  // spelled out) — extract and re-check the embedded IPv4.
+  if (hx.slice(0, 5).every((h) => h === 0) && hx[5] === 0xffff) {
+    const inner = isIPv4InBlockedRange(hextetsToV4(hx[6], hx[7]));
+    return inner.blocked ? inner : { blocked: false };
+  }
+
+  // Arc-audit H2 (EPIC-233-10): transition/encapsulation encodings that
+  // smuggle IPv4 past the guard — extract + re-check the embedded v4.
+  // IPv4-compatible ::/96 (deprecated, but still parses as a literal).
+  if (hx.slice(0, 6).every((h) => h === 0)) {
+    if (hx[7] === 0) return { blocked: true, range: "unspecified" };
+    if (hx[7] === 1) return { blocked: true, range: "loopback-v6" };
+    const inner = isIPv4InBlockedRange(hextetsToV4(hx[6], hx[7]));
+    return inner.blocked
+      ? inner
+      : { blocked: true, range: "v4-compatible" };
+  }
+  // NAT64 well-known prefix 64:ff9b::/96 — synthesized v4 target.
+  if (h0 === 0x0064 && h1 === 0xff9b && hx[2] === 0 && hx[3] === 0 && hx[4] === 0) {
+    const inner = isIPv4InBlockedRange(hextetsToV4(hx[6], hx[7]));
+    return inner.blocked ? inner : { blocked: true, range: "nat64" };
+  }
+  // 6to4 2002::/16 — embedded v4 lives in hextets 1-2.
+  if (h0 === 0x2002) {
+    const inner = isIPv4InBlockedRange(hextetsToV4(hx[1], hx[2]));
+    return inner.blocked ? inner : { blocked: true, range: "6to4" };
+  }
+
+  if ((h0 & 0xfe00) === 0xfc00) return { blocked: true, range: "ula-v6" };
+  if ((h0 & 0xffc0) === 0xfe80) return { blocked: true, range: "link-local-v6" };
+  if ((h0 & 0xffc0) === 0xfec0) return { blocked: true, range: "site-local-v6" };
+  if ((h0 & 0xff00) === 0xff00) return { blocked: true, range: "multicast-v6" };
 
   return { blocked: false };
 }

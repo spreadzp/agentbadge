@@ -1,5 +1,5 @@
 import { resolve4, resolve6 } from "node:dns/promises";
-import { assertSafeIp, isPrivateIp } from "./ip-guard";
+import { assertSafeIp } from "./ip-guard";
 import { SsrfBlockedError, SsrfErrorCodes } from "./ssrf-error";
 
 export interface PinnedResolve {
@@ -39,14 +39,15 @@ export async function resolveAndPin(hostname: string): Promise<PinnedResolve> {
     throw new SsrfBlockedError(hostname, undefined, SsrfErrorCodes.SSRF_DNS_RESOLVE_FAILED);
   }
 
+  // Arc-audit C1 (EPIC-233-10): EVERY resolved A/AAAA must be safe —
+  // a mixed answer ([127.0.0.1, 8.8.8.8]) used to pass on the first
+  // public record, leaving the private one reachable at connect time.
   for (const ip of allIps) {
     try {
       assertSafeIp(ip);
-      return { ip, hostname };
     } catch {
-      // try next IP
+      throw new SsrfBlockedError(hostname, `resolved-ip-blocked:${ip}`, SsrfErrorCodes.SSRF_DNS_ALL_BLOCKED);
     }
   }
-
-  throw new SsrfBlockedError(hostname, "all-resolved-ips-blocked", SsrfErrorCodes.SSRF_DNS_ALL_BLOCKED);
+  return { ip: allIps[0]!, hostname };
 }

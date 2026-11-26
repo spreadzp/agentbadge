@@ -10,7 +10,7 @@
 
 import { getDatabase } from "../../database";
 import { pickRequestInboxStores } from "../../request-inbox/db-stores";
-import { requestPoll } from "../../request-inbox/poll";
+import { publicResponseFor, requestPoll } from "../../request-inbox/poll";
 import { searchPublicQa } from "../../request-inbox/qa";
 import { buildAgentInteractionManifest } from "../manifest";
 import type { AgentToolContext, AgentToolResult } from "../registry";
@@ -112,7 +112,7 @@ export async function handleGetRequestStatus(
         data: {
           state: outcome.record.state,
           http_status: 200,
-          response: outcome.record.response,
+          response: publicResponseFor(outcome.record.response),
           poll_after_seconds: null,
           created_at: outcome.record.createdAtMs,
           expires_at: outcome.record.expiresAtMs,

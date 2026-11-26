@@ -93,6 +93,14 @@ mcpAgentInteractionRoutes.get(
 
 // POST /mcp/agent-interaction — JSON-RPC: initialize / ping /
 // tools/list / tools/call.
+// Arc-audit M4 (233-10): bound the body before JSON.parse. Not hono's
+// bodyLimit — it getReader()s the raw stream, which the abuse-guard
+// already consumed via c.req.json() (Hono caches it under the "text"
+// bodyCache key). Reading the same cached text is free and bounds
+// the parser input; 512KB matches the REST intake cap (payload ≤256KB
+// + envelope).
+const MCP_BODY_MAX = 512 * 1024;
+
 mcpAgentInteractionRoutes.post(
   AGENT_INTERACTION_MCP_PATH,
   describeRoute({
@@ -116,9 +124,17 @@ mcpAgentInteractionRoutes.post(
       method?: string;
       id?: unknown;
       params?: Record<string, unknown>;
-    };
+    } | null;
     try {
-      body = await c.req.json();
+      const text = await c.req.text();
+      if (text.length > MCP_BODY_MAX) {
+        return c.json({
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32600, message: "Invalid Request: body too large" },
+        });
+      }
+      body = JSON.parse(text) as typeof body;
     } catch {
       return c.json({
         jsonrpc: "2.0",
@@ -140,7 +156,24 @@ mcpAgentInteractionRoutes.post(
       });
     }
 
-    const { method, id = null, params = {} } = body;
+    // Arc-audit M12 (233-10): non-object JSON (null, scalar) must be a
+    // clean -32600, not an uncaught destructure → HTTP 500.
+    if (body === null || typeof body !== "object") {
+      return c.json({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Invalid Request" },
+      });
+    }
+
+    const { method, id = null } = body;
+    // M12: `params` may be null/scalar — normalize before .name access.
+    const params =
+      body.params !== null &&
+      typeof body.params === "object" &&
+      !Array.isArray(body.params)
+        ? body.params
+        : {};
     const respond = (result: unknown) => c.json({ jsonrpc: "2.0", id, result });
     const fail = (code: number, message: string, data?: unknown) =>
       c.json({ jsonrpc: "2.0", id, error: { code, message, data } });
@@ -165,11 +198,26 @@ mcpAgentInteractionRoutes.post(
       case "tools/call": {
         const name = typeof params.name === "string" ? params.name : "";
         if (!name) return fail(-32602, "Missing required parameter: name");
-        const called = await callAgentTool(
-          name,
-          params.arguments ?? {},
-          resolveAgentToolContext(c),
-        );
+        let called;
+        try {
+          // M12: a handler throw must surface as JSON-RPC -32603,
+          // never a bare HTTP 500 outside the envelope.
+          called = await callAgentTool(
+            name,
+            typeof params.arguments === "object" && params.arguments !== null
+              ? params.arguments
+              : {},
+            resolveAgentToolContext(c),
+          );
+        } catch (e) {
+          return fail(
+            -32603,
+            "Internal error",
+            process.env.NODE_ENV === "production"
+              ? undefined
+              : String(e instanceof Error ? e.message : e),
+          );
+        }
         if (called.ok) return respond(toolResult(called.data));
         // Whitelist boundary: names outside the registry are a
         // protocol error; registered-but-unwired tools answer a

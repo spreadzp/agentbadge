@@ -15,7 +15,12 @@ import { get as getDirectoryEntry } from "@agentbadge/passport";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { getConfig } from "../../config/env";
 import { getCache } from "../lib/cache";
-import { mcpAbuseGuard, setMcpHeavyGate } from "../middleware/mcp-abuse-guard";
+import {
+  DEFAULT_HEAVY_OPS,
+  mcpAbuseGuard,
+  setMcpHeavyGate,
+} from "../middleware/mcp-abuse-guard";
+import { AGENT_INTERACTION_TOOLS } from "../lib/agent-interaction/registry";
 import { didAuthEnrich } from "../middleware/did-enrich";
 import { CacheRateLimitStore } from "../middleware/rate-limit-redis-store";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
@@ -55,11 +60,21 @@ export function wireMcpAbuseGuard(app: Hono): void {
   app.use("/mcp/*", didAuthEnrich());
   const mcpAbuse = getConfig().mcpAbuse;
   if (!mcpAbuse) return;
+  // Arc-audit M8 (233-10): the heavy set is DERIVED — a hand-mirrored
+  // copy (or an env override) that forgets an agentbadge_* heavy tool
+  // silently un-meters it. Union the registry's rateClass=heavy names
+  // into whatever list is configured.
+  const registryHeavy = AGENT_INTERACTION_TOOLS.filter(
+    (t) => t.rateClass === "heavy",
+  ).map((t) => t.name);
   const guard = mcpAbuseGuard({
     anonMax: mcpAbuse.anonRpm,
     keyedMax: mcpAbuse.keyedRpm,
     heavyMax: mcpAbuse.heavyRpm,
-    heavyOps: mcpAbuse.heavyOps,
+    heavyOps: [
+      ...(mcpAbuse.heavyOps ?? DEFAULT_HEAVY_OPS),
+      ...registryHeavy,
+    ],
     tierMax: MCP_TIER_RPM,
     resolveTier: resolveMcpAbuseTier,
     store: getConfig().cache?.enabled

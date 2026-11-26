@@ -37,6 +37,7 @@ import {
   DEFAULT_SUBMIT_MAX,
 } from "../../lib/request-inbox/submit";
 import { validateCallbackUrl } from "../../lib/request-inbox/callback-url";
+import { webhookSecretForRequest } from "../../lib/webhooks/sign";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../../config/env/types";
 
@@ -140,7 +141,10 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
             c,
             400,
             ErrorCodes.INVALID_INPUT,
-            `callback_url rejected: ${check.reason}`,
+            // Arc-audit M1 (233-10): generic message — distinct
+            // failure reasons (unresolvable vs private) were a DNS
+            // oracle into internal hostname existence.
+            "callback_url rejected",
           );
         }
         callbackUrl = check.url;
@@ -204,6 +208,15 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
               state: rec.state,
               poll_url: url,
               ...(outcome.kind === "duplicate" ? { duplicate: true } : {}),
+              // Arc-audit H1 (233-10): per-request signing secret —
+              // the receiver verifies X-AgentBadge-Signature with
+              // THIS value. Absent when signing is not configured.
+              ...(rec.callbackUrl
+                ? {
+                    webhook_secret:
+                      webhookSecretForRequest(rec.id) ?? undefined,
+                  }
+                : {}),
             },
             202,
           );

@@ -16,6 +16,7 @@ import {
 } from "../../request-inbox/intake";
 import { qaFastPathBody } from "../../request-inbox/qa";
 import { validateCallbackUrl } from "../../request-inbox/callback-url";
+import { webhookSecretForRequest } from "../../webhooks/sign";
 import { getSharedRequestSubmitter } from "../../request-inbox/submit";
 import type { AgentToolContext, AgentToolResult } from "../registry";
 
@@ -57,11 +58,12 @@ export async function handleCreateTaskRequest(
   if (input.callback_url != null) {
     const check = await validateCallbackUrl(input.callback_url);
     if (!check.ok) {
-      return fail(
-        "INVALID_INPUT",
-        `callback_url rejected: ${check.reason}`,
-        { reason: check.reason },
-      );
+      // Arc-audit M1 (233-10): generic rejection — the distinct
+      // reason codes (unresolvable vs private) leaked an internal
+      // DNS-existence oracle to untrusted callers.
+      return fail("INVALID_INPUT", "callback_url rejected", {
+        retryable: false,
+      });
     }
     callbackUrl = check.url;
   }
@@ -128,6 +130,11 @@ export async function handleCreateTaskRequest(
           poll_after_seconds: POLL_AFTER_SECONDS,
           duplicate: outcome.kind === "duplicate",
           expires_in_seconds: Math.round(env.requestTtlMs / 1000),
+          // Arc-audit H1 (233-10): the receiver's per-request HMAC
+          // secret — verify X-AgentBadge-Signature with this value.
+          ...(rec.callbackUrl
+            ? { webhook_secret: webhookSecretForRequest(rec.id) ?? null }
+            : {}),
         },
       };
     }

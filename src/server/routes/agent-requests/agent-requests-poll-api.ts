@@ -16,7 +16,7 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
 import { resolveActor } from "../../lib/agent-interaction/actor";
-import { requestPoll } from "../../lib/request-inbox/poll";
+import { publicResponseFor, requestPoll } from "../../lib/request-inbox/poll";
 import type { RequestStore } from "../../lib/request-inbox/store";
 
 const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
@@ -73,7 +73,9 @@ export function registerRequestPollRoute(
       return c.json(
         {
           state: record.state,
-          response: record.response,
+          // M13 (233-10): allowlist-projected — internal response
+          // keys never cross the public boundary.
+          response: publicResponseFor(record.response),
           ...lifecycle,
           retry_after: null,
         },

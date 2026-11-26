@@ -135,7 +135,11 @@ describe("canonical-source invariant", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.webhooks.status).toBe("live");
+    // Arc-audit H4 (233-10): honest status — delivery pipeline is
+    // live but the outbox is in-process memory until the durable
+    // adapter lands; the manifest must say so.
+    expect(body.webhooks.status).toBe("degraded");
+    expect(body.webhooks.durability).toContain("in-process");
     expect(body.tools).toHaveLength(AGENT_INTERACTION_TOOLS.length);
   });
 });

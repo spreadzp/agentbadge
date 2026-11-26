@@ -22,6 +22,7 @@ import {
   deliverWebhook,
   type WebhookDeliverDeps,
 } from "./deliver";
+import { deriveWebhookSecret } from "./sign";
 import type { WebhookOutboxStore } from "./types";
 
 export const WEBHOOK_BACKOFF_MS = [30_000, 120_000, 600_000, 1_800_000];
@@ -72,12 +73,21 @@ export async function drainWebhookOutbox(
     deps.limit ?? DEFAULT_LIMIT,
     deps.leaseMs ?? DEFAULT_LEASE_MS,
   );
-  const secret =
-    deps.secret !== undefined ? deps.secret : process.env.WEBHOOK_SIGNING_SECRET;
+  const envSecret = process.env.WEBHOOK_SIGNING_SECRET;
 
   for (const row of rows) {
     res.processed++;
     try {
+      // Arc-audit H1 (233-10): every request signs with its own
+      // derived secret — receivers verify their own hook and cannot
+      // forge another requester's. Injected deps.secret (tests)
+      // still wins.
+      const secret =
+        deps.secret !== undefined
+          ? deps.secret
+          : envSecret
+            ? deriveWebhookSecret(envSecret, row.requestId)
+            : undefined;
       const outcome = await deliverWebhook({
         url: row.callbackUrl,
         requestId: row.requestId,

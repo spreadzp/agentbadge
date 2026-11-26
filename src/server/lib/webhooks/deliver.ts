@@ -14,6 +14,8 @@ import {
   validateCallbackUrl,
   type CallbackUrlCheck,
 } from "../request-inbox/callback-url";
+import { resolveAndPin } from "../../../agent-readiness/scanner/ssrf/dns-pin";
+import { fetchPinned } from "../../../agent-readiness/scanner/ssrf/pinned-fetch";
 import {
   DELIVERY_ID_HEADER,
   REQUEST_ID_HEADER,
@@ -53,10 +55,28 @@ export async function deliverWebhook(args: {
   deps?: WebhookDeliverDeps;
 }): Promise<WebhookDeliveryOutcome> {
   const deps = args.deps ?? {};
+  // Arc-audit M15 (233-10): unsigned delivery is a dev convenience —
+  // in production a missing signing secret means receivers get
+  // unverifiable webhooks; refuse instead of sending attacker-
+  // forgeable payloads.
+  if (!deps.secret && process.env.NODE_ENV === "production") {
+    return {
+      ok: false,
+      error: "webhook signing secret not configured",
+      fatal: true,
+    };
+  }
   const validate = deps.validateUrl ?? validateCallbackUrl;
   const check = await validate(args.url);
   if (!check.ok) {
-    return { ok: false, error: `invalid target: ${check.reason}`, fatal: true };
+    // Arc-audit M2 (233-10): a DNS blip is transient — only policy
+    // rejections (private target, non-https, oversized) are fatal.
+    const fatal = check.reason !== "unresolvable";
+    return {
+      ok: false,
+      error: `invalid target: ${check.reason}`,
+      fatal,
+    };
   }
 
   const body = JSON.stringify(args.payload);
@@ -71,8 +91,34 @@ export async function deliverWebhook(args: {
     headers[SIGNATURE_HEADER] = signWebhookBody(deps.secret, tsSec, body);
   }
 
-  const doFetch = deps.fetchFn ?? fetch;
+  // Arc-audit C2 (233-10): connect to the DNS-pinned IP — the address
+  // the validator just proved safe — instead of re-resolving at
+  // connect time (rebinding window). Every redirect hop re-pins.
   let url = new URL(check.url);
+  let pinnedIp: string | undefined = check.ip;
+  const pinnedFetch = async (
+    target: URL,
+    ip: string,
+    signal: AbortSignal,
+  ): Promise<Response> =>
+    fetchPinned(target.toString(), ip, {
+      method: "POST",
+      headers,
+      body,
+      redirect: "manual",
+      signal,
+    });
+  const injectedFetch = deps.fetchFn
+    ? async (target: URL, signal: AbortSignal) =>
+        deps.fetchFn!(target.toString(), {
+          method: "POST",
+          headers,
+          body,
+          redirect: "manual",
+          signal,
+        })
+    : null;
+
   for (let hop = 0; ; hop++) {
     const ctrl = new AbortController();
     const t = setTimeout(
@@ -80,13 +126,15 @@ export async function deliverWebhook(args: {
       deps.timeoutMs ?? FETCH_TIMEOUT_MS,
     );
     try {
-      const res = await doFetch(url.toString(), {
-        method: "POST",
-        headers,
-        body,
-        redirect: "manual",
-        signal: ctrl.signal,
-      });
+      let res: Response;
+      if (injectedFetch) {
+        res = await injectedFetch(url, ctrl.signal);
+      } else {
+        // Custom validators may not return an ip — pin ourselves via
+        // the same resolver so the connect never re-resolves.
+        pinnedIp ??= (await resolveAndPin(url.hostname)).ip;
+        res = await pinnedFetch(url, pinnedIp, ctrl.signal);
+      }
       // Receiver body is never needed — cancel the stream so no
       // response bytes are buffered (size cap by construction).
       void res.body?.cancel();
@@ -103,14 +151,17 @@ export async function deliverWebhook(args: {
         }
         const next = await validate(new URL(loc, url).toString());
         if (!next.ok) {
+          // M2: a redirect target whose DNS hiccupped is transient;
+          // a policy rejection is fatal.
           return {
             ok: false,
             statusCode: res.status,
             error: `redirect target rejected: ${next.reason}`,
-            fatal: true,
+            fatal: next.reason !== "unresolvable",
           };
         }
         url = new URL(next.url);
+        pinnedIp = next.ip;
         continue;
       }
       return { ok: false, statusCode: res.status, error: `HTTP ${res.status}` };

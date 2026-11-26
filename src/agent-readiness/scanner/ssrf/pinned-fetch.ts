@@ -13,6 +13,9 @@ export interface FetchPinnedOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   redirect?: "manual" | "follow" | "error";
+  /** Arc-audit C2 (233-10): request body — webhook delivery POSTs
+   *  the signed payload through the pinned channel. */
+  body?: string | Uint8Array;
 }
 
 /**
@@ -49,6 +52,7 @@ export async function fetchPinned(
         Host: parsed.hostname,
         ...opts?.headers,
       },
+      body: opts?.body ?? null,
       signal: opts?.signal ?? null,
       redirect: opts?.redirect ?? "manual",
       // Mirrors fetchPinnedBun: SNI stays on the original hostname
@@ -87,6 +91,7 @@ async function fetchPinnedBun(
     method: opts?.method ?? "GET",
     redirect: opts?.redirect ?? "manual",
     headers,
+    ...(opts?.body !== undefined ? { body: opts.body } : {}),
   };
 
   if (opts?.signal) {
@@ -154,6 +159,7 @@ async function fetchPinnedNode(
       },
     );
     req.on("error", reject);
+    const body = opts?.body;
     const signal = opts?.signal;
     if (signal) {
       const onAbort = () =>
@@ -164,6 +170,6 @@ async function fetchPinnedNode(
         signal.addEventListener("abort", onAbort, { once: true });
       }
     }
-    req.end();
+    req.end(body);
   });
 }

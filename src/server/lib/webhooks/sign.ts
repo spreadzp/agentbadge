@@ -52,3 +52,32 @@ export function verifyWebhookSignature(
   const got = Buffer.from(v1, "hex");
   return expected.length === got.length && timingSafeEqual(expected, got);
 }
+
+/**
+ * Arc-audit H1 (EPIC-233-10): per-request signing secret.
+ * One shared platform HMAC key meant every receiver could verify —
+ * and therefore forge — every other receiver's hooks. The secret is
+ * derived deterministically from (master, requestId): the worker
+ * re-derives it at delivery, the requester receives it ONCE in the
+ * submit response (`webhook_secret`). Each receiver verifies with a
+ * secret scoped to their own request — cross-request forgery and
+ * "wrong-request" acceptance both collapse.
+ */
+export function deriveWebhookSecret(
+  master: string,
+  requestId: string,
+): string {
+  const key = createHmac("sha256", master)
+    .update(`request:${requestId}`)
+    .digest("base64url");
+  return `whsec_${key}`;
+}
+
+/** Env-bound helper — undefined when WEBHOOK_SIGNING_SECRET is unset
+ *  (dev unsigned mode; prod delivery refuses to send unsigned). */
+export function webhookSecretForRequest(
+  requestId: string,
+): string | undefined {
+  const master = process.env.WEBHOOK_SIGNING_SECRET;
+  return master ? deriveWebhookSecret(master, requestId) : undefined;
+}

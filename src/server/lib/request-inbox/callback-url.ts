@@ -21,7 +21,15 @@ import { SsrfErrorCodes } from "../../../agent-readiness/scanner/ssrf/ssrf-error
 export const CALLBACK_URL_MAX = 2048;
 
 export type CallbackUrlCheck =
-  | { ok: true; url: string }
+  | {
+      ok: true;
+      url: string;
+      /** Arc-audit C2 (233-10): the DNS-pinned IP — delivery MUST
+       *  connect through this validated address (fetchPinned), never
+       *  re-resolve the hostname at connect time. Optional only for
+       *  injected test validators; the real validator always sets it. */
+      ip?: string;
+    }
   | {
       ok: false;
       reason:
@@ -43,13 +51,19 @@ export async function validateCallbackUrl(
     return { ok: false, reason: "invalid_url" };
   }
   if (u.protocol !== "https:") return { ok: false, reason: "scheme" };
+  // Arc-audit M7 (233-10): no userinfo, default-443 port only — a
+  // `https://hook:@evil` or `:8443` target smuggles creds and dodges
+  // the receiver's own egress policy.
+  if (u.username || u.password) return { ok: false, reason: "unsafe_target" };
+  if (u.port && u.port !== "443") return { ok: false, reason: "unsafe_target" };
   try {
     assertSafeTarget(u.hostname);
   } catch {
     return { ok: false, reason: "unsafe_target" };
   }
+  let pinned: { ip: string };
   try {
-    await resolveAndPin(u.hostname);
+    pinned = await resolveAndPin(u.hostname);
   } catch (err) {
     const code = (err as { code?: string } | null)?.code;
     return {
@@ -60,5 +74,5 @@ export async function validateCallbackUrl(
           : "unsafe_target",
     };
   }
-  return { ok: true, url: u.toString() };
+  return { ok: true, url: u.toString(), ip: pinned.ip };
 }

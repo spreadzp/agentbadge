@@ -10,6 +10,7 @@
  */
 
 import type { InboxRequestRecord } from "../request-inbox/types";
+import { publicResponseFor } from "../request-inbox/poll";
 
 export type WebhookOutboxStatus =
   | "queued"
@@ -82,7 +83,9 @@ export function webhookPayloadFor(
     event: "request.terminal",
     request_id: record.id,
     state: record.state,
-    response: record.response ?? null,
+    // M13 (233-10): same allowlist projection as the poll surface —
+    // internal response keys never cross the webhook boundary.
+    response: publicResponseFor(record.response),
     created_at: record.createdAtMs,
     expires_at: record.expiresAtMs,
   };
