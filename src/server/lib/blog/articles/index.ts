@@ -70,6 +70,7 @@ import { article as arcC63PaytoProof } from "./arc-c63-payto-proof";
 import { article as arcC64OperatorAccountability } from "./arc-c64-operator-accountability";
 import { article as arcC66AgentProtocol } from "./arc-c66-agent-protocol";
 import { article as arcC67ShadowFirstAi } from "./arc-c67-shadow-first-ai";
+import { article as ups0LayersBricks } from "./ups-0-layers-bricks";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -143,4 +144,5 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   devinCloudAudit,
   arcC66AgentProtocol,
   arcC67ShadowFirstAi,
+  ups0LayersBricks,
 ];
