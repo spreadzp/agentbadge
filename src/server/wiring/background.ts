@@ -23,6 +23,7 @@ import { startWebhookWorker } from "../lib/webhooks/worker";
 import { wireAiIntake } from "../lib/ai/intake";
 import { wireAiFeedback } from "../lib/ai/feedback-intake";
 import { startArchiveWorkers } from "./archive-workers";
+import { startDbHealthWatchdog } from "../services/db-health-watchdog";
 import { getDatabase } from "../lib/database";
 import { getConfig } from "../../config/env";
 import { captureError } from "../lib/sentry";
@@ -129,6 +130,15 @@ export function startBackgroundJobs(): void {
   startArchiveWorkers({
     events: getDatabase().events,
     db: getDatabase(),
+    databaseEnabled: getConfig().database?.enabled ?? false,
+  });
+
+  // DB health watchdog — probes db.health() every 30s and sends a TG
+  // alert on the down-transition (pg-vm OOM early-warning) + recovery.
+  // Self-gates on DATABASE_ENABLED + DB_HEALTH_WATCHDOG_ENABLED;
+  // transitions are logged when TG creds are absent.
+  startDbHealthWatchdog({
+    health: () => getDatabase().health(),
     databaseEnabled: getConfig().database?.enabled ?? false,
   });
 }
