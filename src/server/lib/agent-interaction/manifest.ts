@@ -66,14 +66,14 @@ export function buildAgentInteractionManifest() {
     webhooks: {
       // Arc-audit H4 (233-10): honest durability — delivery pipeline
       // IS live (SSRF-pinned, signed, bounded retries) but the outbox
-      // is in-process memory until the @agentbadge/database republish
-      // wires the Postgres adapter: a restart drops queued rows and
-      // multi-replica drains independently.
+      // is in-process memory until the server wires the Postgres
+      // adapter (shipped in @agentbadge/database 0.6.61): a restart
+      // drops queued rows and multi-replica drains independently.
       status: "degraded",
       durability:
         "in-process outbox — a restart loses queued (not yet " +
-        "delivered) webhooks; durable adapter pending @agentbadge/" +
-        "database republish",
+        "delivered) webhooks; durable adapter staged in " +
+        "@agentbadge/database 0.6.61, server wiring pending",
       field: "callback_url",
       contract:
         "https-only URL validated at intake (SSRF guard + DNS pin); " +
