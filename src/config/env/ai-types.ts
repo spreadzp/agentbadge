@@ -11,6 +11,13 @@ export interface AiEnvConfig {
   apiKey?: string;
   /** Default model (AI_MODEL). Per-scenario override: AutomationPolicy.model. */
   model: string;
+  /**
+   * Structured-output mode for response_format (AI_JSON_MODE):
+   * "schema" = OpenAI json_schema (default), "object" = json_object
+   * (DeepSeek — schema travels in the prompt instead), "none" = omit
+   * response_format entirely and rely on prompt + JSON.parse check.
+   */
+  jsonMode?: "schema" | "object" | "none";
   /** Max provider calls per UTC day (AI_DAILY_CALL_LIMIT, 0 = unlimited). */
   dailyCallLimit: number;
   /** Monthly spend cap USD (AI_MONTHLY_BUDGET_USD, 0 = unlimited). */

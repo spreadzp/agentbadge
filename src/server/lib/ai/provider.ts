@@ -4,10 +4,9 @@
  * `LlmProvider.complete({system, user, jsonSchema?, maxTokens,
  * temperature}) → {text, usage, model}` — one contract covers OpenAI,
  * OpenRouter (→ Claude/Gemini), local vLLM/Ollama. Pure fetch, NO SDK
- * (landmine). `OpenAiCompatibleProvider` posts to
- * `{base}/v1/chat/completions` with `response_format: json_schema`
- * when a schema is supplied; a schema-retry re-asks once on unparseable
- * JSON (own retry, not provider retries).
+ * (landmine). `jsonMode` picks response_format: json_schema (default) /
+ * json_object (DeepSeek) / omitted. Schema-retry re-asks once on
+ * unparseable JSON (own retry, not provider retries).
  *
  * Fail-open is the caller's job — complete() throws `LlmError` with a
  * machine `kind` the worker maps onto AiRun.status
@@ -94,6 +93,9 @@ export interface OpenAiProviderOptions {
   model: string;
   timeoutMs: number;
   retryOnce: boolean;
+  /** response_format mode (AI_JSON_MODE): schema=OpenAI default,
+   *  object=DeepSeek json_object, none=omit. */
+  jsonMode?: "schema" | "object" | "none";
   /** Extra retry delay ms (default 250) — injectable for tests. */
   backoffMs?: number;
   /** Provider id label (default "openai-compatible"). */
@@ -148,14 +150,20 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     if (req.maxTokens !== undefined) payload.max_tokens = req.maxTokens;
     if (req.temperature !== undefined) payload.temperature = req.temperature;
     if (req.jsonSchema) {
-      payload.response_format = {
-        type: "json_schema",
-        json_schema: {
-          name: req.jsonSchema.name,
-          schema: req.jsonSchema.schema,
-          strict: req.jsonSchema.strict ?? true,
-        },
-      };
+      const mode = this.opts.jsonMode ?? "schema";
+      if (mode === "schema") {
+        payload.response_format = {
+          type: "json_schema",
+          json_schema: {
+            name: req.jsonSchema.name,
+            schema: req.jsonSchema.schema,
+            strict: req.jsonSchema.strict ?? true,
+          },
+        };
+      } else if (mode === "object") {
+        payload.response_format = { type: "json_object" };
+      }
+      // "none": omit response_format entirely.
     }
     return JSON.stringify(payload);
   }
@@ -274,24 +282,16 @@ export class OpenAiCompatibleProvider implements LlmProvider {
   }
 }
 
-/**
- * Provider factory — null when the env section is absent or lacks the
- * credentials needed for a real call (fail-open: worker reports a
- * config fault instead of crashing the drain).
- */
+/** Provider factory — null without apiKey (fail-open: worker reports a
+ *  config fault instead of crashing the drain). */
 export function createOpenAiProvider(cfg?: {
   baseUrl: string;
   apiKey?: string;
   model: string;
+  jsonMode?: "schema" | "object" | "none";
   timeoutMs: number;
   retryOnce: boolean;
 }): OpenAiCompatibleProvider | null {
   if (!cfg?.apiKey) return null;
-  return new OpenAiCompatibleProvider({
-    baseUrl: cfg.baseUrl,
-    apiKey: cfg.apiKey,
-    model: cfg.model,
-    timeoutMs: cfg.timeoutMs,
-    retryOnce: cfg.retryOnce,
-  });
+  return new OpenAiCompatibleProvider({ ...cfg, apiKey: cfg.apiKey });
 }

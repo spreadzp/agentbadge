@@ -84,6 +84,35 @@ describe("OpenAiCompatibleProvider", () => {
     });
   });
 
+  it("jsonMode=object sends {" + '"type":"json_object"' + "} (DeepSeek)", async () => {
+    const spy = vi.fn<FetchLike>(async () =>
+      ok(completion('{"label":"bug"}')),
+    );
+    const p = provider(spy, { jsonMode: "object" });
+    const out = await p.complete({
+      system: "s",
+      user: "u",
+      jsonSchema: { name: "cls", schema: { type: "object" } },
+    });
+    expect(JSON.parse(out.text)).toEqual({ label: "bug" });
+    const body = JSON.parse(spy.mock.calls[0]![1]?.body as string);
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("jsonMode=none omits response_format entirely", async () => {
+    const spy = vi.fn<FetchLike>(async () =>
+      ok(completion('{"label":"bug"}')),
+    );
+    const p = provider(spy, { jsonMode: "none" });
+    await p.complete({
+      system: "s",
+      user: "u",
+      jsonSchema: { name: "cls", schema: { type: "object" } },
+    });
+    const body = JSON.parse(spy.mock.calls[0]![1]?.body as string);
+    expect(body.response_format).toBeUndefined();
+  });
+
   it("schema-retries once on invalid JSON, then succeeds", async () => {
     const spy = vi
       .fn<typeof fetch>()

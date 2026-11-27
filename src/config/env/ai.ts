@@ -63,6 +63,16 @@ export function loadAi(errors: string[]): AiEnvConfig | undefined {
   const apiKey = process.env.AI_API_KEY?.trim() || undefined;
   const model = process.env.AI_MODEL?.trim() || "gpt-4o-mini";
 
+  const jsonModeRaw = (process.env.AI_JSON_MODE ?? "schema").toLowerCase();
+  const jsonMode = (
+    jsonModeRaw === "object" || jsonModeRaw === "none" ? jsonModeRaw : "schema"
+  ) as AiEnvConfig["jsonMode"];
+  if (!["schema", "object", "none"].includes(jsonModeRaw)) {
+    errors.push(
+      `Invalid AI_JSON_MODE: expected schema|object|none, got "${process.env.AI_JSON_MODE}" — using "schema"`,
+    );
+  }
+
   const dailyCallLimit = intVar("AI_DAILY_CALL_LIMIT", 500, 0, errors);
   const monthlyBudgetUsd = numVar("AI_MONTHLY_BUDGET_USD", 0, 0, errors);
   const usdPer1MTokens = numVar("AI_USD_PER_1M_TOKENS", 1.0, 0, errors);
@@ -112,6 +122,7 @@ export function loadAi(errors: string[]): AiEnvConfig | undefined {
     baseUrl,
     apiKey,
     model,
+    jsonMode,
     dailyCallLimit,
     monthlyBudgetUsd,
     usdPer1MTokens,
