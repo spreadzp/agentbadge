@@ -71,6 +71,7 @@ import { article as arcC64OperatorAccountability } from "./arc-c64-operator-acco
 import { article as arcC65CantOverspend } from "./arc-c65-cant-overspend";
 import { article as arcC66AgentProtocol } from "./arc-c66-agent-protocol";
 import { article as arcC67ShadowFirstAi } from "./arc-c67-shadow-first-ai";
+import { article as arcC68ProcessMapping } from "./arc-c68-process-mapping";
 import { article as ups0LayersBricks } from "./ups-0-layers-bricks";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
@@ -146,5 +147,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   devinCloudAudit,
   arcC66AgentProtocol,
   arcC67ShadowFirstAi,
+  arcC68ProcessMapping,
   ups0LayersBricks,
 ];
