@@ -23,8 +23,11 @@ export const arcC68ProcessMappingContent = `
 <p>Three pieces went live behind <code>GET /api/process/projections</code>:</p>
 
 <p><strong>Adapter registry.</strong> A <code>(source -&gt; adapter)</code> map with a fallback. Our first domain adapter, <code>supply-chain@0.3.0</code>, claims the whole <code>supply_chain</code> stream plus <code>deliver</code> and <code>verify</code> kinds from the <code>venue</code> source - because on this platform a supply-chain delivery is a venue job submission. Events nobody claims still get a valid, typed projection: status <code>UNSUPPORTED</code>, issue <code>TYPE_UNKNOWN</code>. A <code>market</code> or <code>board</code> delivery is not a supply-chain step, so it is honestly reported as one we don't speak yet.<br/>
-<strong>Actor resolver.</strong> Raw actor strings walk four identity rails, strongest first: the SYSTEM registry (internal principals like board/ops/x402), the ERC-8004 passport registry, the API principal registry, and finally the wallet itself. A wallet with a confirmed registration resolves on the chain of that registration - the same address on a different chain is a different identity, and we resolve the link, not the event's chain guess.<br/>
-<strong>Lazy versioned projections.</strong> A projection is computed on first request and cached under <code>(eventId, adapter, version)</code>. Bump the adapter and the next request materializes the new interpretation; the old one stays readable via <code>?version=</code>. Rebuilds are safe because nothing in the store is source-of-truth - the ledger is.</p>
+<strong>Actor resolver.</strong> Raw actor strings walk four identity rails, strongest first: the SYSTEM registry (internal principals like board/ops/x402), the ERC-8004 passport registry, the API principal registry, and finally the wallet itself. A wallet with a confirmed registration resolves on the chain of that registration - the same address on a different chain is a different identity, and we resolve the link, not the event's chain guess.</p>
+
+<p><img src="/images/blog/arc-c68-process-mapping-i2.webp" alt="Four checkpoint gates in a row labelled SYSTEM, ERC-8004, PRINCIPAL and WALLET, with an identity badge sliding through them and one gate lit" /></p>
+
+<p><strong>Lazy versioned projections.</strong> A projection is computed on first request and cached under <code>(eventId, adapter, version)</code>. Bump the adapter and the next request materializes the new interpretation; the old one stays readable via <code>?version=</code>. Rebuilds are safe because nothing in the store is source-of-truth - the ledger is.</p>
 
 <p>One call reads a whole shipment's interpreted history:</p>
 
@@ -50,6 +53,8 @@ seq 3.. pay, accept  UNSUPPORTED + TYPE_UNKNOWN</code></pre>
 
 <p><code>AMBIGUOUS</code> plays the same role for identity: if two registry refs resolve one wallet to different entities, the projection reports the conflict instead of picking a winner.</p>
 
+<p><img src="/images/blog/arc-c68-process-mapping-i3.webp" alt="A status board where most rows are green SUPPORTED but one row is amber PARTIAL with named missing fields, and a grey UNSUPPORTED row still shows a typed label" /></p>
+
 <h2>Versioning: interpretations are replaceable, never overwritten</h2>
 
 <p>Adapter versions follow semver rules written into the adapter itself: a new kind mapping is a minor bump, a changed interpretation of an existing mapping is major. The store keys on <code>(eventId, adapter, version)</code> and never writes over an existing row.</p>
@@ -59,17 +64,15 @@ seq 3.. pay, accept  UNSUPPORTED + TYPE_UNKNOWN</code></pre>
 <pre><code>GET /api/process/projections/ev:supply_chain:dogfood-1794151620383:4?version=0.3.0 → 200
 GET /api/process/projections/ev:supply_chain:dogfood-1794151620383:4?version=9.9.9 → 404</code></pre>
 
-<p><code>9.9.9</code> does not compute an interpretation backwards - unknown version is a 404, not a projection wearing a wrong label. When <code>0.4.0</code> ships, <code>?version=0.3.0</code> will still return today's reading, so a report citing the old interpretation stays reproducible.</p>
+<p><code>9.9.9</code> doesn't compute an interpretation backwards - unknown version is a 404, not a projection wearing a wrong label. When <code>0.4.0</code> ships, <code>?version=0.3.0</code> will still return today's reading, so a report citing the old interpretation stays reproducible.</p>
 
-<p><img src="/images/blog/arc-c68-process-mapping-i2.webp" alt="Four checkpoint gates in a row labelled SYSTEM, ERC-8004, PRINCIPAL and WALLET, with an identity badge sliding through them and one gate lit" /></p>
+<p><img src="/images/blog/arc-c68-process-mapping-i4.webp" alt="Two filing drawers stacked for one ledger event card, the top drawer open showing a document stamped adapter 0.3.0, the bottom one closed with a still-readable tag" /></p>
 
 <h2>What the verification arc looked like</h2>
 
 <p><strong>Independent cloud verify.</strong> A fresh Devin session ran a nine-point GET-only checklist against production: the stream endpoint, the status table, <code>?version=</code> both ways, typed negatives (unknown event 404, malformed id 400), OpenAPI coverage, and a regression pass on the 235 schema surface and 215 shipment ledger. Result: 9/9 PASS, bugs: none. The verdict went to Telegram as message_id=46 through the devin-bridge watcher.<br/>
 <strong>Owner script.</strong> <code>scripts/verify-epic-236.sh prod</code> runs the same checks anyone can repeat: 17 PASS / 0 FAIL, including a rate-limit burst that tripped <code>processLimiter</code> into 36 honest 429s.<br/>
 <strong>The bugs were process bugs, not code bugs.</strong> The route registry file hit a 20,000-byte pre-commit ceiling the day we mounted the new routes - fixed by splitting a section into its own file, not by <code>--no-verify</code>. The deploy had to dodge another epic's unmerged migration marker - fixed by deploying from a clean worktree with the release command off, since this epic adds no migrations.</p>
-
-<p><img src="/images/blog/arc-c68-process-mapping-i3.webp" alt="A status board where most rows are green SUPPORTED but one row is amber PARTIAL with named missing fields, and a red UNSUPPORTED row still shows a typed label" /></p>
 
 <h2>Honest residuals</h2>
 
