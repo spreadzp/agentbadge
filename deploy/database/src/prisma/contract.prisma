@@ -2409,3 +2409,114 @@ model PolicyChange {
 
   @@index([scenario, createdAt])
 }
+
+// ─── EPIC-260 (SLICE-260-1, D-260-6/9/11/13/20): Process Demo domain —
+// Dev Team Execution & Economic Proof. Registered external-agent
+// participants (linked to the self-serve AgentRegistration store by
+// eip155 agentId — no FK, project convention), operator-authorized
+// task assignments, and execution bindings with the payout recipient
+// snapshot locked before RUNNING. Statuses are strings; domain
+// transitions are enforced by the server state machine + CAS store
+// ops (commerce pattern). No FKs — indexes only.
+
+// Demo participant profile: the demo-domain identity bundle layered on
+// the platform AgentRegistration record (D-260-9). githubIdentity is
+// data, not identity — provenance-card binds, never substitutes.
+model ProcessDemoAgent {
+  id             String            @id @default(uuid())
+  agentId        String            @unique // eip155:<chain>:<registry>:<tokenId> → AgentRegistration
+  provider       String // hermes|devin|…
+  runtime        String? // provider runtime/session env label
+  githubIdentity String // GH login — untrusted display identity
+  payoutWallet   String // EVM 0x — declared payout recipient (wallet binding)
+  capabilities   Json?
+  status         String // active|suspended|revoked
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([status])
+  @@index([provider])
+  @@index([githubIdentity])
+}
+
+// Demo work item — one unit of provable work in the demo repo.
+// Status is the task-level rollup (execution states live on
+// ProcessDemoExecution): OPEN before any active execution, then the
+// terminal/rollup mirror. Settlement rollup lands in SLICE-260-4
+// (PARTIALLY_SETTLED, never PAID on a single receipt — D-260-13).
+model ProcessDemoTask {
+  id          String            @id @default(uuid())
+  projectId   String // groups task→project aggregates (DoD-9)
+  title       String
+  spec        Json? // task spec record (requirements, gh repo/issue refs)
+  status      String // OPEN|IN_PROGRESS|ACCEPTED|HOLD|REJECTED|CANCELLED|PARTIALLY_SETTLED
+  createdBy   String? // operator principal id
+  createdAtMs BigInt
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([projectId, status])
+  @@index([status, createdAt])
+}
+
+// Operator-authorized assignment decision (D-260-20.1): task↔agent
+// with a role. Exactly one ACTIVE per (taskId, role) — enforced in
+// the service layer; store dedupes operator commands via
+// idempotencyKey (D-260-13: replays never double-bind).
+model ProcessDemoAssignment {
+  id             String            @id @default(uuid())
+  taskId         String
+  agentId        String // → ProcessDemoAgent.agentId
+  role           String // coder|reviewer|verifier
+  assignedBy     String // operator principal id (D-260-20.1)
+  assignedAtMs   BigInt
+  status         String // ACTIVE|SUPERSEDED|CANCELLED
+  idempotencyKey String?           @unique
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([taskId, role, status])
+  @@index([agentId, status])
+}
+
+// Execution record = binding (D-260-6) + state machine (D-260-13).
+// Binding fields snapshot at create: provider/runtime/githubIdentity/
+// assignedWallet ride on this row — the agent profile may later change
+// but the binding never rewrites. assignedWallet is the payout
+// recipient: immutable once state leaves ASSIGNED unless changed via
+// the audited recipient-change procedure (D-260-11, D-260-20.2) —
+// recipientChangeAuditId → AdminAction.id proves the procedure ran.
+model ProcessDemoExecution {
+  id                     String            @id @default(uuid()) // execution_id
+  taskId                 String
+  assignmentId           String            @unique // 1:1 — re-exec = new assignment
+  agentId                String
+  role                   String // coder|reviewer|verifier
+  provider               String
+  runtime                String?
+  githubIdentity         String
+  assignedWallet         String // payout recipient snapshot
+  state                  String // ASSIGNED|RUNNING|SUBMITTED|REVIEW|
+  //                             ACCEPTED|HOLD|REJECTED|CANCELLED +
+  //                             typed failures AGENT_NOT_STARTED|
+  //                             AGENT_STALLED|SUBMISSION_MISSING|
+  //                             CI_STALLED|REVIEW_INCOMPLETE|
+  //                             VERIFIER_UNAVAILABLE|HOLD_FOR_OPERATOR
+  stateReason            String?
+  iteration              Int               @default(1) // rework iterations inside (S5)
+  recipientChangeAuditId String? // → AdminAction.id
+  startedAtMs            BigInt?
+  submittedAtMs          BigInt?
+  closedAtMs             BigInt?
+  createdAtMs            BigInt
+  payload                Json
+  createdAt              TimestamptzString @default(now())
+  updatedAt              temporal.updatedAtString()
+
+  @@index([taskId, state])
+  @@index([agentId, state])
+  @@index([state, createdAt])
+}

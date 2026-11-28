@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d1898083679b7bac6b61bca8cbe27d0aacdc227856101b31d26b8622d91b0251'>;
+  StorageHashBase<'eec9c2ce07470875b45614074c3c244a64d271ad91d8eb9fd45ccc2864b0d0b4'>;
 export type ExecutionHash =
-  ExecutionHashBase<'59a0c88a84672a55dfd5be2be7b4c29880ea5a54ee450fea1bb3b79fa85cf2bc'>;
+  ExecutionHashBase<'2440cddea00bafb523a6d4d26eab0c556f59e774190f0d00b70b0a663af5a3e2'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -1457,6 +1457,66 @@ export type FieldOutputTypes = {
       readonly actor: CodecTypes['pg/text@1']['output'];
       readonly reason: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ProcessDemoAgent: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly provider: CodecTypes['pg/text@1']['output'];
+      readonly runtime: CodecTypes['pg/text@1']['output'] | null;
+      readonly githubIdentity: CodecTypes['pg/text@1']['output'];
+      readonly payoutWallet: CodecTypes['pg/text@1']['output'];
+      readonly capabilities: CodecTypes['pg/json@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ProcessDemoAssignment: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly taskId: CodecTypes['pg/text@1']['output'];
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly role: CodecTypes['pg/text@1']['output'];
+      readonly assignedBy: CodecTypes['pg/text@1']['output'];
+      readonly assignedAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ProcessDemoExecution: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly taskId: CodecTypes['pg/text@1']['output'];
+      readonly assignmentId: CodecTypes['pg/text@1']['output'];
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly role: CodecTypes['pg/text@1']['output'];
+      readonly provider: CodecTypes['pg/text@1']['output'];
+      readonly runtime: CodecTypes['pg/text@1']['output'] | null;
+      readonly githubIdentity: CodecTypes['pg/text@1']['output'];
+      readonly assignedWallet: CodecTypes['pg/text@1']['output'];
+      readonly state: CodecTypes['pg/text@1']['output'];
+      readonly stateReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly iteration: CodecTypes['pg/int4@1']['output'];
+      readonly recipientChangeAuditId: CodecTypes['pg/text@1']['output'] | null;
+      readonly startedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly submittedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly closedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ProcessDemoTask: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly projectId: CodecTypes['pg/text@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly spec: CodecTypes['pg/json@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly createdBy: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly ReconciliationException: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -2925,6 +2985,66 @@ export type FieldInputTypes = {
       readonly reason: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
+    readonly ProcessDemoAgent: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly provider: CodecTypes['pg/text@1']['input'];
+      readonly runtime: CodecTypes['pg/text@1']['input'] | null;
+      readonly githubIdentity: CodecTypes['pg/text@1']['input'];
+      readonly payoutWallet: CodecTypes['pg/text@1']['input'];
+      readonly capabilities: CodecTypes['pg/json@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ProcessDemoAssignment: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly taskId: CodecTypes['pg/text@1']['input'];
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly role: CodecTypes['pg/text@1']['input'];
+      readonly assignedBy: CodecTypes['pg/text@1']['input'];
+      readonly assignedAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ProcessDemoExecution: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly taskId: CodecTypes['pg/text@1']['input'];
+      readonly assignmentId: CodecTypes['pg/text@1']['input'];
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly role: CodecTypes['pg/text@1']['input'];
+      readonly provider: CodecTypes['pg/text@1']['input'];
+      readonly runtime: CodecTypes['pg/text@1']['input'] | null;
+      readonly githubIdentity: CodecTypes['pg/text@1']['input'];
+      readonly assignedWallet: CodecTypes['pg/text@1']['input'];
+      readonly state: CodecTypes['pg/text@1']['input'];
+      readonly stateReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly iteration: CodecTypes['pg/int4@1']['input'];
+      readonly recipientChangeAuditId: CodecTypes['pg/text@1']['input'] | null;
+      readonly startedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly submittedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly closedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ProcessDemoTask: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly projectId: CodecTypes['pg/text@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly spec: CodecTypes['pg/json@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly createdBy: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
     readonly ReconciliationException: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly type: CodecTypes['pg/text@1']['input'];
@@ -4392,6 +4512,66 @@ export type StorageColumnTypes = {
       readonly reason: CodecTypes['pg/text@1']['output'] | null;
       readonly scenario: CodecTypes['pg/text@1']['output'];
     };
+    readonly processDemoAgent: {
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly capabilities: CodecTypes['pg/json@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly githubIdentity: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly payoutWallet: CodecTypes['pg/text@1']['output'];
+      readonly provider: CodecTypes['pg/text@1']['output'];
+      readonly runtime: CodecTypes['pg/text@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly processDemoAssignment: {
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly assignedAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly assignedBy: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly role: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly taskId: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly processDemoExecution: {
+      readonly agentId: CodecTypes['pg/text@1']['output'];
+      readonly assignedWallet: CodecTypes['pg/text@1']['output'];
+      readonly assignmentId: CodecTypes['pg/text@1']['output'];
+      readonly closedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly githubIdentity: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly iteration: CodecTypes['pg/int4@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly provider: CodecTypes['pg/text@1']['output'];
+      readonly recipientChangeAuditId: CodecTypes['pg/text@1']['output'] | null;
+      readonly role: CodecTypes['pg/text@1']['output'];
+      readonly runtime: CodecTypes['pg/text@1']['output'] | null;
+      readonly startedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly state: CodecTypes['pg/text@1']['output'];
+      readonly stateReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly submittedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly taskId: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly processDemoTask: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
+      readonly createdBy: CodecTypes['pg/text@1']['output'] | null;
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly projectId: CodecTypes['pg/text@1']['output'];
+      readonly spec: CodecTypes['pg/json@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly reconciliationException: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
@@ -5858,6 +6038,66 @@ export type StorageColumnInputTypes = {
       readonly oldValue: CodecTypes['pg/text@1']['input'] | null;
       readonly reason: CodecTypes['pg/text@1']['input'] | null;
       readonly scenario: CodecTypes['pg/text@1']['input'];
+    };
+    readonly processDemoAgent: {
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly capabilities: CodecTypes['pg/json@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly githubIdentity: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly payoutWallet: CodecTypes['pg/text@1']['input'];
+      readonly provider: CodecTypes['pg/text@1']['input'];
+      readonly runtime: CodecTypes['pg/text@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly processDemoAssignment: {
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly assignedAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly assignedBy: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly role: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly taskId: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly processDemoExecution: {
+      readonly agentId: CodecTypes['pg/text@1']['input'];
+      readonly assignedWallet: CodecTypes['pg/text@1']['input'];
+      readonly assignmentId: CodecTypes['pg/text@1']['input'];
+      readonly closedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly githubIdentity: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly iteration: CodecTypes['pg/int4@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly provider: CodecTypes['pg/text@1']['input'];
+      readonly recipientChangeAuditId: CodecTypes['pg/text@1']['input'] | null;
+      readonly role: CodecTypes['pg/text@1']['input'];
+      readonly runtime: CodecTypes['pg/text@1']['input'] | null;
+      readonly startedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly state: CodecTypes['pg/text@1']['input'];
+      readonly stateReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly submittedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly taskId: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly processDemoTask: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
+      readonly createdBy: CodecTypes['pg/text@1']['input'] | null;
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly projectId: CodecTypes['pg/text@1']['input'];
+      readonly spec: CodecTypes['pg/json@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly reconciliationException: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -7689,6 +7929,70 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     readonly [RelationKeys]?: never;
   };
+  export type public_ProcessDemoAgent = {
+    id: CodecTypes['pg/text@1']['output'];
+    agentId: CodecTypes['pg/text@1']['output'];
+    provider: CodecTypes['pg/text@1']['output'];
+    runtime: CodecTypes['pg/text@1']['output'] | null;
+    githubIdentity: CodecTypes['pg/text@1']['output'];
+    payoutWallet: CodecTypes['pg/text@1']['output'];
+    capabilities: CodecTypes['pg/json@1']['output'] | null;
+    status: CodecTypes['pg/text@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_ProcessDemoTask = {
+    id: CodecTypes['pg/text@1']['output'];
+    projectId: CodecTypes['pg/text@1']['output'];
+    title: CodecTypes['pg/text@1']['output'];
+    spec: CodecTypes['pg/json@1']['output'] | null;
+    status: CodecTypes['pg/text@1']['output'];
+    createdBy: CodecTypes['pg/text@1']['output'] | null;
+    createdAtMs: CodecTypes['pg/int8@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_ProcessDemoAssignment = {
+    id: CodecTypes['pg/text@1']['output'];
+    taskId: CodecTypes['pg/text@1']['output'];
+    agentId: CodecTypes['pg/text@1']['output'];
+    role: CodecTypes['pg/text@1']['output'];
+    assignedBy: CodecTypes['pg/text@1']['output'];
+    assignedAtMs: CodecTypes['pg/int8@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
+    payload: CodecTypes['pg/json@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_ProcessDemoExecution = {
+    id: CodecTypes['pg/text@1']['output'];
+    taskId: CodecTypes['pg/text@1']['output'];
+    assignmentId: CodecTypes['pg/text@1']['output'];
+    agentId: CodecTypes['pg/text@1']['output'];
+    role: CodecTypes['pg/text@1']['output'];
+    provider: CodecTypes['pg/text@1']['output'];
+    runtime: CodecTypes['pg/text@1']['output'] | null;
+    githubIdentity: CodecTypes['pg/text@1']['output'];
+    assignedWallet: CodecTypes['pg/text@1']['output'];
+    state: CodecTypes['pg/text@1']['output'];
+    stateReason: CodecTypes['pg/text@1']['output'] | null;
+    iteration: CodecTypes['pg/int4@1']['output'];
+    recipientChangeAuditId: CodecTypes['pg/text@1']['output'] | null;
+    startedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+    submittedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+    closedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+    createdAtMs: CodecTypes['pg/int8@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
 }
 
 export declare const models: {
@@ -7809,6 +8113,10 @@ export declare const models: {
     AiJob: Models.public_AiJob;
     AutomationPolicy: Models.public_AutomationPolicy;
     PolicyChange: Models.public_PolicyChange;
+    ProcessDemoAgent: Models.public_ProcessDemoAgent;
+    ProcessDemoTask: Models.public_ProcessDemoTask;
+    ProcessDemoAssignment: Models.public_ProcessDemoAssignment;
+    ProcessDemoExecution: Models.public_ProcessDemoExecution;
   };
 };
 
@@ -15316,6 +15624,370 @@ type ContractBase = Omit<
               ];
               foreignKeys: readonly [];
             };
+            readonly processDemoAgent: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly agentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly provider: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly runtime: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly githubIdentity: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly payoutWallet: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly capabilities: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: true;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['agentId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'processDemoAgent_status_idx_e98638ab';
+                  readonly prefix: 'processDemoAgent_status_idx';
+                  readonly columns: readonly ['status'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoAgent_provider_idx_faf3af28';
+                  readonly prefix: 'processDemoAgent_provider_idx';
+                  readonly columns: readonly ['provider'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoAgent_githubIdentity_idx_0cff2fea';
+                  readonly prefix: 'processDemoAgent_githubIdentity_idx';
+                  readonly columns: readonly ['githubIdentity'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly processDemoAssignment: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly taskId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly agentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly role: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly assignedBy: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly assignedAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly idempotencyKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['idempotencyKey'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'processDemoAssignment_taskId_role_status_idx_534b79eb';
+                  readonly prefix: 'processDemoAssignment_taskId_role_status_idx';
+                  readonly columns: readonly ['taskId', 'role', 'status'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoAssignment_agentId_status_idx_816a66ac';
+                  readonly prefix: 'processDemoAssignment_agentId_status_idx';
+                  readonly columns: readonly ['agentId', 'status'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly processDemoExecution: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly taskId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly assignmentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly agentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly role: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly provider: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly runtime: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly githubIdentity: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly assignedWallet: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly state: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly stateReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly iteration: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 1>;
+                  };
+                };
+                readonly recipientChangeAuditId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly startedAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: true;
+                };
+                readonly submittedAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: true;
+                };
+                readonly closedAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: true;
+                };
+                readonly createdAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['assignmentId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'processDemoExecution_taskId_state_idx_e8b19231';
+                  readonly prefix: 'processDemoExecution_taskId_state_idx';
+                  readonly columns: readonly ['taskId', 'state'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoExecution_agentId_state_idx_a157e7fb';
+                  readonly prefix: 'processDemoExecution_agentId_state_idx';
+                  readonly columns: readonly ['agentId', 'state'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoExecution_state_createdAt_idx_f9712fdb';
+                  readonly prefix: 'processDemoExecution_state_createdAt_idx';
+                  readonly columns: readonly ['state', 'createdAt'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
+            readonly processDemoTask: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly projectId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly title: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly spec: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: true;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdBy: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'processDemoTask_projectId_status_idx_57a5993e';
+                  readonly prefix: 'processDemoTask_projectId_status_idx';
+                  readonly columns: readonly ['projectId', 'status'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'processDemoTask_status_createdAt_idx_58610442';
+                  readonly prefix: 'processDemoTask_status_createdAt_idx';
+                  readonly columns: readonly ['status', 'createdAt'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
             readonly reconciliationException: {
               columns: {
                 readonly id: {
@@ -17281,6 +17953,22 @@ type ContractBase = Omit<
     readonly policyChange: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'PolicyChange';
+    };
+    readonly processDemoAgent: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ProcessDemoAgent';
+    };
+    readonly processDemoTask: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ProcessDemoTask';
+    };
+    readonly processDemoAssignment: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ProcessDemoAssignment';
+    };
+    readonly processDemoExecution: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ProcessDemoExecution';
     };
   };
   readonly domain: {
@@ -24043,6 +24731,334 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly ProcessDemoAgent: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agentId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly provider: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly runtime: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly githubIdentity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payoutWallet: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly capabilities: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'processDemoAgent';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly agentId: { readonly column: 'agentId' };
+                readonly provider: { readonly column: 'provider' };
+                readonly runtime: { readonly column: 'runtime' };
+                readonly githubIdentity: { readonly column: 'githubIdentity' };
+                readonly payoutWallet: { readonly column: 'payoutWallet' };
+                readonly capabilities: { readonly column: 'capabilities' };
+                readonly status: { readonly column: 'status' };
+                readonly payload: { readonly column: 'payload' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly ProcessDemoAssignment: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly taskId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agentId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly role: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignedBy: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignedAtMs: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly idempotencyKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'processDemoAssignment';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly taskId: { readonly column: 'taskId' };
+                readonly agentId: { readonly column: 'agentId' };
+                readonly role: { readonly column: 'role' };
+                readonly assignedBy: { readonly column: 'assignedBy' };
+                readonly assignedAtMs: { readonly column: 'assignedAtMs' };
+                readonly status: { readonly column: 'status' };
+                readonly idempotencyKey: { readonly column: 'idempotencyKey' };
+                readonly payload: { readonly column: 'payload' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly ProcessDemoExecution: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly taskId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignmentId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agentId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly role: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly provider: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly runtime: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly githubIdentity: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly assignedWallet: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly state: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly stateReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly iteration: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly recipientChangeAuditId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly startedAtMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly submittedAtMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly closedAtMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly createdAtMs: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'processDemoExecution';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly taskId: { readonly column: 'taskId' };
+                readonly assignmentId: { readonly column: 'assignmentId' };
+                readonly agentId: { readonly column: 'agentId' };
+                readonly role: { readonly column: 'role' };
+                readonly provider: { readonly column: 'provider' };
+                readonly runtime: { readonly column: 'runtime' };
+                readonly githubIdentity: { readonly column: 'githubIdentity' };
+                readonly assignedWallet: { readonly column: 'assignedWallet' };
+                readonly state: { readonly column: 'state' };
+                readonly stateReason: { readonly column: 'stateReason' };
+                readonly iteration: { readonly column: 'iteration' };
+                readonly recipientChangeAuditId: { readonly column: 'recipientChangeAuditId' };
+                readonly startedAtMs: { readonly column: 'startedAtMs' };
+                readonly submittedAtMs: { readonly column: 'submittedAtMs' };
+                readonly closedAtMs: { readonly column: 'closedAtMs' };
+                readonly createdAtMs: { readonly column: 'createdAtMs' };
+                readonly payload: { readonly column: 'payload' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly ProcessDemoTask: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly projectId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly title: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly spec: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdBy: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAtMs: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'processDemoTask';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly projectId: { readonly column: 'projectId' };
+                readonly title: { readonly column: 'title' };
+                readonly spec: { readonly column: 'spec' };
+                readonly status: { readonly column: 'status' };
+                readonly createdBy: { readonly column: 'createdBy' };
+                readonly createdAtMs: { readonly column: 'createdAtMs' };
+                readonly payload: { readonly column: 'payload' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
           readonly ReconciliationException: {
             readonly fields: {
               readonly id: {
@@ -26401,6 +27417,74 @@ type ContractBase = Omit<
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoAgent';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoAgent';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoAssignment';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoAssignment';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoExecution';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoExecution';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoTask';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'processDemoTask';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
         },
         {
           readonly ref: {

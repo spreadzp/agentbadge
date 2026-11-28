@@ -1,0 +1,674 @@
+[
+  {
+    "id": "table.processDemoAgent",
+    "label": "Create table \"processDemoAgent\"",
+    "summary": "Creates table \"processDemoAgent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "processDemoAgent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"processDemoAgent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"processDemoAgent\"",
+        "sql": "CREATE TABLE \"public\".\"processDemoAgent\" (\n  \"agentId\" text NOT NULL,\n  \"capabilities\" json,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"githubIdentity\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"payoutWallet\" text NOT NULL,\n  \"provider\" text NOT NULL,\n  \"runtime\" text,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"processDemoAgent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.processDemoAssignment",
+    "label": "Create table \"processDemoAssignment\"",
+    "summary": "Creates table \"processDemoAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "processDemoAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"processDemoAssignment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"processDemoAssignment\"",
+        "sql": "CREATE TABLE \"public\".\"processDemoAssignment\" (\n  \"agentId\" text NOT NULL,\n  \"assignedAtMs\" int8 NOT NULL,\n  \"assignedBy\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"payload\" json NOT NULL,\n  \"role\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"taskId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"processDemoAssignment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.processDemoExecution",
+    "label": "Create table \"processDemoExecution\"",
+    "summary": "Creates table \"processDemoExecution\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "processDemoExecution"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"processDemoExecution\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"processDemoExecution\"",
+        "sql": "CREATE TABLE \"public\".\"processDemoExecution\" (\n  \"agentId\" text NOT NULL,\n  \"assignedWallet\" text NOT NULL,\n  \"assignmentId\" text NOT NULL,\n  \"closedAtMs\" int8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"githubIdentity\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"iteration\" int4 DEFAULT 1 NOT NULL,\n  \"payload\" json NOT NULL,\n  \"provider\" text NOT NULL,\n  \"recipientChangeAuditId\" text,\n  \"role\" text NOT NULL,\n  \"runtime\" text,\n  \"startedAtMs\" int8,\n  \"state\" text NOT NULL,\n  \"stateReason\" text,\n  \"submittedAtMs\" int8,\n  \"taskId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"processDemoExecution\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.processDemoTask",
+    "label": "Create table \"processDemoTask\"",
+    "summary": "Creates table \"processDemoTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "processDemoTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"processDemoTask\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"processDemoTask\"",
+        "sql": "CREATE TABLE \"public\".\"processDemoTask\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"createdBy\" text,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"projectId\" text NOT NULL,\n  \"spec\" json,\n  \"status\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"processDemoTask\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.processDemoAgent.processDemoAgent_agentId_key",
+    "label": "Add unique constraint on \"processDemoAgent\" (agentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "processDemoAgent_agentId_key",
+        "table": "processDemoAgent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"processDemoAgent_agentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoAgent_agentId_key",
+          "public",
+          "\"public\".\"processDemoAgent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"processDemoAgent_agentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"processDemoAgent\" ADD CONSTRAINT \"processDemoAgent_agentId_key\" UNIQUE (\"agentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"processDemoAgent_agentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoAgent_agentId_key",
+          "public",
+          "\"public\".\"processDemoAgent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.processDemoAssignment.processDemoAssignment_idempotencyKey_key",
+    "label": "Add unique constraint on \"processDemoAssignment\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "processDemoAssignment_idempotencyKey_key",
+        "table": "processDemoAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"processDemoAssignment_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoAssignment_idempotencyKey_key",
+          "public",
+          "\"public\".\"processDemoAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"processDemoAssignment_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"processDemoAssignment\" ADD CONSTRAINT \"processDemoAssignment_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"processDemoAssignment_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoAssignment_idempotencyKey_key",
+          "public",
+          "\"public\".\"processDemoAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.processDemoExecution.processDemoExecution_assignmentId_key",
+    "label": "Add unique constraint on \"processDemoExecution\" (assignmentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "processDemoExecution_assignmentId_key",
+        "table": "processDemoExecution"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"processDemoExecution_assignmentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoExecution_assignmentId_key",
+          "public",
+          "\"public\".\"processDemoExecution\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"processDemoExecution_assignmentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"processDemoExecution\" ADD CONSTRAINT \"processDemoExecution_assignmentId_key\" UNIQUE (\"assignmentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"processDemoExecution_assignmentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "processDemoExecution_assignmentId_key",
+          "public",
+          "\"public\".\"processDemoExecution\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoAgent.processDemoAgent_githubIdentity_idx_0cff2fea",
+    "label": "Create index \"processDemoAgent_githubIdentity_idx_0cff2fea\" on \"processDemoAgent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoAgent_githubIdentity_idx_0cff2fea",
+        "table": "processDemoAgent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoAgent_githubIdentity_idx_0cff2fea\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_githubIdentity_idx_0cff2fea\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoAgent_githubIdentity_idx_0cff2fea\"",
+        "sql": "CREATE INDEX \"processDemoAgent_githubIdentity_idx_0cff2fea\" ON \"public\".\"processDemoAgent\" (\"githubIdentity\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoAgent_githubIdentity_idx_0cff2fea\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_githubIdentity_idx_0cff2fea\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoAgent.processDemoAgent_provider_idx_faf3af28",
+    "label": "Create index \"processDemoAgent_provider_idx_faf3af28\" on \"processDemoAgent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoAgent_provider_idx_faf3af28",
+        "table": "processDemoAgent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoAgent_provider_idx_faf3af28\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_provider_idx_faf3af28\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoAgent_provider_idx_faf3af28\"",
+        "sql": "CREATE INDEX \"processDemoAgent_provider_idx_faf3af28\" ON \"public\".\"processDemoAgent\" (\"provider\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoAgent_provider_idx_faf3af28\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_provider_idx_faf3af28\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoAgent.processDemoAgent_status_idx_e98638ab",
+    "label": "Create index \"processDemoAgent_status_idx_e98638ab\" on \"processDemoAgent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoAgent_status_idx_e98638ab",
+        "table": "processDemoAgent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoAgent_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoAgent_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"processDemoAgent_status_idx_e98638ab\" ON \"public\".\"processDemoAgent\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoAgent_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAgent_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoAssignment.processDemoAssignment_agentId_status_idx_816a66ac",
+    "label": "Create index \"processDemoAssignment_agentId_status_idx_816a66ac\" on \"processDemoAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoAssignment_agentId_status_idx_816a66ac",
+        "table": "processDemoAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoAssignment_agentId_status_idx_816a66ac\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment_agentId_status_idx_816a66ac\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoAssignment_agentId_status_idx_816a66ac\"",
+        "sql": "CREATE INDEX \"processDemoAssignment_agentId_status_idx_816a66ac\" ON \"public\".\"processDemoAssignment\" (\"agentId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoAssignment_agentId_status_idx_816a66ac\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment_agentId_status_idx_816a66ac\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoAssignment.processDemoAssignment_taskId_role_status_idx_534b79eb",
+    "label": "Create index \"processDemoAssignment_taskId_role_status_idx_534b79eb\" on \"processDemoAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoAssignment_taskId_role_status_idx_534b79eb",
+        "table": "processDemoAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoAssignment_taskId_role_status_idx_534b79eb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment_taskId_role_status_idx_534b79eb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoAssignment_taskId_role_status_idx_534b79eb\"",
+        "sql": "CREATE INDEX \"processDemoAssignment_taskId_role_status_idx_534b79eb\" ON \"public\".\"processDemoAssignment\" (\"taskId\", \"role\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoAssignment_taskId_role_status_idx_534b79eb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoAssignment_taskId_role_status_idx_534b79eb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoExecution.processDemoExecution_agentId_state_idx_a157e7fb",
+    "label": "Create index \"processDemoExecution_agentId_state_idx_a157e7fb\" on \"processDemoExecution\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoExecution_agentId_state_idx_a157e7fb",
+        "table": "processDemoExecution"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoExecution_agentId_state_idx_a157e7fb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_agentId_state_idx_a157e7fb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoExecution_agentId_state_idx_a157e7fb\"",
+        "sql": "CREATE INDEX \"processDemoExecution_agentId_state_idx_a157e7fb\" ON \"public\".\"processDemoExecution\" (\"agentId\", \"state\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoExecution_agentId_state_idx_a157e7fb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_agentId_state_idx_a157e7fb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoExecution.processDemoExecution_state_createdAt_idx_f9712fdb",
+    "label": "Create index \"processDemoExecution_state_createdAt_idx_f9712fdb\" on \"processDemoExecution\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoExecution_state_createdAt_idx_f9712fdb",
+        "table": "processDemoExecution"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoExecution_state_createdAt_idx_f9712fdb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_state_createdAt_idx_f9712fdb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoExecution_state_createdAt_idx_f9712fdb\"",
+        "sql": "CREATE INDEX \"processDemoExecution_state_createdAt_idx_f9712fdb\" ON \"public\".\"processDemoExecution\" (\"state\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoExecution_state_createdAt_idx_f9712fdb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_state_createdAt_idx_f9712fdb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoExecution.processDemoExecution_taskId_state_idx_e8b19231",
+    "label": "Create index \"processDemoExecution_taskId_state_idx_e8b19231\" on \"processDemoExecution\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoExecution_taskId_state_idx_e8b19231",
+        "table": "processDemoExecution"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoExecution_taskId_state_idx_e8b19231\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_taskId_state_idx_e8b19231\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoExecution_taskId_state_idx_e8b19231\"",
+        "sql": "CREATE INDEX \"processDemoExecution_taskId_state_idx_e8b19231\" ON \"public\".\"processDemoExecution\" (\"taskId\", \"state\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoExecution_taskId_state_idx_e8b19231\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoExecution_taskId_state_idx_e8b19231\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoTask.processDemoTask_projectId_status_idx_57a5993e",
+    "label": "Create index \"processDemoTask_projectId_status_idx_57a5993e\" on \"processDemoTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoTask_projectId_status_idx_57a5993e",
+        "table": "processDemoTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoTask_projectId_status_idx_57a5993e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask_projectId_status_idx_57a5993e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoTask_projectId_status_idx_57a5993e\"",
+        "sql": "CREATE INDEX \"processDemoTask_projectId_status_idx_57a5993e\" ON \"public\".\"processDemoTask\" (\"projectId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoTask_projectId_status_idx_57a5993e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask_projectId_status_idx_57a5993e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.processDemoTask.processDemoTask_status_createdAt_idx_58610442",
+    "label": "Create index \"processDemoTask_status_createdAt_idx_58610442\" on \"processDemoTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "processDemoTask_status_createdAt_idx_58610442",
+        "table": "processDemoTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"processDemoTask_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"processDemoTask_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"processDemoTask_status_createdAt_idx_58610442\" ON \"public\".\"processDemoTask\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"processDemoTask_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"processDemoTask_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  }
+]
