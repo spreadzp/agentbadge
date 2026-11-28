@@ -149,3 +149,53 @@ export function deliverDomainDataOf(
   }
   return out;
 }
+
+/** verify domain fields verbatim + the commitment-potential marker
+ *  (236-5): when the verdict is a pass AND carries a policyRef, the
+ *  projection flags transition potential — the data a 237-1
+ *  TransitionCandidate builder lifts verbatim. The projection only
+ *  INTERPRETS; accepting the transition is the 237 central service's
+ *  call (Landmine). from/toState are the adapter's custody labels —
+ *  the ledger's own HopStatus values straddling verify. */
+export function verifyDomainDataOf(
+  event: EconomicEventLike,
+): Record<string, unknown> {
+  const p = event.payload ?? {};
+  const out: Record<string, unknown> = {};
+  for (const k of [
+    "outcome",
+    "verdictId",
+    "score",
+    "txHash",
+    "taskRef",
+    "shipmentId",
+    "hopIndex",
+    "criteriaDigest",
+    "policyRef",
+    "evidenceHash",
+    "verifierVersion",
+  ] as const) {
+    if (p[k] !== undefined) out[k] = p[k];
+  }
+  if (
+    p.outcome === "pass" &&
+    typeof p.policyRef === "string" &&
+    p.policyRef.length > 0
+  ) {
+    out.commitmentPotential = {
+      fromState: "supply-chain.paid",
+      toState: "supply-chain.verified",
+      policyRef: p.policyRef,
+      ...(p.criteriaDigest !== undefined
+        ? { criteriaDigest: p.criteriaDigest }
+        : {}),
+      ...(p.evidenceHash !== undefined
+        ? { evidenceHash: p.evidenceHash }
+        : {}),
+      ...(p.verifierVersion !== undefined
+        ? { verifierVersion: p.verifierVersion }
+        : {}),
+    };
+  }
+  return out;
+}

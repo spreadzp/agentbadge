@@ -186,7 +186,7 @@ describe("supply-chain adapter — handoff (SLICE-236-3)", () => {
     const a = adapter();
     const p = await a.project(handoff(0, ORG, AGENT));
     expect(p.mapping.adapter).toBe("supply-chain");
-    expect(p.mapping.version).toBe("0.2.0");
+    expect(p.mapping.version).toBe("0.3.0");
   });
 });
 
@@ -275,8 +275,8 @@ describe("supply-chain adapter — deliver (SLICE-236-4)", () => {
       expect(p.mapping.adapter).toBe("unmapped");
       expect(p.mapping.issues[0]?.code).toBe("TYPE_UNKNOWN");
     }
-    // venue non-deliver kinds aren't claimed either
-    const v = await reg.project(deliver({}, { kind: "verify", seq: 4 }));
+    // venue kinds outside the dogfood step vocabulary aren't claimed
+    const v = await reg.project(deliver({}, { kind: "pay", seq: 4 }));
     expect(v.mapping.status).toBe("UNSUPPORTED");
     expect(v.mapping.adapter).toBe("unmapped");
   });
@@ -309,5 +309,138 @@ describe("adapter registry (D-236-Q1/Q4)", () => {
     expect(p.mapping.status).toBe("UNSUPPORTED");
     expect(p.mapping.adapter).toBe("unmapped");
     expect(p.mapping.issues[0]?.code).toBe("TYPE_UNKNOWN");
+  });
+});
+
+describe("supply-chain adapter — verify (SLICE-236-5)", () => {
+  const DH = `0x${"cd".repeat(32)}`;
+  const CD = `0x${"ef".repeat(32)}`;
+  /** dogfood hop verdict: evaluator(=next receiver/client) → receiver. */
+  const verify = (
+    outcome: string,
+    extra: Record<string, unknown> = {},
+  ): EconomicEventLike => ({
+    source: "supply_chain",
+    sourceId: SHIPMENT,
+    seq: 6, // seqFor(0,"verify") = 2+0*4+4
+    kind: "verify",
+    actor: AGENT, // evaluator of hop0 is next hop's receiver
+    counterparty: ORG,
+    at: "2026-11-28T12:30:00.000Z",
+    idempotencyKey: `ev:supply_chain:${SHIPMENT}:6`,
+    payload: { outcome, shipmentId: SHIPMENT, hopIndex: 0, ...extra },
+  });
+
+  it("pass + policyRef + criteriaDigest → SUPPORTED + commitmentPotential", async () => {
+    const p = await adapter().project(
+      verify("pass", {
+        deliverableHash: DH,
+        policyRef: "agentbadge:policy:delivery-accept/1",
+        criteriaDigest: CD,
+        score: 4.5,
+        verifierVersion: "1.2.0",
+      }),
+    );
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.mapping.issues).toEqual([]);
+    expect(p.interpretation.stepType).toBe("supply-chain.verify");
+    // batch + deliverable subjects
+    expect(p.interpretation.subjectRefs).toHaveLength(2);
+    expect(p.interpretation.subjectRefs[0]?.assetType).toBe("physical.batch");
+    expect(p.interpretation.subjectRefs[1]?.assetType).toBe("digital.artifact");
+    const cp = p.interpretation.domainData?.commitmentPotential as Record<
+      string,
+      unknown
+    >;
+    expect(cp).toBeDefined();
+    expect(cp.fromState).toBe("supply-chain.paid");
+    expect(cp.toState).toBe("supply-chain.verified");
+    expect(cp.policyRef).toBe("agentbadge:policy:delivery-accept/1");
+    expect(cp.criteriaDigest).toBe(CD);
+    expect(cp.verifierVersion).toBe("1.2.0");
+    // verdict fields ride verbatim too
+    expect(p.interpretation.domainData?.outcome).toBe("pass");
+    expect(p.interpretation.domainData?.hopIndex).toBe(0);
+  });
+
+  it("verify fail → SUPPORTED, no commitment potential", async () => {
+    const p = await adapter().project(
+      verify("fail", {
+        policyRef: "agentbadge:policy:delivery-accept/1",
+        criteriaDigest: CD,
+        reasonCodes: ["temperature-excursion"],
+      }),
+    );
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.interpretation.domainData?.commitmentPotential).toBeUndefined();
+    expect(p.interpretation.domainData?.outcome).toBe("fail");
+  });
+
+  it("pass without policyRef → SUPPORTED but no potential (no basis)", async () => {
+    const p = await adapter().project(verify("pass", { criteriaDigest: CD }));
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.interpretation.domainData?.commitmentPotential).toBeUndefined();
+  });
+
+  it("inconclusive → SUPPORTED, no potential", async () => {
+    const p = await adapter().project(verify("inconclusive", { policyRef: "p" }));
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.interpretation.domainData?.commitmentPotential).toBeUndefined();
+  });
+
+  it("no shipmentId AND no deliverableHash → PARTIAL + ASSET_REF_MISSING", async () => {
+    const bare = verify("pass", { policyRef: "p" });
+    delete (bare.payload as Record<string, unknown>).shipmentId;
+    const q = await adapter().project(bare);
+    expect(q.mapping.status).toBe("PARTIAL");
+    expect(q.interpretation.subjectRefs).toHaveLength(0);
+    expect(q.mapping.issues).toEqual([
+      { code: "ASSET_REF_MISSING", field: "payload.shipmentId" },
+    ]);
+  });
+
+  it("venue verify (job verdict, taskRef-keyed) is claimed", async () => {
+    const p = await adapter().project({
+      source: "venue",
+      sourceId: "job-42",
+      seq: 4,
+      kind: "verify",
+      actor: ORG,
+      counterparty: AGENT,
+      payload: { taskRef: "job-42", outcome: "pass", deliverableHash: DH },
+    });
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.interpretation.stepType).toBe("supply-chain.verify");
+    expect(p.interpretation.subjectRefs).toHaveLength(1);
+    expect(p.interpretation.subjectRefs[0]?.assetType).toBe("digital.artifact");
+    // venue verdict carries no policyRef → no potential
+    expect(p.interpretation.domainData?.commitmentPotential).toBeUndefined();
+  });
+
+  it("market/board verdicts are NOT claimed (D-236-Q4)", async () => {
+    const reg = createAdapterRegistry([adapter()]);
+    for (const source of ["market", "board"]) {
+      const p = await reg.project({
+        source,
+        sourceId: "t-1",
+        seq: 3,
+        kind: "verify",
+        actor: ORG,
+        payload: { taskRef: "t-1", outcome: "pass" },
+      });
+      expect(p.mapping.status, source).toBe("UNSUPPORTED");
+      expect(p.mapping.adapter).toBe("unmapped");
+    }
+  });
+
+  it("determinism: same verify → bit-for-bit identical projection", async () => {
+    const a = adapter();
+    const e = verify("pass", {
+      policyRef: "p",
+      criteriaDigest: CD,
+      evidenceHash: `0x${"11".repeat(32)}`,
+    });
+    const [p1, p2] = await Promise.all([a.project(e), a.project(e)]);
+    expect(JSON.stringify(p2)).toBe(JSON.stringify(p1));
   });
 });

@@ -28,11 +28,23 @@
  *               (board emits none)
  *   domainData  taskRef/attempt/evidenceRefs verbatim
  *
- * Claim scope: `supply_chain` (every kind) + `venue` `deliver` — the
- * dogfood's work product is submitted through the job venue
- * (backfill lands it as a venue deliver). market/board deliveries are
- * other domains' processes — UNSUPPORTED until their adapters exist
- * (D-236-Q4).
+ * Interpretation for `verify` (SLICE-236-5):
+ *   stepType    "supply-chain.verify"
+ *   subjectRefs the verified thing — batch AssetRef from shipmentId
+ *               and/or deliverable AssetRef from deliverableHash;
+ *               neither → PARTIAL + ASSET_REF_MISSING
+ *   actorRefs   event.actor (evaluator) + event.counterparty
+ *   domainData  verdict fields verbatim (outcome/verdictId/score/
+ *               criteriaDigest/policyRef/evidenceHash/…) +
+ *               commitmentPotential when outcome=pass ∧ policyRef —
+ *               the projection only FLAGS transition data; accepting
+ *               it is the 237 central service's call (Landmine)
+ *
+ * Claim scope: `supply_chain` (every kind) + `venue` `deliver`/`verify`
+ * — the dogfood's work product is submitted and judged through the job
+ * venue (backfill lands both as venue events). market/board
+ * deliveries/verdicts are other domains' processes — UNSUPPORTED until
+ * their adapters exist (D-236-Q4).
  *
  * Status: SUPPORTED when every party resolves; PARTIAL on
  * ACTOR_UNRESOLVED / ASSET_REF_MISSING; AMBIGUOUS only on a
@@ -61,15 +73,17 @@ import {
   handoffDomainDataOf,
   shipmentAssetRef,
   unsupportedProjection,
+  verifyDomainDataOf,
 } from "./helpers";
 
 export const SUPPLY_CHAIN_ADAPTER_ID = "supply-chain";
-/** 0.2.0 — 236-4 added the deliver kind mapping (MINOR: new optional
+/** 0.3.0 — 236-5 added the verify kind mapping (MINOR: new optional
  *  emitted data per the versioning rule above). */
-export const SUPPLY_CHAIN_ADAPTER_VERSION = "0.2.0";
+export const SUPPLY_CHAIN_ADAPTER_VERSION = "0.3.0";
 
 const STEP_HANDOFF = "supply-chain.handoff";
 const STEP_DELIVER = "supply-chain.deliver";
+const STEP_VERIFY = "supply-chain.verify";
 
 export interface SupplyChainAdapterDeps {
   /** 236-2 infrastructural resolver. */
@@ -204,15 +218,54 @@ export function createSupplyChainAdapter(
     );
   }
 
+  /** SLICE-236-5: verify → verification interpretation (D-235-23).
+   *  The subject is whatever the verdict is on — the batch (shipmentId)
+   *  and/or the deliverable (deliverableHash); neither → PARTIAL. */
+  async function projectVerify(
+    event: EconomicEventLike,
+  ): Promise<ProcessEventProjection> {
+    const issues: ProjectionIssue[] = [];
+    const subjectRefs: AssetRef[] = [];
+
+    const p = event.payload ?? {};
+    const shipmentId = p.shipmentId;
+    if (typeof shipmentId === "string" && shipmentId.length > 0) {
+      subjectRefs.push(shipmentAssetRef(shipmentId));
+    }
+    const dh = p.deliverableHash;
+    if (typeof dh === "string" && dh.length > 0) {
+      subjectRefs.push(deliverableAssetRef(dh));
+    }
+    if (subjectRefs.length === 0) {
+      issues.push({
+        code: "ASSET_REF_MISSING",
+        field: "payload.shipmentId",
+      });
+    }
+
+    const { issues: actorIssues, actorRefs } = await resolveActorSlots(event);
+    issues.push(...actorIssues);
+    return finalize(
+      event,
+      STEP_VERIFY,
+      subjectRefs,
+      actorRefs,
+      issues,
+      verifyDomainDataOf(event),
+    );
+  }
+
   return {
     id: SUPPLY_CHAIN_ADAPTER_ID,
     version: SUPPLY_CHAIN_ADAPTER_VERSION,
     handles: (event) =>
       event.source === "supply_chain" ||
-      (event.source === "venue" && event.kind === "deliver"),
+      (event.source === "venue" &&
+        (event.kind === "deliver" || event.kind === "verify")),
     async project(event) {
       if (event.kind === "handoff") return projectHandoff(event);
       if (event.kind === "deliver") return projectDeliver(event);
+      if (event.kind === "verify") return projectVerify(event);
       return unsupportedProjection(
         event,
         SUPPLY_CHAIN_ADAPTER_ID,
