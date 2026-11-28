@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/ActorResolutionResult.schema.json",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "RESOLVED",
+        "UNRESOLVED",
+        "AMBIGUOUS"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "rawActor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "actorRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/ActorRef.schema.json"
+    },
+    "issues": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "status",
+    "source",
+    "rawActor"
+  ],
+  "additionalProperties": false
+}

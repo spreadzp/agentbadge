@@ -1,0 +1,53 @@
+{
+  "projectionVersion": "process-event-projection/1",
+  "sourceEvent": {
+    "spec": "econ-events/1",
+    "id": "ev:supply-chain:shipment-77:3",
+    "source": "supply-chain",
+    "sourceId": "shipment-77",
+    "seq": 3
+  },
+  "interpretation": {
+    "workflowRef": {
+      "workflowId": "supply-chain-handoff",
+      "version": "1.0.0"
+    },
+    "stepType": "supply-chain.handoff",
+    "subjectRefs": [
+      {
+        "assetType": "physical.batch",
+        "domain": "supply-chain",
+        "externalReferences": [
+          {
+            "namespace": "agentbadge:supply-chain",
+            "referenceType": "batch",
+            "value": "batch-A-0042"
+          }
+        ]
+      }
+    ],
+    "actorRefs": [
+      {
+        "type": "ORGANIZATION",
+        "externalReferences": [
+          {
+            "namespace": "eip155:5042002",
+            "referenceType": "wallet",
+            "value": "0xAbC1230000000000000000000000000000000001"
+          }
+        ]
+      }
+    ],
+    "domainData": {
+      "hopIndex": 0,
+      "verdictId": "v-991",
+      "note": "carrier took custody at warehouse 4"
+    }
+  },
+  "mapping": {
+    "adapter": "econ-events-adapter",
+    "version": "1.0.0",
+    "status": "SUPPORTED",
+    "issues": []
+  }
+}

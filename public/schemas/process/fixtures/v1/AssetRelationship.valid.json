@@ -1,0 +1,27 @@
+{
+  "parentAssetRef": {
+    "assetType": "physical.batch",
+    "domain": "supply-chain",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "batch",
+        "value": "batch-A-0042"
+      }
+    ]
+  },
+  "childAssetRef": {
+    "assetType": "physical.batch",
+    "domain": "supply-chain",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "batch",
+        "value": "batch-A-0042-sub-01"
+      }
+    ]
+  },
+  "relationType": "SPLIT_FROM",
+  "quantity": "60.000",
+  "unit": "kg"
+}

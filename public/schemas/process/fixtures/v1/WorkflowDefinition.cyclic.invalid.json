@@ -1,0 +1,23 @@
+{
+  "schema": "workflow-definition/1",
+  "workflowId": "broken-loop",
+  "version": "1.0.0",
+  "domain": "supply-chain",
+  "steps": [
+    {
+      "stepId": "a-step",
+      "stepType": "supply-chain.a",
+      "dependsOn": ["c-step"]
+    },
+    {
+      "stepId": "b-step",
+      "stepType": "supply-chain.b",
+      "dependsOn": ["a-step"]
+    },
+    {
+      "stepId": "c-step",
+      "stepType": "supply-chain.c",
+      "dependsOn": ["b-step"]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/ProcessStep.schema.json",
+  "type": "object",
+  "properties": {
+    "stepId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "stepType": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$"
+    },
+    "dependsOn": {
+      "default": [],
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+      }
+    },
+    "policyRefs": {
+      "default": [],
+      "maxItems": 16,
+      "type": "array",
+      "items": {
+        "$ref": "https://agentbadge.xyz/schemas/process/v1/PolicyRef.schema.json"
+      }
+    }
+  },
+  "required": [
+    "stepId",
+    "stepType"
+  ],
+  "additionalProperties": false
+}

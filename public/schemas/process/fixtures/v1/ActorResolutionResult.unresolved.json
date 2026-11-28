@@ -1,0 +1,6 @@
+{
+  "status": "UNRESOLVED",
+  "source": "supply-chain",
+  "rawActor": "carrier-south",
+  "issues": [{ "code": "ACTOR_UNRESOLVED", "field": "rawActor" }]
+}

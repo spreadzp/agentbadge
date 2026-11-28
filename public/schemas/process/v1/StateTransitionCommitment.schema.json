@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/StateTransitionCommitment.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "state-transition-commitment/1"
+    },
+    "commitmentId": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/ExternalReference.schema.json"
+    },
+    "subjectAssetRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/AssetRef.schema.json"
+    },
+    "fromState": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$"
+    },
+    "toState": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$"
+    },
+    "causationEventRefs": {
+      "minItems": 1,
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "spec",
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "relatedSettlementRefs": {
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "spec",
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "policyHash": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/DigestDescriptor.schema.json"
+    },
+    "evidenceRoot": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/DigestDescriptor.schema.json"
+    },
+    "verificationResult": {
+      "type": "string",
+      "const": "ACCEPTED"
+    },
+    "verifierVersion": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 64,
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+    },
+    "artifactHash": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "KECCAK-256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^(0x)?[0-9a-fA-F]+$"
+        }
+      },
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(0x)?[0-9a-fA-F]+$"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "commitmentId",
+    "subjectAssetRef",
+    "fromState",
+    "toState",
+    "causationEventRefs",
+    "policyHash",
+    "evidenceRoot",
+    "verificationResult",
+    "verifierVersion",
+    "artifactHash",
+    "signature"
+  ],
+  "additionalProperties": false
+}

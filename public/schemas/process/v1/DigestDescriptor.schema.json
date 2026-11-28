@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/DigestDescriptor.schema.json",
+  "type": "object",
+  "properties": {
+    "canonicalization": {
+      "type": "string",
+      "const": "RFC8785"
+    },
+    "hashAlgorithm": {
+      "type": "string",
+      "const": "SHA-256"
+    },
+    "domainSeparator": {
+      "type": "string",
+      "enum": [
+        "agentbadge.policy",
+        "agentbadge.acceptance-criteria",
+        "agentbadge.evidence-root"
+      ]
+    },
+    "value": {
+      "type": "string",
+      "pattern": "^(0x)?[0-9a-fA-F]{64}$"
+    }
+  },
+  "required": [
+    "canonicalization",
+    "hashAlgorithm",
+    "domainSeparator",
+    "value"
+  ],
+  "additionalProperties": false
+}

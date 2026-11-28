@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/SmokeCheck.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "process/smoke-check/1"
+    },
+    "probeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ok": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "probeId",
+    "ok"
+  ]
+}

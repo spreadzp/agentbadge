@@ -1,0 +1,10 @@
+{
+  "type": "temperature",
+  "hash": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+  "issuer": {
+    "address": "0xabababababababababababababababababababab",
+    "type": "device",
+    "label": "Cold-chain sensor SN-117"
+  },
+  "uri": "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+}

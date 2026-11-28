@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/AssetRelationship.schema.json",
+  "type": "object",
+  "properties": {
+    "parentAssetRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/AssetRef.schema.json"
+    },
+    "childAssetRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/AssetRef.schema.json"
+    },
+    "relationType": {
+      "type": "string",
+      "enum": [
+        "DERIVED_FROM",
+        "SPLIT_FROM",
+        "MERGED_FROM",
+        "CONTAINS",
+        "PACKAGED_IN"
+      ]
+    },
+    "quantity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^-?(0|[1-9]\\d*)(\\.\\d+)?$"
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "parentAssetRef",
+    "childAssetRef",
+    "relationType"
+  ],
+  "additionalProperties": false
+}

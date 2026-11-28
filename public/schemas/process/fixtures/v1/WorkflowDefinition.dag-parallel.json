@@ -1,0 +1,35 @@
+{
+  "schema": "workflow-definition/1",
+  "workflowId": "software-release",
+  "version": "0.2.0",
+  "domain": "software",
+  "steps": [
+    {
+      "stepId": "commit",
+      "stepType": "software.commit"
+    },
+    {
+      "stepId": "ci-tests",
+      "stepType": "software.ci.tests",
+      "dependsOn": ["commit"],
+      "policyRefs": [
+        {
+          "policyId": "ci-green-v1",
+          "version": "1.0.0",
+          "uri": "ipfs://bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+          "hash": "0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        }
+      ]
+    },
+    {
+      "stepId": "code-review",
+      "stepType": "software.review",
+      "dependsOn": ["commit"]
+    },
+    {
+      "stepId": "release-tag",
+      "stepType": "software.release.tag",
+      "dependsOn": ["ci-tests", "code-review"]
+    }
+  ]
+}

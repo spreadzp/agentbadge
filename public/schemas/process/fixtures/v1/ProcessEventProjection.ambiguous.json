@@ -1,0 +1,30 @@
+{
+  "projectionVersion": "process-event-projection/1",
+  "sourceEvent": {
+    "spec": "econ-events/1",
+    "id": "ev:supply-chain:shipment-77:11",
+    "source": "supply-chain",
+    "sourceId": "shipment-77",
+    "seq": 11
+  },
+  "interpretation": {
+    "stepType": "supply-chain.handoff",
+    "subjectRefs": [],
+    "actorRefs": [],
+    "domainData": {
+      "candidates": ["carrier-north", "relay"]
+    }
+  },
+  "mapping": {
+    "adapter": "econ-events-adapter",
+    "version": "1.0.0",
+    "status": "AMBIGUOUS",
+    "issues": [
+      {
+        "code": "AMBIGUOUS_SOURCE",
+        "field": "actor",
+        "message": "raw actor resolves to two distinct actor refs"
+      }
+    ]
+  }
+}

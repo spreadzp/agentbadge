@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/TelemetryBatch.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "telemetry-batch/1"
+    },
+    "batchId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "subjectAssetRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/AssetRef.schema.json"
+    },
+    "deviceRef": {
+      "$ref": "https://agentbadge.xyz/schemas/process/v1/ActorRef.schema.json"
+    },
+    "property": {
+      "type": "string",
+      "enum": [
+        "weight",
+        "temperature",
+        "humidity",
+        "pressure",
+        "dimension",
+        "other"
+      ]
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "period": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "recordCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "sequenceRange": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "last": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "first",
+        "last"
+      ],
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "maxLength": 512,
+          "format": "uri"
+        },
+        "contentDigest": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^(0x)?[0-9a-fA-F]{64}$"
+            }
+          },
+          "required": [
+            "algorithm",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "uri",
+        "contentDigest"
+      ],
+      "additionalProperties": false
+    },
+    "merkle": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "SHA-256"
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^(0x)?[0-9a-fA-F]{64}$"
+        },
+        "treeVersion": {
+          "type": "string",
+          "const": "telemetry-merkle/1"
+        }
+      },
+      "required": [
+        "algorithm",
+        "root",
+        "treeVersion"
+      ],
+      "additionalProperties": false
+    },
+    "anchorRef": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "spec": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "spec",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "batchId",
+    "subjectAssetRef",
+    "deviceRef",
+    "property",
+    "unit",
+    "period",
+    "recordCount",
+    "sequenceRange",
+    "manifest",
+    "merkle"
+  ],
+  "additionalProperties": false
+}

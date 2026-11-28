@@ -1,0 +1,49 @@
+{
+  "schema": "telemetry-batch/1",
+  "batchId": "tb-2026-11-27-sn117-040-059",
+  "subjectAssetRef": {
+    "assetType": "physical.batch",
+    "domain": "supply-chain",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "batch",
+        "value": "batch-A-0042"
+      }
+    ]
+  },
+  "deviceRef": {
+    "type": "DEVICE",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "serial",
+        "value": "synthetic-temp-sensor-SN117"
+      }
+    ]
+  },
+  "property": "temperature",
+  "unit": "Cel",
+  "period": {
+    "from": "2026-11-27T10:00:00.000Z",
+    "to": "2026-11-27T12:00:00.000Z"
+  },
+  "recordCount": 20,
+  "sequenceRange": {
+    "first": 40,
+    "last": 59
+  },
+  "manifest": {
+    "uri": "ipfs://bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+    "contentDigest": {
+      "algorithm": "sha256",
+      "value": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    }
+  },
+  "merkle": {
+    "algorithm": "SHA-256",
+    "root": "0xabababababababababababababababababababababababababababababababab",
+    "treeVersion": "telemetry-merkle/1"
+  },
+  "anchorRef": null
+}

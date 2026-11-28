@@ -1,0 +1,14 @@
+{
+  "type": "weight",
+  "hash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+  "issuer": {
+    "type": "DEVICE",
+    "externalReferences": [
+      {
+        "namespace": "eip155:5042002",
+        "referenceType": "wallet",
+        "value": "0xAbC1230000000000000000000000000000000001"
+      }
+    ]
+  }
+}

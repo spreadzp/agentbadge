@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/ActorRef.schema.json",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "HUMAN",
+        "ORGANIZATION",
+        "AI_AGENT",
+        "DEVICE",
+        "SERVICE",
+        "SYSTEM"
+      ]
+    },
+    "externalReferences": {
+      "minItems": 1,
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "$ref": "https://agentbadge.xyz/schemas/process/v1/ExternalReference.schema.json"
+      }
+    }
+  },
+  "required": [
+    "type",
+    "externalReferences"
+  ],
+  "additionalProperties": false
+}

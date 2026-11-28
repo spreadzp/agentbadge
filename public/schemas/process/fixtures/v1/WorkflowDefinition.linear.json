@@ -1,0 +1,22 @@
+{
+  "schema": "workflow-definition/1",
+  "workflowId": "supply-chain-handoff",
+  "version": "1.0.0",
+  "domain": "supply-chain",
+  "steps": [
+    {
+      "stepId": "prepare-shipment",
+      "stepType": "supply-chain.prepare"
+    },
+    {
+      "stepId": "handoff-to-carrier",
+      "stepType": "supply-chain.handoff",
+      "dependsOn": ["prepare-shipment"]
+    },
+    {
+      "stepId": "confirm-delivery",
+      "stepType": "supply-chain.delivery-confirmation",
+      "dependsOn": ["handoff-to-carrier"]
+    }
+  ]
+}

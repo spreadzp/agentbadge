@@ -1,0 +1,30 @@
+{
+  "projectionVersion": "process-event-projection/1",
+  "sourceEvent": {
+    "spec": "econ-events/1",
+    "id": "ev:supply-chain:shipment-77:4",
+    "source": "supply-chain",
+    "sourceId": "shipment-77",
+    "seq": 4
+  },
+  "interpretation": {
+    "stepType": "supply-chain.handoff",
+    "subjectRefs": [],
+    "actorRefs": [],
+    "domainData": {
+      "rawActor": "carrier-south"
+    }
+  },
+  "mapping": {
+    "adapter": "econ-events-adapter",
+    "version": "1.0.0",
+    "status": "PARTIAL",
+    "issues": [
+      {
+        "code": "ACTOR_UNRESOLVED",
+        "field": "actor",
+        "message": "raw actor string did not match any registry entry"
+      }
+    ]
+  }
+}

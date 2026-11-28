@@ -1,0 +1,40 @@
+{
+  "schema": "measurement-observation/1",
+  "subjectAssetRef": {
+    "assetType": "physical.batch",
+    "domain": "supply-chain",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "batch",
+        "value": "batch-A-0042"
+      }
+    ]
+  },
+  "deviceRef": {
+    "type": "DEVICE",
+    "externalReferences": [
+      {
+        "namespace": "eip155:5042002",
+        "referenceType": "wallet",
+        "value": "0xDev1ce0000000000000000000000000000000001"
+      },
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "serial",
+        "value": "synthetic-temp-sensor-SN117"
+      }
+    ]
+  },
+  "property": "temperature",
+  "value": "-2.500",
+  "unit": "Cel",
+  "observedAt": "2026-11-27T14:30:00.000Z",
+  "sequenceNumber": 41,
+  "previousRecordHash": "0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "signature": {
+    "scheme": "eip191",
+    "value": "0xabababababababababababababababababababababababababababababababab"
+  },
+  "trustLevel": "DECLARED"
+}

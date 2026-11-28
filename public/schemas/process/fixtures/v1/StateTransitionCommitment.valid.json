@@ -1,0 +1,55 @@
+{
+  "schema": "state-transition-commitment/1",
+  "commitmentId": {
+    "namespace": "agentbadge:commitment",
+    "referenceType": "id",
+    "value": "cmt-2026-11-27-sh77-hop0"
+  },
+  "subjectAssetRef": {
+    "assetType": "physical.batch",
+    "domain": "supply-chain",
+    "externalReferences": [
+      {
+        "namespace": "agentbadge:supply-chain",
+        "referenceType": "batch",
+        "value": "batch-A-0042"
+      }
+    ]
+  },
+  "fromState": "supply-chain.carrier-custody",
+  "toState": "supply-chain.warehouse-custody",
+  "causationEventRefs": [
+    {
+      "spec": "econ-events/1",
+      "id": "ev:supply-chain:shipment-77:3"
+    }
+  ],
+  "relatedSettlementRefs": [
+    {
+      "spec": "econ-events/1",
+      "id": "ev:supply-chain:escrow-901:0"
+    }
+  ],
+  "policyHash": {
+    "canonicalization": "RFC8785",
+    "hashAlgorithm": "SHA-256",
+    "domainSeparator": "agentbadge.policy",
+    "value": "0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+  },
+  "evidenceRoot": {
+    "canonicalization": "RFC8785",
+    "hashAlgorithm": "SHA-256",
+    "domainSeparator": "agentbadge.evidence-root",
+    "value": "0x1212121212121212121212121212121212121212121212121212121212121212"
+  },
+  "verificationResult": "ACCEPTED",
+  "verifierVersion": "1.0.0",
+  "artifactHash": {
+    "algorithm": "KECCAK-256",
+    "value": "0xabababababababababababababababababababababababababababababababab"
+  },
+  "signature": {
+    "scheme": "eip191",
+    "value": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+  }
+}

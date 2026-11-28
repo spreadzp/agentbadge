@@ -1,0 +1,16 @@
+{
+  "schema": "workflow-definition/1",
+  "workflowId": "dup-steps",
+  "version": "1.0.0",
+  "domain": "supply-chain",
+  "steps": [
+    {
+      "stepId": "same-step",
+      "stepType": "supply-chain.a"
+    },
+    {
+      "stepId": "same-step",
+      "stepType": "supply-chain.b"
+    }
+  ]
+}

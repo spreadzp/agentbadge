@@ -1,0 +1,29 @@
+{
+  "projectionVersion": "process-event-projection/1",
+  "sourceEvent": {
+    "spec": "econ-events/1",
+    "id": "ev:supply-chain:shipment-77:9",
+    "source": "supply-chain",
+    "sourceId": "shipment-77",
+    "seq": 9
+  },
+  "interpretation": {
+    "subjectRefs": [],
+    "actorRefs": [],
+    "domainData": {
+      "kind": "telemetry.ping"
+    }
+  },
+  "mapping": {
+    "adapter": "econ-events-adapter",
+    "version": "1.0.0",
+    "status": "UNSUPPORTED",
+    "issues": [
+      {
+        "code": "TYPE_UNKNOWN",
+        "field": "kind",
+        "message": "event kind telemetry.ping has no adapter mapping"
+      }
+    ]
+  }
+}

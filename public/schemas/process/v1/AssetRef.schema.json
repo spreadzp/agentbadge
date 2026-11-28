@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/AssetRef.schema.json",
+  "type": "object",
+  "properties": {
+    "assetType": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$"
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "externalReferences": {
+      "minItems": 1,
+      "maxItems": 64,
+      "type": "array",
+      "items": {
+        "$ref": "https://agentbadge.xyz/schemas/process/v1/ExternalReference.schema.json"
+      }
+    },
+    "contentDigest": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(0x)?[0-9a-fA-F]+$"
+        }
+      },
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "assetType",
+    "domain",
+    "externalReferences"
+  ],
+  "additionalProperties": false
+}

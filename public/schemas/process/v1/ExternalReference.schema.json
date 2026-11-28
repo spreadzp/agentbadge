@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/process/v1/ExternalReference.schema.json",
+  "type": "object",
+  "properties": {
+    "namespace": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$"
+    },
+    "referenceType": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "value": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    }
+  },
+  "required": [
+    "namespace",
+    "referenceType",
+    "value"
+  ],
+  "additionalProperties": false
+}

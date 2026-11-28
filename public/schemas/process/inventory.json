@@ -1,0 +1,200 @@
+{
+  "inventoryVersion": "1",
+  "epic": "EPIC-235",
+  "note": "Planning registry, NOT an API contract. References are verified by tests/inventory.test.ts.",
+  "concepts": [
+    {
+      "name": "Event",
+      "status": "EXISTING",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "schema": "econ-events/1",
+        "schemaExport": "EconomicEventSchema",
+        "prismaModel": "EconomicEvent",
+        "files": [
+          "packages/econ-events/src/event.ts",
+          "packages/econ-events/src/kinds.ts"
+        ]
+      },
+      "action": "MAPPING_ONLY",
+      "gap": "No universal process interpretation layer"
+    },
+    {
+      "name": "Actor",
+      "status": "PARTIAL",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "schemaExport": "ParticipantRoleSchema",
+        "files": [
+          "packages/econ-events/src/participants.ts"
+        ]
+      },
+      "action": "CONTRACT_FIRST",
+      "gap": "No shared ActorRef; actor/counterparty are raw strings; identity via ERC-8004/api-principal/EIP-191 rails"
+    },
+    {
+      "name": "Asset",
+      "status": "MISSING",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "files": [
+          "packages/econ-events/src/payloads.ts"
+        ],
+        "note": "shipmentId (HandoffPayload) and deliverableHash (DeliverPayload) are domain references inside payloads, not a registry"
+      },
+      "action": "CONTRACT_FIRST",
+      "gap": "No AssetRef / Asset registry"
+    },
+    {
+      "name": "Asset lineage",
+      "status": "MISSING",
+      "confidence": "CONFIRMED",
+      "implementation": null,
+      "action": "CONTRACT_FIRST",
+      "gap": "No AssetRelationship, no Split/Merge; persistence deferred to EPIC-239"
+    },
+    {
+      "name": "Evidence reference",
+      "status": "EXISTING",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "schemaExport": "EvidenceRefSchema",
+        "schemaExport2": "EvidenceListSchema",
+        "files": [
+          "packages/econ-events/src/evidence.ts"
+        ]
+      },
+      "action": "CONTRACT_FIRST",
+      "gap": "Compact ref exists; no shared typed artifact contracts (extend in 235-5/235-9/235-10)"
+    },
+    {
+      "name": "Verification",
+      "status": "PARTIAL",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "schemaExport": "VerifyPayloadSchema",
+        "prismaModel": "EaasVerdict",
+        "files": [
+          "packages/econ-events/src/payloads.ts",
+          "hackathon/server/src/server/lib/econ-ledger/eaas.ts"
+        ]
+      },
+      "action": "MAPPING_ONLY",
+      "gap": "EaaS verdict + verify kind exist; no universal StateTransitionCommitment (artifact in EPIC-237)"
+    },
+    {
+      "name": "Policy",
+      "status": "PARTIAL",
+      "confidence": "PARTIAL",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "files": [
+          "packages/econ-events/src/payloads.ts"
+        ],
+        "note": "criteriaDigest + policyRef are opaque strings inside VerifyPayload"
+      },
+      "action": "CONTRACT_FIRST",
+      "gap": "No formal PolicyRef / Policy Definition; Policy Engine deferred"
+    },
+    {
+      "name": "State",
+      "status": "PARTIAL",
+      "confidence": "CONFIRMED",
+      "implementation": {
+        "package": "@agentbadge/database",
+        "prismaModel": "AgentTrustEdge",
+        "files": [
+          "hackathon/server/src/server/lib/econ-ledger/supply-chain/state.ts"
+        ],
+        "note": "Shipment state is folded from events; AgentTrustEdge is a rebuildable projection (same pattern as planned process projection)"
+      },
+      "action": "MAPPING_ONLY",
+      "gap": "No shared state projection model (projection table in 237-6)"
+    },
+    {
+      "name": "Location",
+      "status": "PARTIAL",
+      "confidence": "PARTIAL",
+      "implementation": {
+        "package": "@agentbadge/econ-events",
+        "files": [
+          "packages/econ-events/src/evidence.ts"
+        ],
+        "note": "Only 'gps' evidence type inside EVIDENCE_TYPES"
+      },
+      "action": "FUTURE",
+      "gap": "No universal location model; deferred to physical domain"
+    },
+    {
+      "name": "Workflow definition",
+      "status": "MISSING",
+      "confidence": "CONFIRMED",
+      "implementation": null,
+      "action": "CONTRACT_FIRST",
+      "gap": "No WorkflowDefinition / ProcessStep contracts (235-6)"
+    },
+    {
+      "name": "StepExecution",
+      "status": "MISSING",
+      "confidence": "CONFIRMED",
+      "implementation": null,
+      "action": "DEFERRED",
+      "deferredReason": "D-235-27",
+      "executionWhen": [
+        "workflow processes need internal execution state (pending/running/done per step) beyond event projections",
+        "an audit trail separate from economic events is required (attempt logs, retries, execution timestamps)",
+        "the second domain needs runtime orchestration, not only read-side mapping",
+        "a consumer requires finer granularity than StateTransitionCommitment provides"
+      ],
+      "gap": "Runtime step execution — no contract, no table until a trigger fires"
+    }
+  ],
+  "systemActors": [
+    {
+      "source": "board",
+      "rawActor": "sweeper",
+      "actorType": "SYSTEM",
+      "confidence": "CONFIRMED",
+      "files": [
+        "hackathon/server/src/server/lib/board/claim-sweep.ts",
+        "hackathon/server/src/server/lib/econ-ledger/board.ts"
+      ],
+      "note": "claim-sweep job writes board events with literal actor 'sweeper' (source via board.ts mapper)"
+    },
+    {
+      "source": "bounties",
+      "rawActor": "sweeper",
+      "actorType": "SYSTEM",
+      "confidence": "PARTIAL",
+      "files": [
+        "hackathon/server/src/server/lib/bounties/sweep.ts"
+      ],
+      "note": "actor:'sweeper' literal at sweep.ts:142; source not declared at write site — verify in 236-1"
+    },
+    {
+      "source": "qa-runner",
+      "rawActor": "qa-runner",
+      "actorType": "SYSTEM",
+      "confidence": "PARTIAL",
+      "files": [
+        "hackathon/server/src/server/lib/bounties/qa.ts"
+      ],
+      "note": "source:'qa-runner' at qa.ts:207"
+    },
+    {
+      "source": "self",
+      "rawActor": "self",
+      "actorType": "SYSTEM",
+      "confidence": "PARTIAL",
+      "files": [
+        "hackathon/server/src/server/lib/bounties/submit.ts"
+      ],
+      "note": "source:'self' at submit.ts:174"
+    }
+  ]
+}

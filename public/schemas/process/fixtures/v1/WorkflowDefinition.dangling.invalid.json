@@ -1,0 +1,13 @@
+{
+  "schema": "workflow-definition/1",
+  "workflowId": "dangling-dep",
+  "version": "1.0.0",
+  "domain": "supply-chain",
+  "steps": [
+    {
+      "stepId": "only-step",
+      "stepType": "supply-chain.a",
+      "dependsOn": ["ghost-step"]
+    }
+  ]
+}
