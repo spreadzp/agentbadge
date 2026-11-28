@@ -1,0 +1,182 @@
+{
+  "spec": "process-fixture-manifest/1",
+  "generator": "scripts/dump-process-fixtures-236-7.mts",
+  "algorithm": "canonical-json+sha256",
+  "shipmentId": "dogfood-fish-114",
+  "parties": {
+    "org": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "agent": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "device": "0xcccccccccccccccccccccccccccccccccccccccc",
+    "restaurant": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "events": [
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:1",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "work_offer",
+      "seq": 1,
+      "sha256": "sha256:14656b5cdd3048c7a391796a5e8bb495ad4f07c8e7bbfdb2a22cd9f552041da4"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:3",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "work_accept",
+      "seq": 3,
+      "sha256": "sha256:113b4cf87858fd3542d97b314f411394fc3f57e0e8f7020d5f1772292f908f7b"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:4",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "handoff",
+      "seq": 4,
+      "sha256": "sha256:dbd50108d78c945faa068ea090ce23568f388ab6e67cb17ce776097fa6b4e505"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:5",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "pay",
+      "seq": 5,
+      "sha256": "sha256:c01217c43232256318cf08e0f52e0c140c554e642740d9901635c5a92c2ceb29"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:6",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "verify",
+      "seq": 6,
+      "sha256": "sha256:aacdf4dc821abd6196da7fb72fffa419b05ad9ec10390d6e7d5abdae9b37c2fa"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:7",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "work_accept",
+      "seq": 7,
+      "sha256": "sha256:ec45d9f68d7ecf3823932b0d52ab4eb2fe98a31d9117ad004e7d71ae4caea21d"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:8",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "handoff",
+      "seq": 8,
+      "sha256": "sha256:b290a9f837c2c3a15d0f4c7179562126582cbe4cfb809f3e782d17f7148a48b7"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:9",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "pay",
+      "seq": 9,
+      "sha256": "sha256:54dca3b6d706fd47e0b2d5e8266b9887f5078dafa931f67b7a07f4f0a3a1fead"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:10",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "verify",
+      "seq": 10,
+      "sha256": "sha256:121185d1b364cb096d8e487c19bcd332e52658de8ab1a79ff961e60fb52b3fbf"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:11",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "work_accept",
+      "seq": 11,
+      "sha256": "sha256:2b7e5c52a03f3ba3f770c226062f1602cdc45fc813caf8cfd4f0ebef46f0e5b7"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:12",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "handoff",
+      "seq": 12,
+      "sha256": "sha256:d3fedae67dfccb1a38ad2a9d2b82e617b5b8069905079d457a23627dd480b971"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:13",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "pay",
+      "seq": 13,
+      "sha256": "sha256:aebc1c4074acdcd2e581d557b2dd8e6ac581e76493b032343893319c96433700"
+    },
+    {
+      "idempotencyKey": "ev:supply_chain:dogfood-fish-114:14",
+      "source": "supply_chain",
+      "sourceId": "dogfood-fish-114",
+      "kind": "verify",
+      "seq": 14,
+      "sha256": "sha256:a4e2b75b47f71972f034e552a0283b8ee9475d2c783a3633538a3c18fead1bdb"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-0:1",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-0",
+      "kind": "pay",
+      "seq": 1,
+      "sha256": "sha256:fd9dd06c06aebeebf35884ad5563a4680c527a322a7f97d1c54c5b514040dde5"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-0:2",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-0",
+      "kind": "deliver",
+      "seq": 2,
+      "sha256": "sha256:358057c2f009c83c81cb623453ab3bfec4c3da02b71579f16b8c62816121cd34"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-0:3",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-0",
+      "kind": "verify",
+      "seq": 3,
+      "sha256": "sha256:27f254c84102bfc6f9c1e8672b21bd145e8e37d3621b2f1d451b7f56201808ea"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-1:1",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-1",
+      "kind": "pay",
+      "seq": 1,
+      "sha256": "sha256:cb7cf9ac976488f1f2cff800343f2a5399b7dc1d5ab40e07206e07b710875877"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-1:3",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-1",
+      "kind": "verify",
+      "seq": 3,
+      "sha256": "sha256:093fa385fee975841fd8242f7f359d427f3c296e2941fcb86fd168c8ed2cf4cd"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-2:1",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-2",
+      "kind": "pay",
+      "seq": 1,
+      "sha256": "sha256:4e048207b7894f6c861b146f389d323cba2a4d7d57c2002ad3d998c4767ef4ff"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-2:2",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-2",
+      "kind": "deliver",
+      "seq": 2,
+      "sha256": "sha256:7983bd5126d0c3906ad708196e5c1d81df7933755d3ad43ea3b689ec45ca0709"
+    },
+    {
+      "idempotencyKey": "ev:venue:job-dogfood-fish-114-2:3",
+      "source": "venue",
+      "sourceId": "job-dogfood-fish-114-2",
+      "kind": "verify",
+      "seq": 3,
+      "sha256": "sha256:330b87cd34a1ba0bb3c11be870a1667205b0105ee3dd36b701b7aab3caf39656"
+    }
+  ]
+}
