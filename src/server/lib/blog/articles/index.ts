@@ -68,6 +68,7 @@ import { article as arcC61FeedbackReview } from "./arc-c61-feedback-review";
 import { article as arcC62AgentSurface } from "./arc-c62-agent-surface";
 import { article as arcC63PaytoProof } from "./arc-c63-payto-proof";
 import { article as arcC64OperatorAccountability } from "./arc-c64-operator-accountability";
+import { article as arcC65CantOverspend } from "./arc-c65-cant-overspend";
 import { article as arcC66AgentProtocol } from "./arc-c66-agent-protocol";
 import { article as arcC67ShadowFirstAi } from "./arc-c67-shadow-first-ai";
 import { article as ups0LayersBricks } from "./ups-0-layers-bricks";
@@ -140,6 +141,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC62AgentSurface,
   arcC63PaytoProof,
   arcC64OperatorAccountability,
+  arcC65CantOverspend,
   arcC56MmfConformanceAudit,
   devinCloudAudit,
   arcC66AgentProtocol,
