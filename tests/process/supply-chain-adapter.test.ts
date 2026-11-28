@@ -186,7 +186,99 @@ describe("supply-chain adapter — handoff (SLICE-236-3)", () => {
     const a = adapter();
     const p = await a.project(handoff(0, ORG, AGENT));
     expect(p.mapping.adapter).toBe("supply-chain");
-    expect(p.mapping.version).toBe("0.1.0");
+    expect(p.mapping.version).toBe("0.2.0");
+  });
+});
+
+describe("supply-chain adapter — deliver (SLICE-236-4)", () => {
+  const JOB = "job-42";
+  const DH = `0x${"ab".repeat(32)}`;
+  /** venue deliver = dogfood's Deliver step: provider submits to client. */
+  const deliver = (
+    extra: Record<string, unknown> = {},
+    over: Partial<EconomicEventLike> = {},
+  ): EconomicEventLike => ({
+    source: "venue",
+    sourceId: JOB,
+    seq: 3, // VENUE_SEQ.submitted
+    kind: "deliver",
+    actor: AGENT,
+    counterparty: ORG,
+    idempotencyKey: `ev:venue:${JOB}:3`,
+    payload: { taskRef: JOB, deliverableHash: DH, ...extra },
+    ...over,
+  });
+
+  it("venue deliver with deliverableHash → SUPPORTED + digest AssetRef", async () => {
+    const p = await adapter().project(deliver({ attempt: 1 }));
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.mapping.issues).toEqual([]);
+    expect(p.interpretation.stepType).toBe("supply-chain.deliver");
+    const subject = p.interpretation.subjectRefs[0];
+    expect(subject?.assetType).toBe("digital.artifact");
+    expect(subject?.externalReferences[0]).toEqual({
+      namespace: "agentbadge:deliverable",
+      referenceType: "digest",
+      value: DH,
+    });
+    // same hash, one source — never re-encoded (Landmine)
+    expect(subject?.contentDigest).toEqual({
+      algorithm: "keccak256",
+      value: DH,
+    });
+    expect(p.interpretation.actorRefs).toHaveLength(2);
+    expect(p.interpretation.domainData?.taskRef).toBe(JOB);
+    expect(p.interpretation.domainData?.attempt).toBe(1);
+    expect(p.sourceEvent).toEqual({
+      spec: "econ-events/1",
+      id: `ev:venue:${JOB}:3`,
+      source: "venue",
+      sourceId: JOB,
+      seq: 3,
+    });
+  });
+
+  it("deliver without counterparty is legal → SUPPORTED, 1 actorRef", async () => {
+    const p = await adapter().project(deliver({}, { counterparty: undefined }));
+    expect(p.mapping.status).toBe("SUPPORTED");
+    expect(p.interpretation.actorRefs).toHaveLength(1);
+  });
+
+  it("missing deliverableHash → PARTIAL + ASSET_REF_MISSING", async () => {
+    const e = deliver();
+    delete (e.payload as Record<string, unknown>).deliverableHash;
+    const p = await adapter().project(e);
+    expect(p.mapping.status).toBe("PARTIAL");
+    expect(p.interpretation.subjectRefs).toHaveLength(0);
+    expect(p.mapping.issues).toEqual([
+      {
+        code: "ASSET_REF_MISSING",
+        field: "payload.deliverableHash",
+      },
+    ]);
+  });
+
+  it("determinism: same deliver → bit-for-bit identical projection", async () => {
+    const a = adapter();
+    const e = deliver({ attempt: 2, evidenceRefs: ["urn:evidence:gps-1"] });
+    const [p1, p2] = await Promise.all([a.project(e), a.project(e)]);
+    expect(JSON.stringify(p2)).toBe(JSON.stringify(p1));
+  });
+
+  it("other domains' delivers are NOT claimed (D-236-Q4)", async () => {
+    const reg = createAdapterRegistry([adapter()]);
+    for (const source of ["market", "board"]) {
+      const p = await reg.project(
+        deliver({}, { source, sourceId: "t-1", idempotencyKey: `ev:${source}:t-1:2` }),
+      );
+      expect(p.mapping.status, source).toBe("UNSUPPORTED");
+      expect(p.mapping.adapter).toBe("unmapped");
+      expect(p.mapping.issues[0]?.code).toBe("TYPE_UNKNOWN");
+    }
+    // venue non-deliver kinds aren't claimed either
+    const v = await reg.project(deliver({}, { kind: "verify", seq: 4 }));
+    expect(v.mapping.status).toBe("UNSUPPORTED");
+    expect(v.mapping.adapter).toBe("unmapped");
   });
 });
 

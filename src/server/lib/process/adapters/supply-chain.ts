@@ -17,6 +17,23 @@
  *   domainData  hopIndex + epcis/roles/evidence verbatim — domain
  *               semantics preserved, never universalized
  *
+ * Interpretation for `deliver` (SLICE-236-4):
+ *   stepType    "supply-chain.deliver"
+ *   subjectRefs the submitted deliverable — AssetRef
+ *               {digital.artifact, agentbadge:deliverable, digest,
+ *               <deliverableHash>} + contentDigest {keccak256} — one
+ *               source hash, never re-encoded (Landmine)
+ *   actorRefs   event.actor (submitter) + event.counterparty when
+ *               present — a deliver without counterparty is legal
+ *               (board emits none)
+ *   domainData  taskRef/attempt/evidenceRefs verbatim
+ *
+ * Claim scope: `supply_chain` (every kind) + `venue` `deliver` — the
+ * dogfood's work product is submitted through the job venue
+ * (backfill lands it as a venue deliver). market/board deliveries are
+ * other domains' processes — UNSUPPORTED until their adapters exist
+ * (D-236-Q4).
+ *
  * Status: SUPPORTED when every party resolves; PARTIAL on
  * ACTOR_UNRESOLVED / ASSET_REF_MISSING; AMBIGUOUS only on a
  * distinct-entity conflict. Labels/role types are self-declared
@@ -35,21 +52,24 @@ import type {
   ProcessEventProjection,
   ProjectionIssue,
 } from "../projections/types";
-import type {
-  EconomicEventLike,
-  ParticipantRoleLike,
-  ProcessAdapter,
-} from "./types";
+import type { EconomicEventLike, ProcessAdapter } from "./types";
 import {
+  actorSlots,
   buildSourceEvent,
+  deliverableAssetRef,
+  deliverDomainDataOf,
+  handoffDomainDataOf,
+  shipmentAssetRef,
   unsupportedProjection,
 } from "./helpers";
 
 export const SUPPLY_CHAIN_ADAPTER_ID = "supply-chain";
-export const SUPPLY_CHAIN_ADAPTER_VERSION = "0.1.0";
+/** 0.2.0 — 236-4 added the deliver kind mapping (MINOR: new optional
+ *  emitted data per the versioning rule above). */
+export const SUPPLY_CHAIN_ADAPTER_VERSION = "0.2.0";
 
 const STEP_HANDOFF = "supply-chain.handoff";
-const ROLE_SLOTS = ["custodian", "operator", "device", "sensor"] as const;
+const STEP_DELIVER = "supply-chain.deliver";
 
 export interface SupplyChainAdapterDeps {
   /** 236-2 infrastructural resolver. */
@@ -58,89 +78,17 @@ export interface SupplyChainAdapterDeps {
   chainId?: number;
 }
 
-/** shipmentId → subject AssetRef (physical.batch, domain supply-chain). */
-const shipmentAssetRef = (shipmentId: string): AssetRef => ({
-  assetType: "physical.batch",
-  domain: "supply-chain",
-  externalReferences: [
-    {
-      namespace: "agentbadge:supply-chain",
-      referenceType: "shipment",
-      value: shipmentId,
-    },
-  ],
-});
-
-interface ActorSlot {
-  /** issue.field / domainData trace — where the raw string came from. */
-  field: string;
-  raw: string;
-}
-
-/** actor + counterparty + every declared roles slot (dedup happens
- *  on identical RESOLVED refs, not on raw strings). */
-function actorSlots(event: EconomicEventLike): ActorSlot[] {
-  const slots: ActorSlot[] = [{ field: "actor", raw: event.actor }];
-  if (event.counterparty) {
-    slots.push({ field: "counterparty", raw: event.counterparty });
-  }
-  const roles = event.payload?.roles as
-    | Partial<Record<(typeof ROLE_SLOTS)[number], ParticipantRoleLike>>
-    | undefined;
-  if (roles && typeof roles === "object") {
-    for (const slot of ROLE_SLOTS) {
-      const addr = roles[slot]?.address;
-      if (typeof addr === "string" && addr.length > 0) {
-        slots.push({ field: `roles.${slot}`, raw: addr });
-      }
-    }
-  }
-  return slots;
-}
-
-/** Domain payload verbatim — hopIndex is domain semantics (Landmines),
- *  never a universal field. */
-function domainDataOf(event: EconomicEventLike): Record<string, unknown> {
-  const p = event.payload ?? {};
-  const out: Record<string, unknown> = {};
-  for (const k of [
-    "hopIndex",
-    "what",
-    "where",
-    "why",
-    "roles",
-    "deliverableHash",
-    "proofOfDelivery",
-    "evidence",
-  ] as const) {
-    if (p[k] !== undefined) out[k] = p[k];
-  }
-  return out;
-}
-
 export function createSupplyChainAdapter(
   deps: SupplyChainAdapterDeps,
 ): ProcessAdapter {
   const { resolver } = deps;
   const ctx = { chainId: deps.chainId };
 
-  async function projectHandoff(
-    event: EconomicEventLike,
-  ): Promise<ProcessEventProjection> {
+  /** Resolve every declared actor slot through the 236-2 resolver —
+   *  dedup on identical RESOLVED refs; AMBIGUOUS/UNRESOLVED → issues. */
+  async function resolveActorSlots(event: EconomicEventLike) {
     const issues: ProjectionIssue[] = [];
     const actorRefs = new Map<string, ActorRef>();
-    const subjectRefs: AssetRef[] = [];
-
-    const shipmentId = event.payload?.shipmentId;
-    if (typeof shipmentId === "string" && shipmentId.length > 0) {
-      subjectRefs.push(shipmentAssetRef(shipmentId));
-    } else {
-      issues.push({
-        code: "ASSET_REF_MISSING",
-        field: "payload.shipmentId",
-      });
-    }
-
     for (const slot of actorSlots(event)) {
       const res = await resolver.resolveActor(event.source, slot.raw, ctx);
       if (res.status === "RESOLVED" && res.actorRef) {
@@ -163,21 +111,30 @@ export function createSupplyChainAdapter(
         });
       }
     }
+    return { issues, actorRefs: [...actorRefs.values()] };
+  }
 
+  function finalize(
+    event: EconomicEventLike,
+    stepType: string,
+    subjectRefs: AssetRef[],
+    actorRefs: ActorRef[],
+    issues: ProjectionIssue[],
+    domainData: Record<string, unknown>,
+  ): ProcessEventProjection {
     const status = issues.some((i) => i.code === "AMBIGUOUS_SOURCE")
       ? "AMBIGUOUS"
       : issues.length > 0
         ? "PARTIAL"
         : "SUPPORTED";
-
     return {
       projectionVersion: "process-event-projection/1",
       sourceEvent: buildSourceEvent(event),
       interpretation: {
-        stepType: STEP_HANDOFF,
+        stepType,
         subjectRefs,
-        actorRefs: [...actorRefs.values()],
-        domainData: domainDataOf(event),
+        actorRefs,
+        domainData,
       },
       mapping: {
         adapter: SUPPLY_CHAIN_ADAPTER_ID,
@@ -188,12 +145,74 @@ export function createSupplyChainAdapter(
     };
   }
 
+  async function projectHandoff(
+    event: EconomicEventLike,
+  ): Promise<ProcessEventProjection> {
+    const issues: ProjectionIssue[] = [];
+    const subjectRefs: AssetRef[] = [];
+
+    const shipmentId = event.payload?.shipmentId;
+    if (typeof shipmentId === "string" && shipmentId.length > 0) {
+      subjectRefs.push(shipmentAssetRef(shipmentId));
+    } else {
+      issues.push({
+        code: "ASSET_REF_MISSING",
+        field: "payload.shipmentId",
+      });
+    }
+
+    const { issues: actorIssues, actorRefs } = await resolveActorSlots(event);
+    issues.push(...actorIssues);
+    return finalize(
+      event,
+      STEP_HANDOFF,
+      subjectRefs,
+      actorRefs,
+      issues,
+      handoffDomainDataOf(event),
+    );
+  }
+
+  /** SLICE-236-4: deliver → output deliverable AssetRef (D-235-23).
+   *  deliverableHash is schema-required but read-side we never trust
+   *  raw payloads — absent/invalid → PARTIAL + ASSET_REF_MISSING. */
+  async function projectDeliver(
+    event: EconomicEventLike,
+  ): Promise<ProcessEventProjection> {
+    const issues: ProjectionIssue[] = [];
+    const subjectRefs: AssetRef[] = [];
+
+    const dh = event.payload?.deliverableHash;
+    if (typeof dh === "string" && dh.length > 0) {
+      subjectRefs.push(deliverableAssetRef(dh));
+    } else {
+      issues.push({
+        code: "ASSET_REF_MISSING",
+        field: "payload.deliverableHash",
+      });
+    }
+
+    const { issues: actorIssues, actorRefs } = await resolveActorSlots(event);
+    issues.push(...actorIssues);
+    return finalize(
+      event,
+      STEP_DELIVER,
+      subjectRefs,
+      actorRefs,
+      issues,
+      deliverDomainDataOf(event),
+    );
+  }
+
   return {
     id: SUPPLY_CHAIN_ADAPTER_ID,
     version: SUPPLY_CHAIN_ADAPTER_VERSION,
-    handles: (event) => event.source === "supply_chain",
+    handles: (event) =>
+      event.source === "supply_chain" ||
+      (event.source === "venue" && event.kind === "deliver"),
     async project(event) {
       if (event.kind === "handoff") return projectHandoff(event);
+      if (event.kind === "deliver") return projectDeliver(event);
       return unsupportedProjection(
         event,
         SUPPLY_CHAIN_ADAPTER_ID,
