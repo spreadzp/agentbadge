@@ -191,6 +191,9 @@ export function Footer(): ReturnType<typeof html> {
         <a href="https://foundrlist.com/product/agentbadge?utm_source=badge&amp;utm_medium=embed" target="_blank" rel="noopener" title="AgentBadge on FoundrList — launch board">
           <img src="https://foundrlist.com/api/badge/agentbadge" alt="Featured on FoundrList" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
+        <a href="https://serverdex.io/server/io-github-spreadzp-agentbadge?utm_source=badge" target="_blank" rel="noopener" title="AgentBadge on Serverdex — MCP directory, Grade A">
+          <img src="https://serverdex.io/brand/badge.svg" alt="AgentBadge — listed on Serverdex" width="123" height="40" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
         <a href="/.well-known/x402-payto.json" target="_blank" rel="noopener" title="x402 payout proof: payTo wallet signs EIP-191; DNS TXT _x402-payto.agentbadge.xyz">
           <img src="https://img.shields.io/badge/x402%20payto-proof%20signed-334155?style=flat-square" alt="x402 payout proof signed" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
