@@ -82,7 +82,7 @@ export function wireStaticOps(app: Hono): void {
   // SPEC.md v0.2, inventory, fixtures. Versioned artifacts → immutable cache.
   // NOTE: .md serves as application/octet-stream — serveStatic overrides
   // Content-Type (same pre-existing behavior as /agent-test-kit.md).
-  app.use("/schemas/*", (c, next) => {
+  app.get("/schemas/*", (c, next) => {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return next();
   }, serveStatic({ root: "./public" }));
